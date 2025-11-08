@@ -1,0 +1,126 @@
+Technical notes: 
+•	We are creating a game for Unity Hub personal  3.15.2. 
+•	The necessary backend coding will be done in C#. 
+•	The game will be a 3D multiplayer game, where all players are online (never sitting side by side sharing a screen or controllers.)  
+•	We will begin coding in incremental steps – simpler code that will be expanded on later. So keep the code very adaptable and modular. 
+•	Let Unity handle as much as possible, using C# only when necessary. 
+o	For example, keeping track of damage to the ships. 
+•	Eventually, you will help design the visuals of the ships – but for now use simple objects for testing (for example a basic free model of a galleon ship, or free 3D model of the weapons, Etc. )
+•	Keep the code as simple as possible while allowing it to be fully functional. The code will be modified frequently as we progress through the game design. 
+•	The initial game code should start with a 3D map in Unity, a basic ship (such as the 3D galleon model), and a basic control panel for movement and view changes (rotating the view around the ship, changing the zoom) and nothing else. Then we will start adding in the details to the controls, the game design, the models, Etc. 
+•	You should create all the basic Unity files, as well as their associated C# code. 
+o	If you can’t directly create some files for Unity  itself, I will need detailed instructions as to how to create them. 
+Game design: 
+•	Objects in the game (like the ships) will be made up of component objects that can be added onto, changed, upgraded, Etc. So each part of a larger object will be made up of smaller objects. For example, a ship will be made up of a bridge, deck, starboard bow hull, port bow hull, starboard aft hull (Etc.), engine, lift device, crew, weapons as individual objects (cannon1 at deck weapon mount location, cannon 2 at starboard hull location Y, Etc.)
+o	Each object in the game will have “damage points” (how much damage can be inflicted upon the object until it is destroyed. 
+o	Each object can be repaired during or after gameplay.   
+o	Each object can be upgraded to stronger, better objects of the same class (I.e. Cannon type 1 is weakest, cannon type 5 is strongest.)
+o	Objects can be replaced. I.e. Cannon type 1 replaced with deck gun type 3. Hot air balloons as a lift device replaced with an internal Anti-gravity lift device. 
+•	The basis of the game is a Steampunk air-to-air combat game. 
+o	The players will control large airborne ships that resemble everything from a floating old-style Spanish galleon to steampunk air ballons to modern airships. 
+o	The player is a ship’s captain, controlling the ship through a control panel. The control panel will have inputs such as direction, speed, angle of yaw, pitch, and roll. 
+o	The control panel will also allow for the captain to give orders such as firing guns, mounting landing parties, repairing damage (damage control), Etc. 
+o	The availability of some control panel items will depend on resources (I.e. in a ship crewed with 6 people and having 4 guns, there must be a crew member for each gun, for steering, for engine control, for doing damage repair. So if one of the 6 crew members is assigned to damage control – someone must be removed form a gun, steering, or engine control…Etc.) A cannon can only be fired if it has sufficient ammo – which is expended during combat and must be purchased. 
+o	Weapons will include things like cannons, traditional deck mounted guns, tethered harpoons (for grappling other ships), flamethrowers, Etc. 
+o	The captain can also order things like boarding parties (to other ships if close enough) or order the crew to fire handguns at other ship’s crews (should they be close enough.)
+o	Ships
+	The ships can sustain damage and, after a certain amount of damage, the ship fails and falls from the sky.
+•	Ships can survive a fall if they are close enough to the ground. Falling to the ground will cause the ship to sustain appropriate damage. If the damage exceeds the ships damage capability, the ship is completely destroyed. Otherwise the ship can be repaired.  
+•	Engines or sails are used for ship propulsion. The engines/sails can be damaged independently. Should the engine/sails be destroyed, the ship does not fall but cannot move. Based on the type of engine, the engine may explode upon destruction dealing damage to the ship (I.e. gas engines can explode, sails cannot.) 
+•	Ships will also have a “lift engine” component. For some ships this will be an anti-gravity device. For others, it will be traditional wings (which require a minimum amount of airspeed.)  Yet others, the lift device will be helium or hot air balloons. 
+o	If the “lift engine” is destroyed, the ship falls out of the air, and sustains damage in accordance with the height fallen. 
+	The ships will have various armor plating. 
+•	Armor plating will be in panels such as bridge, starboard bow, port bow, starboard aft, port aft, deck, underside. The armor plating will sustain N amount of damage, before the damage is inflicted on the underlying hull. 
+•	Each region of the ships hull will have an amount of damage it can sustain. I.e. The aft starboard hull might be able to sustain 100 points of damage. After this amount is exceeded, the hull will be considered “breached.”
+•	Only after the hull in a specific area has been breached can internal components (like the engine, or lift device) be damaged.
+o	If the engine or lift device is on the deck (for example sails, hot air balloons, or jet propulsion) then the hull does not have to be breached for these to be damaged. 
+o	If the engine of lift device is internal (like an anti-gravity lift, or engine driving a propeller) the hull must be breached to before the device can be damaged. 
+	The visuals on the game objects must change as they sustain damage. For example, when a hull section (like the starboard bow) is damaged, the visual of the ship should show damage on that section of the ship.
+
+	The game view will be a first person exterior view centered on the bridge of the players ship. I.e. A person viewing the entire ship externally. 
+•	Initially the view would be the equivalent of a captain standing on the deck bridge. 
+•	The view can be zoomed in and out – such that the player can see the view from the bridge, or the entire ship, or the entire playing field. 
+•	The view can be rotated 360 degrees in 3 axes around the bridge such that any angle on the ship can be seen. 
+o	The purpose of the game is for two or more players to combat their ships against one another. 		
+	The ships will propel themselves around the airspace above a terrain. 
+	The ships will navigate tactically around one another, attempting to bring their weapons into a firing solution and range of another ship. 
+	They will fire their weapons at the other ship, attempting to do enough damage to bring the other ship down and destroy it. 
+	All ships can receive damage from all other ships playing in the game. 
+	The game will be played in slow real time. Meaning 1 second of game play is one second of real time. 
+•	I.e. If a ship is able to propel itself at 20 knots, in one second it will travel the equivalent of approximately 10 meters through the air in the game. 
+•	The game play time can be changed (I.e. sped up so one second of real time is more than 1 second in the game, or slowed down.)
+
+Copilot customized summary prompt. Please use this in addition to the above for designing the game. 
+Teramyyd: Steampunk Airship Combat Game Design Document
+1. Technical Overview
+•	Engine: Unity Hub Personal Edition 3.15.2
+•	Language: C#
+•	Platform: 3D multiplayer online game (no local co-op or split screen)
+•	Development Approach: Modular and incremental coding; prioritize Unity’s built-in systems, use C# only when necessary
+2. Initial Setup
+•	Create a basic 3D map in Unity
+•	Add a placeholder ship (e.g., free galleon model)
+•	Implement a basic control panel:
+o	Movement controls
+o	View rotation (360° around ship)
+o	Zoom in/out
+•	Use simple models for testing; visuals will be upgraded later
+3. Game Concept
+•	Genre: Steampunk air-to-air combat
+•	Perspective: External first-person view centered on the ship’s bridge
+•	Time Scale: Real-time (1 second in-game = 1 second real time), adjustable
+4. Ship Composition
+Ships are modular and composed of:
+•	Structural Components:
+o	Bridge, deck, hull sections (starboard bow, port bow, starboard aft, port aft, underside)
+•	Functional Components:
+o	Engine (gas, sail, jet, etc.)
+o	Lift device (balloons, wings, anti-gravity)
+o	Weapons (cannons, harpoons, flamethrowers, deck guns)
+o	Crew
+o	Armor plating (per hull region)
+5. Damage System
+•	Each object has damage points and can be:
+o	Damaged
+o	Repaired (during or after gameplay)
+o	Upgraded or replaced
+•	Armor:
+o	Absorbs damage before hull is affected
+o	Visuals change based on damage
+•	Hull:
+o	Breaches allow internal components to be damaged
+•	Lift Device:
+o	If destroyed, ship falls and sustains fall damage
+•	Engine:
+o	If destroyed, ship loses propulsion
+o	Gas engines may explode; sails do not
+6. Crew and Resource Management
+•	Crew assignments affect functionality:
+o	Each gun, engine, steering, and repair task requires a crew member
+o	Reassigning crew impacts availability of functions
+•	Weapons require ammo; ammo is expendable and must be purchased
+7. Combat Mechanics
+•	Ships maneuver tactically to bring weapons into range
+•	Weapons include:
+o	Cannons
+o	Deck guns
+o	Harpoons (grappling)
+o	Flamethrowers
+o	Handguns (for close-range crew combat)
+•	Boarding parties can be launched if ships are close
+8. Visuals and Feedback
+•	Damage is visually represented on ship components
+•	View system:
+o	Zoom from bridge to full ship to battlefield
+o	Rotate around ship in all axes
+9. Multiplayer Gameplay
+•	Multiple players engage in tactical combat
+•	All ships can damage each other
+•	Ships fall when lift devices are destroyed or hull damage exceeds threshold
+•	Survivable falls depend on altitude
+10. Development Notes
+•	Begin with basic Unity scene and ship prefab
+•	Add control panel and camera system
+•	Expand incrementally with modular scripts
+•	Provide instructions for Unity file creation if direct generation isn’t possible
+
