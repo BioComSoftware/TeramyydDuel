@@ -6,6 +6,10 @@ using UnityEngine;
 // inspector fields. The script will attempt to set a `text` property via reflection.
 public class HUDController : MonoBehaviour
 {
+    [Header("Layout")]
+    [Tooltip("Assign the full-screen RectTransform root for the HUD (stretches to fill screen). Optional: will be auto-stretched on Start.")]
+    public RectTransform hudRoot;
+
     [Header("Player")]
     public Health playerHealth;
     [Tooltip("Assign the UI component that displays health (Text, TMP_Text, etc.)")]
@@ -17,6 +21,15 @@ public class HUDController : MonoBehaviour
 
     void Start()
     {
+        // Ensure HUD root fills the screen (anchors stretch, zero offsets)
+        if (hudRoot != null)
+        {
+            hudRoot.anchorMin = Vector2.zero;
+            hudRoot.anchorMax = Vector2.one;
+            hudRoot.offsetMin = Vector2.zero;
+            hudRoot.offsetMax = Vector2.zero;
+        }
+
         if (playerHealth != null)
         {
             playerHealth.onHealthChanged.AddListener(UpdateHealthText);
