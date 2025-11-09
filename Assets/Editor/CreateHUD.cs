@@ -56,11 +56,31 @@ public static class CreateHUD
         // Ensure EventSystem exists
         var esType = FindType("UnityEngine.EventSystems.EventSystem");
         var simType = FindType("UnityEngine.EventSystems.StandaloneInputModule");
-        if (esType != null && UnityEngine.Object.FindObjectsOfType(esType).Length == 0)
+        if (esType != null)
         {
-            var es = new GameObject("EventSystem");
-            es.AddComponent(esType);
-            if (simType != null) es.AddComponent(simType);
+            int existingCount = 0;
+            try
+            {
+                // Use newer, faster API when available
+                var results = UnityEngine.Object.FindObjectsByType(
+                    esType,
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+                if (results != null) existingCount = results.Length;
+            }
+            catch
+            {
+                // Fallback for older Unity if FindObjectsByType(Type, ..) is unavailable
+                var legacy = UnityEngine.Object.FindObjectsOfType(esType);
+                if (legacy != null) existingCount = legacy.Length;
+            }
+
+            if (existingCount == 0)
+            {
+                var es = new GameObject("EventSystem");
+                es.AddComponent(esType);
+                if (simType != null) es.AddComponent(simType);
+            }
         }
 
     // Create a full-screen panel root (optional container for layout)

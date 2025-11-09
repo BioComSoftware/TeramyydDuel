@@ -50,7 +50,21 @@ public class ProjectileLauncher : MonoBehaviour
         Rigidbody rb = proj.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.velocity = launchDirection * launchSpeed;
+            // Prefer Rigidbody.linearVelocity (newer Unity); fall back to velocity via reflection to avoid obsolete warnings
+            var rbType = typeof(Rigidbody);
+            var linVelProp = rbType.GetProperty("linearVelocity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            if (linVelProp != null && linVelProp.CanWrite)
+            {
+                linVelProp.SetValue(rb, launchDirection * launchSpeed, null);
+            }
+            else
+            {
+                var velProp = rbType.GetProperty("velocity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                if (velProp != null && velProp.CanWrite)
+                {
+                    velProp.SetValue(rb, launchDirection * launchSpeed, null);
+                }
+            }
         }
         else
         {

@@ -47,6 +47,39 @@ public class CameraMove : MonoBehaviour
             orbitDistance = Vector3.Distance(transform.position, orbitTarget.position);
         }
     }
+
+    // Rebaseline the pitch and yaw using the camera's current transform.
+    // Call this after externally changing transform.position/rotation or parenting.
+    public void RebaselineFromCurrent()
+    {
+        Vector3 euler = transform.eulerAngles;
+        currentYaw = euler.y;
+        currentPitch = euler.x;
+        startPitch = currentPitch;
+        relativePitch = 0f;
+    }
+
+    // Optionally set or clear an orbit target at runtime.
+    public void SetOrbitTarget(Transform target, float distance)
+    {
+        orbitTarget = target;
+        orbitDistance = distance;
+    }
+
+    public void ClearOrbitTarget()
+    {
+        orbitTarget = null;
+    }
+
+    // Force a one-time reposition when an orbit target is (re)assigned so that
+    // subsequent rotations don't "jump" from an arbitrary manual placement.
+    public void SnapOrbitPosition()
+    {
+        if (orbitTarget == null) return;
+        Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
+        Vector3 offset = rotation * Vector3.back * orbitDistance;
+        transform.position = orbitTarget.position + offset;
+    }
     
     void Update()
     {
