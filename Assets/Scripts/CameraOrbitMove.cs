@@ -70,7 +70,7 @@ public class CameraOrbitMove : MonoBehaviour
                 distance += -v * zoomSpeed * Time.deltaTime; // Up -> closer
                 distance = Mathf.Clamp(distance, minDistance, maxDistance);
             }
-            Reposition();
+            // Defer actual reposition to LateUpdate so we always follow a moving target
             return;
         }
 
@@ -79,8 +79,14 @@ public class CameraOrbitMove : MonoBehaviour
             yaw += h * orbitSpeed * Time.deltaTime;
             pitch += v * orbitSpeed * Time.deltaTime;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
-            Reposition();
         }
+    }
+
+    // Always reposition after all updates so the camera tracks a moving target even when no input occurs.
+    void LateUpdate()
+    {
+        if (target == null) return;
+        Reposition();
     }
 
     void Reposition()

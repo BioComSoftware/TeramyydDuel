@@ -11,6 +11,7 @@ public class CameraViewManager : MonoBehaviour
     public Camera mainCamera;            // Assign Main Camera
     public CameraMove cameraMove;        // The rotation/zoom controller on the camera
     public CameraOrbitMove cameraOrbit;  // Orbit controller for follow/overhead
+    public OverheadViewController overheadController; // New specialized overhead controller
 
     [Tooltip("Where the bridge view should be mounted (usually a child on the ship's bridge)")]
     public Transform bridgeMount;
@@ -22,7 +23,9 @@ public class CameraViewManager : MonoBehaviour
     public Transform followMount;
 
     [Tooltip("Center point (anchor) of the playfield for Overhead view")]
-    public Transform overheadTarget;
+    public Transform overheadTarget; // Deprecated for overhead; kept for compatibility
+    [Tooltip("Anchor position for overhead camera (top-center). If null, derived from GameFieldBounds size.")]
+    public Transform overheadMount;
 
     [Header("Auto-Find Targets")]
     [Tooltip("If true and Follow target is not assigned, the manager will look for a child named FollowCameraFocalPoint under the ship hierarchy or anywhere in the scene.")]
@@ -71,6 +74,7 @@ public class CameraViewManager : MonoBehaviour
         if (mainCamera == null) mainCamera = Camera.main;
         if (cameraMove == null && mainCamera != null) cameraMove = mainCamera.GetComponent<CameraMove>();
         if (cameraOrbit == null && mainCamera != null) cameraOrbit = mainCamera.GetComponent<CameraOrbitMove>();
+    if (overheadController == null && mainCamera != null) overheadController = mainCamera.GetComponent<OverheadViewController>();
 
         if (forceFOVZoom && cameraMove != null) cameraMove.useFOVZoom = true;
 
@@ -82,7 +86,7 @@ public class CameraViewManager : MonoBehaviour
     {
         if (Input.GetKeyDown(bridgeKey)) ApplyMode(ViewMode.Bridge);
         if (Input.GetKeyDown(followKey)) ApplyMode(ViewMode.Follow);
-        if (Input.GetKeyDown(overheadKey)) ApplyMode(ViewMode.Overhead);
+    if (Input.GetKeyDown(overheadKey)) ApplyMode(ViewMode.Overhead);
     }
 
     public void ApplyMode(ViewMode mode, bool force = false)
@@ -207,31 +211,21 @@ public class CameraViewManager : MonoBehaviour
 
     void EnterOverhead()
     {
-        if (overheadTarget == null)
-        {
-            Debug.LogWarning("CameraViewManager: Overhead target not set.");
-            return;
-        }
-
         mainCamera.transform.SetParent(null, worldPositionStays: true);
 
-        Vector3 center = overheadTarget.position;
-        // Straight down: we place camera at center + up * distance, looking down
-        Vector3 startPos = center + Vector3.up * overheadDefaultDistance;
-        mainCamera.transform.position = startPos;
-        mainCamera.transform.rotation = Quaternion.LookRotation(center - startPos, Vector3.up);
-
-        float dist = overheadDefaultDistance;
-        // For straight-down view, dir from center to cam = up (0,1,0) -> pitch 90
-        float yawAngle = overheadDefaultYaw;
-        float pitchAngle = 90f; // looking from above
-
-        if (cameraOrbit != null)
-        {
-            cameraOrbit.enabled = true;
-            cameraOrbit.useFOVZoom = forceFOVZoom || cameraOrbit.useFOVZoom;
-            cameraOrbit.SetTarget(overheadTarget, dist, yawAngle, pitchAngle);
-        }
+        // Enable specialized overhead controller, disable others
         if (cameraMove != null) cameraMove.enabled = false;
+        if (cameraOrbit != null) cameraOrbit.enabled = false;
+
+        if (overheadController == null)
+        {
+            overheadController = mainCamera.gameObject.AddComponent<OverheadViewController>();
+        }
+
+        // Wire ship target and initialize over ship
+        overheadController.enabled = true;
+        if (followTarget != null) overheadController.shipTarget = followTarget;
+        overheadController.heightAboveShip = 1000f; // per spec
+        overheadController.SnapToShipCenter();
     }
 }
