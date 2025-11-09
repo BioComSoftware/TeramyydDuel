@@ -9,6 +9,8 @@ public class GameManager : MonoBehaviour
     public Transform[] enemySpawnPoints;
     public GameObject enemyPrefab;
 
+    [Header("Playfield Reference")] public GameFieldBounds playfield; // Optional explicit link
+
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -37,5 +39,11 @@ public class GameManager : MonoBehaviour
     {
         // handle game over state (display UI, restart, etc.)
         Debug.Log("Player destroyed - Game Over");
+    }
+
+    public bool IsInsidePlayfield(Vector3 pos)
+    {
+        if (playfield == null) playfield = GameFieldBounds.Instance;
+        return playfield != null && playfield.ContainsPoint(pos);
     }
 }
