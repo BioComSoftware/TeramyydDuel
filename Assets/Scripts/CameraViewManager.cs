@@ -136,10 +136,12 @@ public class CameraViewManager : MonoBehaviour
             cameraMove.enabled = true;
             cameraMove.ClearOrbitTarget();
             cameraMove.useFOVZoom = forceFOVZoom || cameraMove.useFOVZoom;
-            cameraMove.RebaselineFromCurrent();
+            cameraMove.RebaselineFromCurrent(); // This resets position and zoom to baseline
         }
         if (cameraOrbit != null) cameraOrbit.enabled = false;
         if (overheadController != null) overheadController.enabled = false;
+        
+        Debug.Log("Switched to Bridge view (reset to default)");
     }
 
     void EnterFollow()
@@ -182,15 +184,17 @@ public class CameraViewManager : MonoBehaviour
         float yawAngle = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
         float pitchAngle = Mathf.Asin(dir.y) * Mathf.Rad2Deg; // elevation
 
-        // Enable orbit controller
+        // Enable orbit controller and reset to default position
         if (cameraOrbit != null)
         {
             cameraOrbit.enabled = true;
             cameraOrbit.useFOVZoom = forceFOVZoom || cameraOrbit.useFOVZoom;
-            cameraOrbit.SetTarget(followTarget, dist, yawAngle, pitchAngle);
+            cameraOrbit.SetTarget(followTarget, dist, yawAngle, pitchAngle); // This already resets position/angle
         }
         if (cameraMove != null) cameraMove.enabled = false;
         if (overheadController != null) overheadController.enabled = false;
+        
+        Debug.Log("Switched to Follow view (reset to default)");
     }
 
     // Attempts to find a Transform named followFocalPointName under the same top-level root as the
@@ -239,6 +243,8 @@ public class CameraViewManager : MonoBehaviour
         overheadController.enabled = true;
         if (followTarget != null) overheadController.shipTarget = followTarget;
         overheadController.heightAboveShip = 1000f; // per spec
-        overheadController.SnapToShipCenter();
+        overheadController.SnapToShipCenter(); // This resets position and zoom to default
+        
+        Debug.Log("Switched to Overhead view (reset to default)");
     }
 }

@@ -6,6 +6,7 @@ public class ProjectileLauncher : MonoBehaviour
     [Header("References")]
     public GameObject projectilePrefab;   // Cannonball prefab (must have Rigidbody + Collider)
     public Transform spawnPoint;          // Your Cylinder (its Y axis points out of the barrel)
+    public ParticleSystem muzzleSmoke;    // Optional: smoke effect when firing
 
     [Header("Input")]
     public KeyCode fireKey = KeyCode.F;
@@ -34,6 +35,12 @@ public class ProjectileLauncher : MonoBehaviour
         {
             Debug.LogWarning("ProjectileLauncher: No spawnPoint assigned!");
             return;
+        }
+
+        // Play muzzle smoke effect
+        if (muzzleSmoke != null)
+        {
+            muzzleSmoke.Play();
         }
 
         // Your cylinder's local Y points out of the barrel
