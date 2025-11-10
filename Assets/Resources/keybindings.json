@@ -1,0 +1,16 @@
+{
+    "bridgeView": "F1",
+    "followView": "F2",
+    "overheadView": "F3",
+    "bridgeSnap": "F1",
+    "followSnap": "F2",
+    "overheadSnap": "F3",
+    "lookLeft": "LeftArrow",
+    "lookRight": "RightArrow",
+    "lookUp": "UpArrow",
+    "lookDown": "DownArrow",
+    "zoomIn": "UpArrow",
+    "zoomOut": "DownArrow",
+    "snapRequiresCtrl": true,
+    "zoomRequiresCtrl": true
+}
