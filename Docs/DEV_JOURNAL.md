@@ -1,5 +1,55 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-09)
+
+Purpose: Fast, structured brief so a new AI can resume work immediately.
+
+Current Focus
+- Overhead camera rewritten: straight-down, follows ship, persistent X/Z pan offset, zoom with Ctrl+Arrows, snap with Ctrl+F3.
+- View switching via `CameraViewManager` (F1 Bridge, F2 Follow, F3 Overhead).
+
+Player-Facing Behavior (Overhead)
+- Always points straight down.
+- Camera position = ship.position + offsetXZ + up * heightAboveShip (default heightAboveShip = 1000).
+- Panning (relative offset):
+  - Up Arrow: move camera toward -Z (ship appears lower)
+  - Down Arrow: move camera toward +Z (ship appears higher)
+  - Left Arrow: move camera toward -X (ship appears to the right)
+  - Right Arrow: move camera toward +X (ship appears to the left)
+- Zoom:
+  - Ctrl+Up: zoom in (FOV by default; optionally height-based)
+  - Ctrl+Down: zoom out
+  - Ctrl+F3: snap above ship and reset zoom to baseline
+
+Key Files
+- `Assets/Scripts/OverheadViewController.cs` — Overhead camera logic (ship follow, pan offset, zoom, snap, clip planes, auto ship-target).
+- `Assets/Scripts/CameraViewManager.cs` — Mode switching and overhead wiring (assigns shipTarget, sets heightAboveShip, calls SnapToShipCenter).
+- `Assets/Scripts/GameFieldBounds.cs` — Logical bounds; not yet used for overhead clamping.
+- `Assets/Scripts/CameraOrbitMove.cs` — Follow orbit (unused in overhead).
+- `Assets/Scripts/CameraMove.cs` — Bridge controller (unused in overhead).
+
+Config/Inspector Defaults (Overhead)
+- heightAboveShip = 1000
+- panSpeed = 200
+- Zoom modes:
+  - useFOVZoom = true (default)
+  - minFOV = 5, maxFOV = captured at Start as baseFOV
+  - If useFOVZoom = false → height zoom with minHeightAboveGround = 50 and baseHeight captured from heightAboveShip
+- farClipPadding = 300 (ensures rendering at height)
+- snapKey = F3 (use with Ctrl)
+
+Known Issues / Notes
+- Overhead has no boundary clamping yet; camera can pan outside playfield.
+- `OverheadCameraMount` is not required; auto-detection uses it only to find the Ship parent if needed.
+- If neither `Ship` nor `OverheadCameraMount` is found, overhead logs a warning and does not update.
+
+Open Decisions / Next Steps
+- Add optional soft boundary clamping to `GameFieldBounds`.
+- Mouse wheel zoom + middle-click recenter.
+- Smoothing for pan and zoom; configurable inputs.
+- Persist overhead offset/zoom across mode switches.
+
+
 ## Current State (as of Nov 5, 2025)
 
 ### Project Structure
@@ -356,4 +406,60 @@ Cannon (parent GameObject)
 3. Consider adding muzzle flash or firing effects
 4. Implement weapon mounting system for cannons
 5. Create additional weapon types (harpoons, etc.)
+
+## Session 5 (Nov 9, 2025 - Overhead Camera Revamp & View System)
+
+Overview
+- Rebuilt the overhead camera system to meet top-down strategy view requirements: always look straight down, follow the ship, allow persistent pan offset, and support zoom with a snap-to-center reset.
+- Integrated with the existing CameraViewManager so F3 switches to overhead cleanly.
+
+Key Changes
+1) Overhead camera rewritten
+   - File: `Assets/Scripts/OverheadViewController.cs`
+   - Behavior:
+     - Camera rides above the ship at a configurable world-space height (`heightAboveShip`, default 1000).
+     - Maintains a persistent X/Z offset relative to the ship; arrow keys change this offset:
+       - Up = move camera toward -Z (ship appears to move down)
+       - Down = move camera toward +Z (ship appears to move up)
+       - Left = move camera toward -X (ship appears to move right)
+       - Right = move camera toward +X (ship appears to move left)
+     - Always points straight down (no tilt or roll).
+     - Ctrl+F3 snaps back directly above the ship and resets zoom to the baseline.
+   - Robustness:
+     - Auto-finds `Ship` or `OverheadCameraMount` (uses its parent if present) if `shipTarget` isn’t assigned.
+     - Ensures camera `farClipPlane` is extended enough for y≈1000 views (prevents “grey screen” background).
+
+2) Zoom support (two modes)
+   - FOV Zoom (default): Ctrl+Up zooms in (narrows FOV), Ctrl+Down zooms out. `minFOV` lowered to allow very close-in views. Ctrl+F3 resets to `baseFOV`.
+   - Height Zoom (optional): set `useFOVZoom = false` in `OverheadViewController` to zoom by changing `heightAboveShip`. Clamped by `minHeightAboveGround` so the camera never goes below ground. Ctrl+F3 resets to `baseHeight`.
+
+3) View manager integration
+   - File: `Assets/Scripts/CameraViewManager.cs`
+   - `EnterOverhead()` now:
+     - Disables other camera controllers.
+     - Ensures `OverheadViewController` is on the Main Camera.
+     - Assigns `shipTarget = followTarget` and sets `heightAboveShip = 1000`.
+     - Calls `SnapToShipCenter()` to start directly above the ship.
+
+Controls (Overhead)
+- Arrow Keys: Pan (modify persistent offset relative to ship)
+  - Up: camera toward -Z, Down: camera toward +Z
+  - Left: camera toward -X, Right: camera toward +X
+- Ctrl+Up / Ctrl+Down: Zoom in/out (FOV or height depending on configuration)
+- Ctrl+F3: Snap above ship and reset zoom to baseline
+
+Notes & Decisions
+- Overhead view is intentionally tilt-free to keep a pure top-down perspective.
+- `OverheadCameraMount` is not required by the controller; however, auto-discovery uses it if present to resolve `shipTarget` via its parent.
+- Panning is currently unclamped. We can add soft boundaries using `GameFieldBounds` later if desired.
+
+Known Fixes
+- Grey-screen in overhead mode fixed by:
+  - Auto-assigning `shipTarget` when missing (prevents early bail-out in LateUpdate).
+  - Raising `farClipPlane` to exceed camera height (ensures ship/ground render at y≈1000).
+
+Next Steps
+- Optional: add soft boundary clamping and friction near edges of the playfield.
+- Optional: mouse wheel zoom + middle-click recenter.
+- Optional: smoothing for pan/zoom and configurable keybinds.
 
