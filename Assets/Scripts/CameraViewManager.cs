@@ -55,6 +55,7 @@ public class CameraViewManager : MonoBehaviour
     public bool forceFOVZoom = true;
 
     [Header("Input")] 
+    // Deprecated: now sourced from KeyBindingConfig
     public KeyCode bridgeKey = KeyCode.F1;
     public KeyCode followKey = KeyCode.F2;
     public KeyCode overheadKey = KeyCode.F3;
@@ -84,9 +85,19 @@ public class CameraViewManager : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(bridgeKey)) ApplyMode(ViewMode.Bridge);
-        if (Input.GetKeyDown(followKey)) ApplyMode(ViewMode.Follow);
-    if (Input.GetKeyDown(overheadKey)) ApplyMode(ViewMode.Overhead);
+        var kb = KeyBindingConfig.Instance;
+        if (kb != null)
+        {
+            if (Input.GetKeyDown(kb.bridgeView)) ApplyMode(ViewMode.Bridge);
+            if (Input.GetKeyDown(kb.followView)) ApplyMode(ViewMode.Follow);
+            if (Input.GetKeyDown(kb.overheadView)) ApplyMode(ViewMode.Overhead);
+        }
+        else
+        {
+            if (Input.GetKeyDown(bridgeKey)) ApplyMode(ViewMode.Bridge);
+            if (Input.GetKeyDown(followKey)) ApplyMode(ViewMode.Follow);
+            if (Input.GetKeyDown(overheadKey)) ApplyMode(ViewMode.Overhead);
+        }
     }
 
     public void ApplyMode(ViewMode mode, bool force = false)
@@ -119,7 +130,7 @@ public class CameraViewManager : MonoBehaviour
             mainCamera.transform.localRotation = Quaternion.identity;
         }
 
-        // Enable bridge controller, disable orbit controller
+        // Enable bridge controller, disable orbit and overhead controllers
         if (cameraMove != null)
         {
             cameraMove.enabled = true;
@@ -128,6 +139,7 @@ public class CameraViewManager : MonoBehaviour
             cameraMove.RebaselineFromCurrent();
         }
         if (cameraOrbit != null) cameraOrbit.enabled = false;
+        if (overheadController != null) overheadController.enabled = false;
     }
 
     void EnterFollow()
@@ -178,6 +190,7 @@ public class CameraViewManager : MonoBehaviour
             cameraOrbit.SetTarget(followTarget, dist, yawAngle, pitchAngle);
         }
         if (cameraMove != null) cameraMove.enabled = false;
+        if (overheadController != null) overheadController.enabled = false;
     }
 
     // Attempts to find a Transform named followFocalPointName under the same top-level root as the

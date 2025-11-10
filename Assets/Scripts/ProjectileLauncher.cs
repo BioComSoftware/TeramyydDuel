@@ -8,7 +8,7 @@ public class ProjectileLauncher : MonoBehaviour
     public Transform spawnPoint;          // Your Cylinder (its Y axis points out of the barrel)
 
     [Header("Input")]
-    public KeyCode fireKey = KeyCode.Space;
+    public KeyCode fireKey = KeyCode.F;
 
     [Header("Projectile Settings")]
     public float launchSpeed = 50f;       // Speed of the projectile

@@ -114,6 +114,78 @@ public static class CreateHUD
         rt2.pivot = new Vector2(1f, 1f);
         rt2.anchoredPosition = new Vector2(-10f, -10f);
 
+        // Create Settings Gear Button (top-right corner)
+        var settingsGO = new GameObject("SettingsButton");
+        settingsGO.transform.SetParent(rootPanel.transform, false);
+        var settingsRT = settingsGO.AddComponent<RectTransform>();
+        settingsRT.anchorMin = new Vector2(1f, 1f);
+        settingsRT.anchorMax = new Vector2(1f, 1f);
+        settingsRT.pivot = new Vector2(1f, 1f);
+        settingsRT.anchoredPosition = new Vector2(-20f, -20f); // 20px from top-right corner
+        settingsRT.sizeDelta = new Vector2(60f, 60f); // 60x60px button (increased size)
+
+        // Add Button component if available
+        var buttonType = FindType("UnityEngine.UI.Button");
+        if (buttonType != null)
+        {
+            var button = settingsGO.AddComponent(buttonType);
+            
+            // Create visual background for button (Image component)
+            var imageType = FindType("UnityEngine.UI.Image");
+            if (imageType != null)
+            {
+                var image = settingsGO.AddComponent(imageType);
+                
+                // Set a bright visible color for testing
+                var colorProp = imageType.GetProperty("color");
+                if (colorProp != null && colorProp.CanWrite)
+                {
+                    colorProp.SetValue(image, new Color(0.2f, 0.7f, 1f, 1f), null); // Light blue for visibility
+                }
+            }
+        }
+
+        // Create gear icon text placeholder (can replace with sprite later)
+        var gearTextGO = new GameObject("GearText");
+        gearTextGO.transform.SetParent(settingsGO.transform, false);
+        Component gearTextComp = AddTextLikeComponent(gearTextGO, "⚙");
+        
+        // Center the gear text in the button
+        var gearRT = gearTextGO.AddComponent<RectTransform>();
+        gearRT.anchorMin = Vector2.zero;
+        gearRT.anchorMax = Vector2.one;
+        gearRT.offsetMin = Vector2.zero;
+        gearRT.offsetMax = Vector2.zero;
+        
+        // Make text larger and centered
+        if (gearTextComp != null)
+        {
+            // Set text color to white for visibility against blue background
+            var colorProp = gearTextComp.GetType().GetProperty("color");
+            if (colorProp != null && colorProp.CanWrite)
+            {
+                colorProp.SetValue(gearTextComp, Color.white, null);
+            }
+            
+            var fontSizeProp = gearTextComp.GetType().GetProperty("fontSize");
+            if (fontSizeProp != null && fontSizeProp.CanWrite)
+            {
+                fontSizeProp.SetValue(gearTextComp, 36, null); // Larger font
+            }
+            
+            var alignmentProp = gearTextComp.GetType().GetProperty("alignment");
+            if (alignmentProp != null && alignmentProp.CanWrite)
+            {
+                // TextAnchor.MiddleCenter
+                var textAnchorType = FindType("UnityEngine.TextAnchor");
+                if (textAnchorType != null)
+                {
+                    var middleCenter = System.Enum.Parse(textAnchorType, "MiddleCenter");
+                    alignmentProp.SetValue(gearTextComp, middleCenter, null);
+                }
+            }
+        }
+
         // Create HUD controller
     var hudGO = new GameObject("HUD");
     hudGO.transform.SetParent(rootPanel.transform, false);

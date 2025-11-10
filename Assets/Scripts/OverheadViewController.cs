@@ -33,7 +33,7 @@ public class OverheadViewController : MonoBehaviour
     private float baseHeight;               // Baseline heightAboveShip for reset
 
     [Header("Controls")]
-    public KeyCode snapKey = KeyCode.F3;    // Use with Ctrl
+    public KeyCode snapKey = KeyCode.F3;    // Use with Ctrl (overridden by KeyBindingConfig if present)
 
     private Vector3 offsetXZ = Vector3.zero; // Only x/z used; y handled by heightAboveShip
     private Camera cam;
@@ -83,17 +83,22 @@ public class OverheadViewController : MonoBehaviour
         if (shipTarget == null) return;
 
         // Ctrl+F3 snaps back above ship (zero offset)
+        var kb = KeyBindingConfig.Instance; 
         bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-        if (ctrl)
+        KeyCode effectiveSnap = kb ? kb.overheadSnap : snapKey;
+        bool snapNeedsCtrl = kb ? kb.snapRequiresCtrl : true;
+        bool zoomNeedsCtrl = kb ? kb.zoomRequiresCtrl : true;
+
+        if ((zoomNeedsCtrl && ctrl) || (!zoomNeedsCtrl))
         {
-            if (Input.GetKeyDown(snapKey))
+            if (Input.GetKeyDown(effectiveSnap) && (!snapNeedsCtrl || ctrl))
             {
                 SnapToShipCenter();
                 if (cam != null) cam.fieldOfView = baseFOV; // reset zoom to no-zoom
                 return;
             }
 
-            // Ctrl + Up/Down: Zoom in/out (FOV or height)
+            // Zoom in/out (FOV or height)
             float zoomDir = 0f;
             if (Input.GetKey(KeyCode.UpArrow)) zoomDir = 1f;    // zoom in
             if (Input.GetKey(KeyCode.DownArrow)) zoomDir = -1f; // zoom out
@@ -119,15 +124,15 @@ public class OverheadViewController : MonoBehaviour
                     heightAboveShip = targetWorldHeight - shipY;
                 }
             }
-            return; // no panning while holding Ctrl
+            if (zoomNeedsCtrl && ctrl) return; // block panning if we're in modifier-required zoom mode
         }
 
         // Pan with arrows: adjust offset relative to ship
         float h = 0f, v = 0f;
-        if (Input.GetKey(KeyCode.LeftArrow))  h -= 1f; // left -> negative X
-        if (Input.GetKey(KeyCode.RightArrow)) h += 1f; // right -> positive X
-        if (Input.GetKey(KeyCode.UpArrow))    v -= 1f; // up -> negative Z
-        if (Input.GetKey(KeyCode.DownArrow))  v += 1f; // down -> positive Z
+    if (Input.GetKey(KeyCode.LeftArrow))  h -= 1f;
+    if (Input.GetKey(KeyCode.RightArrow)) h += 1f;
+    if (Input.GetKey(KeyCode.UpArrow))    v -= 1f;
+    if (Input.GetKey(KeyCode.DownArrow))  v += 1f;
 
         if (h != 0f || v != 0f)
         {
