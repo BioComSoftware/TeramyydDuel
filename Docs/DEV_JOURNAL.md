@@ -1,5 +1,42 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-10)
+
+Purpose: fast internal log so I can resume instantly next session.
+
+Changes Today
+- Weapons
+  - ProjectileLauncher: added `MuzzleBlast` ParticleSystem (plays on fire) alongside existing `muzzleSmoke`.
+    - Preserved existing scene/prefab refs via `[FormerlySerializedAs("Muxxleblast")]`.
+    - Note: for reliable retrigger visibility, consider `Stop(StopEmittingAndClear)` before `Play()`.
+  - Cannon: new component deriving from `ProjectileLauncher` (AddComponentMenu: Teramyyd/Weapons/Cannon).
+    - `Reset()` sets sane defaults (launchSpeed 50, spawnOffset 1, fireKey F).
+    - Use for cannon-specific behavior without touching the base.
+  - CannonBall: new projectile deriving from `Projectile` (AddComponentMenu: Teramyyd/Weapons/CannonBall).
+    - `Reset()` defaults: damage 25, lifeTime 5.
+
+Notes / Ops
+- Particle authoring: provided quick red muzzle flash recipe (short lifetime, additive, small cone, burst 20–40).
+- If blast isn’t visible in play: verify assignment on the firing instance, slight forward offset to avoid occlusion, additive material, culling mask, near clip, start size/alpha.
+
+Editor/Recording
+- Unity Recorder: installed path is Window > General > Recorder > Recorder Window (may require domain reload and clean compile to appear).
+- Auto-start approaches: use Recorder’s “Start Recording on Play” option or a tiny Editor script hook on play state. Alternative: Windows Game Bar (Win+Alt+R) or OBS.
+
+Open TODOs (carryover + new)
+- Make `ProjectileLauncher` more extensible: split `FireProjectile()` with protected virtual pre/post hooks for subclasses (e.g., Cannon) to override.
+- Optional: add robust retrigger for PS (`StopEmittingAndClear` then `Play`) and a warning log if `MuzzleBlast` is unassigned.
+- Overhead camera: boundary clamping with `GameFieldBounds`, smoothing, mouse wheel zoom, persist offset/zoom across view switches.
+- Unify camera input to use `KeyBindingConfig` mappings instead of raw arrow keys everywhere.
+
+Key Files Touched
+- `Assets/Scripts/ProjectileLauncher.cs` (new MuzzleBlast field + play)
+- `Assets/Scripts/Cannon.cs` (new, subclass of ProjectileLauncher)
+- `Assets/Scripts/CannonBall.cs` (new, subclass of Projectile)
+
+Resumption Tip
+- If particles or Recorder UI “don’t work,” first check Console for compile errors; new editor menus and component behaviors won’t initialize with compiler errors present.
+
 ## AI Snapshot (2025-11-09)
 
 Purpose: Fast, structured brief so a new AI can resume work immediately.
@@ -462,4 +499,52 @@ Next Steps
 - Optional: add soft boundary clamping and friction near edges of the playfield.
 - Optional: mouse wheel zoom + middle-click recenter.
 - Optional: smoothing for pan/zoom and configurable keybinds.
+
+## Session 6 (Nov 10, 2025 - HUD, Keybindings JSON, View Fixes, Cannon FX)
+
+Summary
+- Added JSON-based keybinding config and auto-loading at runtime; integrated with view switching (F1/F2/F3) and overhead snap/zoom modifiers.
+- Implemented a direct HUD creation script with a persistent top-right settings button (sprite supported), independent of active camera view.
+- Fixed view switching bug: Overhead controller no longer remains active after switching back to Bridge/Follow; each mode now resets to default layout on entry.
+- Enhanced projectile system: fire key changed to F; optional muzzle smoke ParticleSystem plays on firing.
+
+Player-Facing Changes
+- View buttons or keybindings instantly reset the selected view to its baseline (Bridge centered, Follow re-orbits, Overhead snaps above ship).
+- Overhead still pans with arrows and zooms with Ctrl+Up/Down; Ctrl+F3 resets.
+- Settings gear always anchored to screen (Screen Space - Overlay) regardless of mode.
+- Cannon firing now uses F (instead of Space) and can display smoke.
+
+Technical Additions
+- `KeyBindingConfig`: Added `KeyBindingData` (string-key JSON). Methods `LoadFromJSON()` / `SaveToJSON()`. Auto-load in `Instance`.
+- `keybindings.json`: User-editable keys (e.g., "F1", "LeftArrow", "Alpha1"). Invalid names fall back with warnings.
+- `CameraViewManager`: Added disabling of other controllers on mode change; resets each view; added debug logs.
+- `CreateHUD_Direct`: Reliable HUD canvas + settings button creation (removed Health/Score from HUD per design shift).
+- `ViewSwitchButton`: Simple component to map a UI Button to a `ViewMode`.
+- `ProjectileLauncher`: Added `muzzleSmoke` ParticleSystem field; plays effect on fire; default `fireKey = KeyCode.F`.
+
+How to Use New Systems
+- Keybindings: Edit `Assets/Resources/keybindings.json`, save, and play—runtime loads automatically.
+- HUD: Run menu `Teramyyd/Create HUD Canvas (Direct)`; assign sprite (import PNG as Sprite (2D and UI), Mode = Single) to settings button Image.
+- Muzzle Smoke: Create ParticleSystem at barrel exit, disable Play On Awake & Looping, assign to `muzzleSmoke` field.
+
+Recommended Particle Settings (Starter)
+- Main: Lifetime 0.6–1.0, Speed 5–8, Size 0.6–1.2, Color light gray (alpha 255).
+- Emission: Burst 25–40 at time 0.
+- Shape: Cone, Angle 20°, Radius 0.15.
+- Color over Lifetime: fade to transparent.
+- Renderer: Billboard, Material = Particles/Standard Unlit.
+
+Outstanding / Next Steps
+- Wire `CameraMove` & `CameraOrbitMove` to `KeyBindingConfig` (currently hard-coded arrows/ctrl).
+- Add Bridge / Follow snap shortcuts (Ctrl+F1 / Ctrl+F2) using config.
+- Add optional settings panel UI toggled by the gear button.
+- Smoke material helper script to auto-assign visible particle material.
+- Overhead enhancements: boundary clamping, mouse wheel zoom, smoothing transitions.
+- Persist overhead offset/zoom when leaving and re-entering overhead view.
+
+Merged AI Changelog Snapshot (2025-11-09)
+- Overhead camera rebuilt: straight-down, ship follow with persistent X/Z offset; panning arrows; zoom Ctrl+Arrows; snap Ctrl+F3.
+- Multi-view manager (Bridge/Follow/Overhead) keys F1/F2/F3; overhead initialization and clip-plane fix.
+- Known issues (still applicable): no boundary clamping; offset/zoom persistence not implemented; no smoothing.
+
 

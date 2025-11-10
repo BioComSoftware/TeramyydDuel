@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 // Attach this to the Cannon parent GameObject (the empty one you rotate)
 public class ProjectileLauncher : MonoBehaviour
@@ -7,6 +8,7 @@ public class ProjectileLauncher : MonoBehaviour
     public GameObject projectilePrefab;   // Cannonball prefab (must have Rigidbody + Collider)
     public Transform spawnPoint;          // Your Cylinder (its Y axis points out of the barrel)
     public ParticleSystem muzzleSmoke;    // Optional: smoke effect when firing
+    [FormerlySerializedAs("Muxxleblast")] public ParticleSystem MuzzleBlast;    // Optional: muzzle blast effect (user-assignable)
 
     [Header("Input")]
     public KeyCode fireKey = KeyCode.F;
@@ -41,6 +43,12 @@ public class ProjectileLauncher : MonoBehaviour
         if (muzzleSmoke != null)
         {
             muzzleSmoke.Play();
+        }
+
+        // Play muzzle blast effect (if assigned)
+        if (MuzzleBlast != null)
+        {
+            MuzzleBlast.Play();
         }
 
         // Your cylinder's local Y points out of the barrel
