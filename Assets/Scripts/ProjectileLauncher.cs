@@ -25,7 +25,7 @@ public class ProjectileLauncher : MonoBehaviour
         }
     }
 
-    void FireProjectile()
+    protected virtual void FireProjectile()
     {
         if (projectilePrefab == null)
         {
