@@ -47,6 +47,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectileLauncher
   projectilePrefab: {fileID: 2211973746115092763, guid: f360d133e1cf6f64b835a804543eb0f3, type: 3}
   spawnPoint: {fileID: 5205855715761515396}
+  muzzleSmoke: {fileID: 0}
+  MuzzleBlast: {fileID: 0}
   fireKey: 102
   launchSpeed: 50
   spawnOffset: 1
@@ -117,7 +119,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

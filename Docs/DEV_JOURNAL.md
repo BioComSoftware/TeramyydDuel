@@ -1,5 +1,44 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-11)
+
+Purpose: concise internal log so I can resume instantly next session.
+
+Changes Today
+- CannonBall impact pipeline
+  - OnCollisionEnter now: direct-hit damage (Health), spawn `explosionEffectPrefab`, emit physics-driven shrapnel, destroy self.
+  - Shrapnel: prefab with Rigidbody + Collider (+ optional Projectile). Script sets `Projectile.damage` and `lifeTime`, assigns initial velocity, spawns at contact point + normal offset, supports outward normal bias.
+- Cannon SFX
+  - `Cannon` overrides `FireProjectile()` to play `fireClip` via 3D `AudioSource` (spatialBlend 1, log rolloff, min/max distances). Optional pitch variance.
+- Base extensibility
+  - `ProjectileLauncher.FireProjectile()` is now `protected virtual` so weapon subclasses can prepend/append behavior.
+
+UX/Authoring Notes
+- Explosion VFX prefab: built quick recipe (flash/sparks/smoke), suggested URP particle materials (Additive for flashes/sparks, Alpha for smoke). CannonBall uses `explosionEffectPrefab` and optionally `hitEffectPrefab` fallback.
+- Soft smoke sprite: explained DIY and import settings (Wrap Clamp, Alpha is Transparency, black RGB in transparent border, mipmaps on for smoke). Avoids red halos.
+- Sparks red outline: causes + fixes (texture edge bleed, mipmaps, additive + low alpha, trail material). Use white/yellow early, RGB → black as alpha → 0.
+
+URP Migration / Materials
+- Use URP Pipeline Asset in `Project Settings > Graphics (Default Render Pipeline)` and in `Project Settings > Quality` for all levels.
+- Converter path (newer Unity): `Window > Rendering > Render Pipeline Converter` (Built-in → URP). If anything remains pink, swap manually:
+  - Create real Material assets (can’t edit built-in Default-Material). Shader: `URP/Lit` for meshes; `URP/Particles/Unlit` for particles.
+  - Assign Base Map, Normal, Metallic/Smoothness as appropriate. For trails, consider Alpha blend material.
+
+Recorder
+- Auto-start options: Recorder’s “Start Recording on Play” or a tiny Editor script to hook play state; alternative is Windows Game Bar (Win+Alt+R).
+
+Open TODOs
+- Shrapnel prefab: provide a minimal example (small sphere mesh + Rigidbody + Collider + optional Projectile, own material). Consider layer masks to avoid self/caster hits; tune counts/lifetimes for perf; pooling later.
+- ProjectileLauncher hooks: consider `protected virtual` pre/post methods (PreFire/Spawn/AfterFire) for finer overrides.
+- Add recoil and camera shake hooks in `Cannon` (configurable amplitude/duration).
+- Add optional PS retrigger robustness (`StopEmittingAndClear` then `Play`) and null-warning for `MuzzleBlast`.
+- Overhead camera: clamp to `GameFieldBounds`, add smoothing and mouse wheel zoom; persist offset/zoom across view switches.
+- Unify camera input to `KeyBindingConfig` mappings (replace raw arrow reads where feasible).
+
+Quick Resume Pointers
+- CannonBall expects: `explosionEffectPrefab` (optional) + `shrapnelPrefab` (must have RB+Collider). Tune count/speed/life in Inspector. Physics handles occlusion.
+- If VFX or Recorder UI seems missing, first clear compile errors; domain reload required for new menus.
+
 ## AI Snapshot (2025-11-10)
 
 Purpose: fast internal log so I can resume instantly next session.
