@@ -121,7 +121,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7498942120948207850}
   - component: {fileID: 9116672295945578805}
-  - component: {fileID: 4742137725141647281}
+  - component: {fileID: 3163142295745948545}
   m_Layer: 0
   m_Name: Cannonball
   m_TagString: Untagged
@@ -172,7 +172,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 2
---- !u!114 &4742137725141647281
+--- !u!114 &3163142295745948545
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -181,9 +181,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 3498755938789986092}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81929a11124baed45a8d361c333bfb1b, type: 3}
+  m_Script: {fileID: 11500000, guid: b5add5c6f426ce148b9d7645dd595942, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Projectile
+  m_EditorClassIdentifier: Assembly-CSharp::CannonBall
   damage: 10
   lifeTime: 5
   hitEffectPrefab: {fileID: 0}
+  explosionEffectPrefab: {fileID: 5905089293979603314, guid: 0ea6962eb2a0e3f48a72de70309a22c1, type: 3}
+  explosionEffectLifetime: 2
+  shrapnelPrefab: {fileID: 0}
+  shrapnelCount: 16
+  shrapnelSpeed: 30
+  shrapnelLifeTime: 1.5
+  shrapnelDamage: 5
+  shrapnelSpawnOffset: 0.05
+  shrapnelNormalBias: 0.5

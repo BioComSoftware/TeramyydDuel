@@ -1,5 +1,42 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-11 — late)
+
+Purpose: fast internal delta log since last snapshot.
+
+Changes Since Prior Entry
+- Projectile core
+  - `Assets/Scripts/Projectile.cs`: made parent-friendly.
+    - Removed same-object Collider requirement; keep single `Rigidbody` requirement + `DisallowMultipleComponent`.
+    - Keeps damage-on-hit via `Health`, optional hit VFX, timed self-destroy.
+    - Works when RB is on root and Collider on child.
+- Cannon weapon
+  - `Assets/Scripts/Cannon.cs`: audio path hardened.
+    - Added child `CannonAudio` node with `AudioSource` that follows `spawnPoint`; uses `PlayOneShot`.
+    - New fields: `force2DForDebug`, `audioMinDistance`, `audioMaxDistance`, `pitchRange`, `fireVolume`.
+    - Removed Health from Cannon root (no `RequireComponent<Health>`); health expected on visual child.
+- Cannon self-wear
+  - `Assets/Scripts/CannonSelfDamage.cs`: new helper.
+    - Applies fractional self-damage per shot; accumulates remainder until whole points.
+    - Auto-finds `Health` on children (preferred) or on self; mirrors Cannon `fireKey`.
+- Cannonball projectile
+  - `Assets/Scripts/CannonBall.cs`: subclass of `Projectile` with extras intact.
+    - Explosion VFX: `explosionEffectPrefab` (+ lifetime) spawned at contact.
+    - Shrapnel spawn: `shrapnelPrefab`, count/speed/lifetime/damage with outward normal bias.
+    - Still applies direct-hit `Health` damage before VFX/shrapnel.
+- UI safeguard (optional)
+  - `Assets/Scripts/UI/DisableSpacebarUI.cs`: prevents Space from triggering UI Submit when attached to EventSystem (not auto-used).
+
+Operational Notes
+- Projectile setup: one Rigidbody on root, non-trigger Collider(s) on child(ren). Launcher uses `spawnPoint.up`.
+- Audio audibility: overhead camera requires large `audioMaxDistance` or temporary `force2DForDebug = true`.
+- Spacebar switching views root-cause: UI Submit on selected button; not a code binding.
+
+Next TODOs
+- Consider `Projectile` virtual hooks (pre/post impact) to avoid re-implementing in `CannonBall`.
+- Optional: add recoil/camera-shake hooks in `Cannon`.
+- Pool shrapnel and explosion VFX later for perf.
+
 ## AI Snapshot (2025-11-11)
 
 Purpose: concise internal log so I can resume instantly next session.

@@ -1,7 +1,7 @@
 using UnityEngine;
 
+[DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
-[RequireComponent(typeof(Collider))]
 public class Projectile : MonoBehaviour
 {
     [Header("Projectile Settings")]
@@ -43,3 +43,4 @@ public class Projectile : MonoBehaviour
         Destroy(gameObject);
     }
 }
+
