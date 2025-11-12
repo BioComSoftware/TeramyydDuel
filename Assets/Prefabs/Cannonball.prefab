@@ -187,8 +187,8 @@ MonoBehaviour:
   damage: 10
   lifeTime: 5
   hitEffectPrefab: {fileID: 0}
-  explosionEffectPrefab: {fileID: 5905089293979603314, guid: 0ea6962eb2a0e3f48a72de70309a22c1, type: 3}
-  explosionEffectLifetime: 2
+  explosionEffectPrefab: {fileID: 3477418463147944031, guid: 0ea6962eb2a0e3f48a72de70309a22c1, type: 3}
+  explosionEffectLifetime: 4
   shrapnelPrefab: {fileID: 0}
   shrapnelCount: 16
   shrapnelSpeed: 30
