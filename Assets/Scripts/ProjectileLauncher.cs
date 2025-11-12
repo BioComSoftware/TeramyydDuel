@@ -17,6 +17,11 @@ public class ProjectileLauncher : MonoBehaviour
     public float launchSpeed = 50f;       // Speed of the projectile
     public float spawnOffset = 1f;        // Distance in front of the barrel
 
+    [Header("Accuracy (runtime adjustable)")]
+    [Tooltip("Max angular deviation from the muzzle axis in degrees (cone radius). Lower = more accurate.")]
+    public float angleSpreadDegrees = 5f;
+    [Tooltip("Random speed variance as a percentage of launchSpeed (e.g., 5 means +/-5%). Lower = more consistent speed.")]
+    public float speedJitterPercent = 5f;
     void Update()
     {
         if (Input.GetKeyDown(fireKey))
@@ -51,8 +56,29 @@ public class ProjectileLauncher : MonoBehaviour
             MuzzleBlast.Play();
         }
 
-        // Your cylinder's local Y points out of the barrel
+        // Base direction: spawnPoint's local Y points out of the barrel
         Vector3 launchDirection = spawnPoint.up.normalized;
+
+        // Apply angular spread (cone around the base direction)
+        float spread = Mathf.Max(0f, angleSpreadDegrees);
+        if (spread > 0f)
+        {
+            // Build an orthonormal basis around the axis
+            Vector3 axis = launchDirection;
+            Vector3 ortho = Vector3.Cross(axis, Vector3.up);
+            if (ortho.sqrMagnitude < 1e-6f) ortho = Vector3.Cross(axis, Vector3.right);
+            ortho.Normalize();
+            Vector3 ortho2 = Vector3.Cross(axis, ortho);
+
+            float phi = Random.Range(0f, 360f);           // around-axis angle
+            float tilt = Random.Range(0f, spread);        // degrees away from axis
+            Vector3 rotAxis = (Mathf.Cos(phi * Mathf.Deg2Rad) * ortho + Mathf.Sin(phi * Mathf.Deg2Rad) * ortho2).normalized;
+            launchDirection = (Quaternion.AngleAxis(tilt, rotAxis) * axis).normalized;
+        }
+
+        // Apply speed jitter (percent of launchSpeed)
+        float jitter = Mathf.Max(0f, speedJitterPercent) * 0.01f;
+        float speedMul = (jitter > 0f) ? Random.Range(1f - jitter, 1f + jitter) : 1f;
 
         // Spawn slightly in front of the barrel so we don't spawn inside its collider
         Vector3 spawnPos = spawnPoint.position + launchDirection * spawnOffset;
@@ -66,19 +92,17 @@ public class ProjectileLauncher : MonoBehaviour
         if (rb != null)
         {
             // Prefer Rigidbody.linearVelocity (newer Unity); fall back to velocity via reflection to avoid obsolete warnings
+            Vector3 initialVelocity = launchDirection * (launchSpeed * speedMul);
+            // Prefer linearVelocity when available; otherwise set velocity directly
             var rbType = typeof(Rigidbody);
             var linVelProp = rbType.GetProperty("linearVelocity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
             if (linVelProp != null && linVelProp.CanWrite)
             {
-                linVelProp.SetValue(rb, launchDirection * launchSpeed, null);
+                linVelProp.SetValue(rb, initialVelocity, null);
             }
             else
             {
-                var velProp = rbType.GetProperty("velocity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                if (velProp != null && velProp.CanWrite)
-                {
-                    velProp.SetValue(rb, launchDirection * launchSpeed, null);
-                }
+                rb.velocity = initialVelocity;
             }
         }
         else
@@ -94,6 +118,6 @@ public class ProjectileLauncher : MonoBehaviour
             Physics.IgnoreCollision(projCol, cannonCol);
         }
 
-        Debug.Log($"Projectile fired! Position: {spawnPos}, Direction: {launchDirection}, Cannon Rotation: {transform.rotation.eulerAngles}");
+        Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={(launchSpeed * speedMul):F1}, spread={angleSpreadDegrees:F1}");
     }
 }
