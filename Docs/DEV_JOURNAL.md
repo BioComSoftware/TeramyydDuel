@@ -1,5 +1,79 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-12)
+
+Purpose: late-session delta; capture runtime tuning and content wiring for quick resume.
+
+Changes
+- ProjectileLauncher variance (runtime):
+  - Fields: angleSpreadDegrees (deg), speedJitterPercent (±%).
+  - Applied at fire: builds orthonormal basis around spawnPoint.up, rotates by random tilt ≤ spread and random azimuth; speed scaled by Random[1−jitter, 1+jitter].
+  - Velocity set via Rigidbody.linearVelocity if available, else Rigidbody.velocity.
+- Cannon/Cannonball pipeline maintained:
+  - Cannon inherits variance; audio child node follows muzzle; health lives on 3D visual child; self-damage via CannonSelfDamage (fractional accumulate).
+  - Projectile parent-friendly: Rigidbody on root, Colliders on children; still applies Health damage and spawns hit VFX.
+- CannonBall (Projectile subclass): explosion VFX + optional shrapnel (RB+Collider; optional Projectile for shrapnel damage).
+- VFX content: sparks/smoke tuned (drag/dampen/lifetime), URP particles materials, soft particles; flipbook/gif guidance.
+- Audio: cannon audio hardened (child AudioSource at muzzle). Explosion audio recommended on Explosion VFX root (AudioSource, Play On Awake, 3D).
+- UI: Spacebar Bridge-switch cause = UI Submit on focused button; code path unchanged.
+- Recorder/URP/material how-to captured for future reference.
+
+Runtime Tuning (code)
+- Access any launcher (Cannon derives from ProjectileLauncher) and set fields at runtime:
+  - `var launcher = GetComponent<ProjectileLauncher>();`
+  - `launcher.angleSpreadDegrees = 5f;`  // max angular deviation (degrees)
+  - `launcher.speedJitterPercent = 5f;`  // ±percentage of launchSpeed
+- Crew skill mapping example (0..1 skill → tighter spread/jitter):
+  - `float s = crew.Skill01;`
+  - `launcher.angleSpreadDegrees = Mathf.Lerp(8f, 1f, s);`
+  - `launcher.speedJitterPercent = Mathf.Lerp(8f, 1f, s);`
+- Spawn axis contract: `spawnPoint.up` is the muzzle axis; keep its local Y aligned with barrel direction.
+- Logging: Fire prints pos/dir/speed/spread per shot for tuning (can be silenced later).
+
+Gotchas / Setup Contracts
+- Single Rigidbody per projectile hierarchy (on root). Child colliders OK. Non-trigger for collisions.
+- Explosion VFX lifetime: either PS Stop Action = Destroy (and set CannonBall.explosionEffectLifetime = 0) or ensure lifetime ≥ audio length.
+- Sparks boxes: use URP/Particles/Unlit Additive with soft alpha edges, clamp wrap; Smoke uses Alpha blending, longer lifetime and slower alpha fade.
+
+Next
+- Optional Projectile hooks (virtual Pre/OnImpact/Post) to reduce duplication in CannonBall.
+- Pool shrapnel and VFX; recoil/camera shake hooks; input unification to KeyBindingConfig.
+
+## Ship Prefab Structure (Authoring Contract)
+
+Goal: all designer-built ships follow a consistent hierarchy so code can find mounts, cameras, and centers without scene-specific hacks.
+
+Reference layout (simplified):
+- Ship (root)
+  - Model (visuals only)
+    - Bridge
+    - Hull_Forward_Port / Starboard / Central_* / Aft / Bow etc.
+    - Deck
+    - Deck-mounts            ← parents that contain WeaponMount components as children
+    - Internal               ← anything non-visible / structural
+  - BridgeCameraMount        ← Transform for bridge view parenting
+  - FollowCameraMount        ← Transform for initial follow view placement
+  - FollowCameraFocalPoint   ← Transform for orbit focal point (used by CameraViewManager)
+  - OverheadCameraMount      ← optional; overhead auto-finds ship if absent
+
+Code expectations:
+- WeaponMount components live under `Model/Deck-mounts/...` (any depth ok). Each mount exposes:
+  - `mountType` (e.g., "cannon"), yaw/pitch limits are defined on mount (or in ShipDefinition/ShipMountConfig).
+  - A stable logical `mountId` (GameObject name or explicit field) so `ShipDefinition.mounts` can bind.
+- ViewCenterAnchor may be placed under the ship root and pointed at `Model` to compute geometric center.
+- CameraViewManager:
+  - bridgeMount → BridgeCameraMount
+  - followMount → FollowCameraMount
+  - followTarget → FollowCameraFocalPoint (or auto-find by name)
+
+Data mapping:
+- `ShipDefinition.mounts[*].mountId` must match a WeaponMount logical id/name under `Model/Deck-mounts`.
+- Mount limits: prefer reading from mount component at runtime; `ShipMountConfig` serves as authoring defaults/validation.
+
+Reasoning:
+- Keeping visuals under `Model` lets numeric bounds and view centering ignore helper transforms.
+- Dedicated camera anchors avoid hardcoding offsets per ship.
+
 ## AI Snapshot (2025-11-11 — late)
 
 Purpose: fast internal delta log since last snapshot.
@@ -623,4 +697,250 @@ Merged AI Changelog Snapshot (2025-11-09)
 - Multi-view manager (Bridge/Follow/Overhead) keys F1/F2/F3; overhead initialization and clip-plane fix.
 - Known issues (still applicable): no boundary clamping; offset/zoom persistence not implemented; no smoothing.
 
+
+Here’s a clean, scalable way to handle runtime weapon placement with aiming limits and destroy/spawn during gameplay, using systems you already have.
+
+Core Concepts
+
+WeaponMount component (on fixed mount points)
+Knows what it can accept (type/class), whether it’s occupied, and its aiming limits.
+Exposes two pivot transforms: yawBase (left/right) and pitchBarrel (up/down) so clamping is trivial.
+API: CanMount(type), MountWeapon(prefab), UnmountWeapon(), GetMounted().
+Weapon component (base) + specific weapons (Cannon etc.)
+Weapon uses ProjectileLauncher for firing logic, reads its mount to aim/orient/constraints.
+Health lives on the visual child (as you’re already doing). On death, unmount cleans up.
+ScriptableObject weapon definitions
+WeaponDefinition: id/type, prefab, default stats (damage, fire rate), cost, crew requirements.
+Lets you build inventory/shops without touching prefabs.
+Mount/Aim Hierarchy
+
+Mount GameObject (WeaponMount)
+yawBase (empty transform rotates around local Y for left/right)
+pitchBarrel (empty transform rotates around local X for up/down)
+WeaponRoot (instantiated prefab parented here)
+With this structure:
+Yaw = clamp(yawCurrent + deltaYaw, -yawHalfRange, +yawHalfRange)
+Pitch = clamp(pitchCurrent + deltaPitch, -pitchDown, +pitchUp)
+Constraints live on the mount, not the weapon (so any weapon can be dropped in and work).
+Runtime Placement Flow
+
+Player selects a weapon in UI (weaponDefinition).
+Raycast/select a mount point (WeaponMount) on the ship.
+Validate: mount accepts type and is not occupied; resource/crew checks pass.
+Instantiate weapon prefab:
+Parent under mount.pitchBarrel (so aiming moves only pivots).
+Zero local position/rotation/scale.
+Set Weapon.SetMount(mount) and mount.MountWeapon(weaponPrefab).
+For removal: mount.UnmountWeapon() → Destroy weapon GO (or pool), refund/penalize as rules dictate.
+Aiming + Firing
+
+Aiming input goes to the mount, not the weapon:
+Convert desired aim (from cursor or target pos) into local yaw/pitch deltas for yawBase and pitchBarrel.
+Clamp per limits: yaw ∈ [−yawLimit, +yawLimit], pitch ∈ [−down, +up].
+Optionally smooth with RotateTowards.
+Firing lives on the weapon (ProjectileLauncher/Cannon). It just uses current barrel forward/up direction at spawnPoint.
+Integrate your variance:
+ProjectileLauncher already supports angle spread/speed jitter (runtime-adjustable). Crew quality can shrink these values while playing.
+Health/Damage
+
+Put Health on the weapon’s visual child as you have done.
+On death: UnityEvent onDeath → Weapon/WeaponMount handle clean unmount; destroy the weapon object (mount remains).
+Optional: Mount has its own Health to disable the mount if destroyed.
+Inventory + Game Systems
+
+Player inventory: a list of WeaponDefinition stacks + resource budget.
+Mount manager on the ship keeps a registry of all WeaponMounts (for UI and quick lookups).
+UI
+Hover highlight mount points; show type acceptance (green/red).
+Ghost preview: temporary transparent weapon at the mount while deciding.
+Confirm to place; invalid selections show reason (type mismatch, occupied, no budget).
+Save/Load: serialize a list of mount slots with weapon IDs and runtime state (ammo, damage state) to rebuild on load.
+Pooling (later optimization)
+
+Pool weapon prefabs and projectiles to avoid GC spikes during rapid build/destroy.
+Mounts request from pool and return on unmount/destroy.
+Networking (future-proof)
+
+Server/host validates placement (mount type, occupancy, costs).
+Authoritative firing from server; variance seeded by shot index/weapon id if determinism is needed.
+Edge Cases + Contracts
+
+Exactly one Rigidbody per projectile hierarchy; child colliders OK.
+For aiming checks, compute signed angles in mount local space (no world-euler surprises).
+When replacing a weapon in combat: unmount first or block replace during reload/cooldown.
+Crew effects: expose mount.AccuracyMultiplier and mount.TraverseSpeed to modulate rotation speed and call into ProjectileLauncher’s angleSpreadDegrees/speedJitterPercent at runtime.
+Minimal APIs (pseudocode)
+
+WeaponMount
+fields: acceptedType, yawLimitDeg, pitchUpDeg, pitchDownDeg, yawBase, pitchBarrel
+bool CanMount(string type)
+GameObject MountWeapon(GameObject prefab)
+GameObject UnmountWeapon()
+void AimAt(Vector3 worldTarget) → computes local yaw/pitch, clamps, applies to pivots
+Weapon (base)
+void SetMount(WeaponMount mount)
+Health is on visual child
+ProjectileLauncher (already in place)
+float angleSpreadDegrees, float speedJitterPercent (runtime adjustable)
+uses spawnPoint.up as muzzle axis; keep spawnPoint oriented correctly
+Why this design
+
+Keeps constraints and placement logic on the mount (single place of truth).
+Makes weapons plug-and-play prefabs (build/destroy at will).
+Clear separation of concerns: UI/selection → ship mount manager → WeaponMount → Weapon firing.
+If you want, I can sketch the exact fields and minimal methods for WeaponMount with clamp math and an AimAt(target) routine you can drop in.
+
+New Features
+
+Persistent Captain Profile
+
+Player logs in as a captain; long-term progression persists across combat sessions.
+Starts with a basic ship; can upgrade ships, weapons, crew; buy/sell equipment.
+Tracks wealth (gold) and potentially reputation/other stats.
+Inventory persists and grows via looting; some wealth is off-ship and safe.
+Post-combat outcomes: on win, loot/salvage; on loss, lose some gold/components; repair and salaries consume wealth.
+Multi-Scene Structure
+
+Live multiplayer duel scene (primary).
+Solo practice/AI scene (later).
+Game initiation/login scene (later).
+Settings scene (keybinds, audio, mouse/touchpad; writes JSON).
+Between-combat management scene (upgrade ship, crew management, payments, inventory).
+Recommended Systems And Code Additions
+
+Persistence & Profile
+
+Add PlayerProfile (captain ID, wealth, reputation, owned ships, inventory, crew roster).
+Add SaveSystem service: JSON serialize to Application.persistentDataPath + cloud later.
+Add SessionManager to track active captain/session across scenes and bootstrap services.
+Economy & Inventory
+
+ItemDefinition (SO): id, name, type, value, stack rules.
+Inventory component/service: list of ItemStacks; add/remove, serialize.
+EconomyService: add/spend gold, repair costs, crew salaries, shop buy/sell.
+LootTable (SO) for ships/enemies; LootService rolls drops on win.
+Ships, Weapons, Crew
+
+ShipDefinition (SO): hull stats, mounts layout, mass/turn/thrust caps, price.
+WeaponDefinition (SO): type, prefab, cost, damage, crew requirements.
+CrewMember (class/SO): name, skill (0..1), salary, traits; affects accuracy, reload, repairs.
+Keep runtime placement via WeaponMount + Weapon you already have. Mount accepts WeaponDefinition and does MountWeapon(prefab)/UnmountWeapon().
+Wire crew skill to firing accuracy:
+Use ProjectileLauncher.angleSpreadDegrees and speedJitterPercent (runtime adjustable) with:
+angleSpreadDegrees = Mathf.Lerp(maxSpread, minSpread, crewSkill)
+speedJitterPercent = Mathf.Lerp(maxJitter, minJitter, crewSkill)
+Between-Combat Management
+
+Separate scene UI to:
+Equip weapons to available WeaponMounts (drag-drop or list + mount selector).
+Upgrade ship (swap ShipDefinition), hire/fire/promote crew, manage repairs.
+Inventory management (loot, sell, craft/salvage).
+Apply changes back to PlayerProfile and persist via SaveSystem.
+Scenes & Flow
+
+Add a small Bootstrap scene (first in build) that:
+Loads/creates PlayerProfile
+Initializes services (SaveSystem, EconomyService, Inventory)
+Routes to Login/Init or Between-Combat depending on session state
+Settings scene:
+Bind to existing KeyBindingConfig + keybindings.json
+Add audio/mouse/touchpad UI; save to JSON/PlayerPrefs.
+Multiplayer (later)
+
+Keep API seams in services to swap local with networked backends.
+Record RNG seeds for projectile variance if determinism is needed.
+Data Contracts (Suggested)
+
+PlayerProfile
+string captainId, int gold, float reputation
+List<OwnedShip> ships (each with ShipDefinition id, installed weapons, health state)
+OwnedShip activeShip
+List<CrewMemberState> crew
+Inventory inventory
+OwnedShip
+string shipDefId, List<MountedWeaponState> mounts, float hullHealth, etc.
+MountedWeaponState
+string mountId, string weaponDefId, runtime durability/ammo if applicable.
+CrewMemberState
+string crewDefId, float skill, status (active/injured), salary due.
+Immediate Glue With Existing Code (No Changes Today)
+
+Use WeaponMount.MountWeapon(prefab) at runtime for placement.
+Use ProjectileLauncher variance fields to reflect crew skill in moment-to-moment accuracy.
+Keep Health on the 3D child; CannonSelfDamage continues to accumulate fractional wear.
+Explosion VFX/audio via explosionEffectPrefab and an AudioSource on that prefab.
+Step-By-Step Next (When You Want To Implement)
+
+Add ScriptableObjects: ShipDefinition, WeaponDefinition, ItemDefinition, LootTable.
+Add services: SaveSystem, EconomyService, Inventory, SessionManager.
+Add PlayerProfile JSON load/save and a Bootstrap scene.
+Add Between-Combat scene UI to mount weapons (using your WeaponMount) and manage inventory/economy.
+Wire crew effects to launchers: update angleSpreadDegrees and speedJitterPercent at runtime from crew skill.
+Add basic loot on win and loss penalties; serialize changes.
+
+Created minimal, compile-ready stubs for persistence and data definitions. No existing code was changed.
+
+What I added
+
+Player profile data
+Assets/Scripts/Systems/PlayerProfile.cs:1
+PlayerProfile: captainId, gold, reputation, ships, activeShipId, inventory, crew
+OwnedShip, MountedWeaponState, CrewMemberState
+Inventory with simple Add/Remove/GetCount and ItemStack
+Save/load helper
+Assets/Scripts/Systems/SaveSystem.cs:1
+GetProfilePath(captainId), SaveProfile(PlayerProfile), LoadProfile(captainId)
+Uses JsonUtility and Application.persistentDataPath
+ScriptableObjects
+Assets/Scripts/Data/ItemDefinition.cs:1
+id, displayName, description, baseValue, stackable, maxStack
+Assets/Scripts/Data/WeaponDefinition.cs:1
+id, displayName, description, cost, weaponPrefab, weaponType, damage, fireRate, crewSkillRequired
+Assets/Scripts/Data/ShipDefinition.cs:1
+id, displayName, description, cost, maxHull, baseSpeed, turnRate
+mounts: List<ShipMountConfig> with mountId, acceptedType, yaw/pitch limits
+How to use (example)
+
+Create data assets
+Right-click in Project:
+Create > Teramyyd/Items/Item Definition
+Create > Teramyyd/Items/Weapon Definition
+Create > Teramyyd/Ships/Ship Definition
+Save/load profile
+var profile = SaveSystem.LoadProfile("captain123");
+profile.gold += 100;
+SaveSystem.SaveProfile(profile);
+Tie-in with runtime systems
+
+Weapon mounts: use ShipDefinition.mounts as authoritative constraints; your WeaponMount reads acceptedType and limits.
+Weapon placement: use WeaponDefinition.weaponPrefab when mounting; weaponType should match WeaponMount.mountType.
+Crew effects: read PlayerProfile.crew to drive ProjectileLauncher.angleSpreadDegrees and speedJitterPercent at runtime.
+Want me to also stub CrewDefinition (SO) and a tiny Bootstrap/SessionManager to load the profile on startup?
+
+5 files changed
++236
+-0
+
+Undo
+
+View all changes
+ItemDefinition.cs
++16
+-0
+
+ShipDefinition.cs
++34
+-0
+
+WeaponDefinition.cs
++23
+-0
+
+PlayerProfile.cs
++108
+-0
+
+SaveSystem.cs
++55
+-0
 

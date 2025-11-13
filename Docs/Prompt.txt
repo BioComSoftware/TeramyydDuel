@@ -124,3 +124,35 @@ o	Rotate around ship in all axes
 •	Expand incrementally with modular scripts
 •	Provide instructions for Unity file creation if direct generation isn’t possible
 
+Additional Game design:
+11. The game will maintain a players status for long term play. 
+• PLayers will login, and their character is that of the ships captain. 
+    • They will start with a small, basic ship
+    • As the longer game (between compabt sessions) persists, the player can upgrade the ship and weapons, hire better crew, buy bigger ships, sell old equipment, Etc. 
+    • The player will maintain a count of gold coins they assess throughout the game. 
+        • The player may also potentially maintain other characteristics like reputation or other factors needed to be traced. 
+    • The game must maintain an inventory of items collected by the captain (player) as the longer game progresses
+        • For example, they can loot other ships for parts they can store in their inventory.
+    • After each combat...
+        • If the player wins: 
+            • They can loot the destroyed ship that they have beaten in combat.
+                • The ship may carry gold, or other salvagable parts which can then be later sold, added to inventory, or used in ones own ship
+        • If the player loses - depending on the damage to the ship, they will lose gold and components of the ship. 
+            • How this is calculated will need to be determined later. 
+            • The players wealth and inventory may not all be on the ship. Some of it will be considered to be store away from the ship so it cannot be looted if a combat is lost. 
+    • SOme of the wealth will have to be used to pay for things like repairs or crew salaries. 
+        • How this is affected will be determined later. 
+
+12. The game will have at minimum five scenes/screens...
+• The main gameplay scene. This is for a live multiplayer ship-to-ship duel, using aerial steampunk desgns.
+    •	Players will navigate using controls in the HUD. 
+    •	They will use settings like pitch, roll, power, rudder to move the ship around. Unlike traditional gaes where players move using immediate keystrokes like a,d,w,s ... these settings will determine the constant movement of the ship. 
+• The second main gameplay scene will be a solo version of the first one just described, where they player can play against a target or AI controlled opponents. 
+    • This is an advanced function that will come much, much later in the game design. Please keep the idea in mind when designing other components. 
+• A game initiation screen, where players will login, decide what game they want to play (solo ro multiplayer), Etc. 
+    • This is also an advanced game design funciton that will come late in the game development. 
+• A settings screen where players can set sound volume, keystoke preferences, mouse/touchpad preferences, Etc. 
+    • It will update the controls JSON files, some of which already exist.
+• A "Between combat" screen where players will can improve their ship, add crewmembers, make changes to their long-term player status. Manage wealth, make payments to crew, Etc. 
+
+
