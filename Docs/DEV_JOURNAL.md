@@ -973,3 +973,30 @@ SaveSystem.cs
 +55
 -0
 
+## AI Snapshot (2025-11-12 � Mounts + Orientation + Dev Controls)
+
+Purpose: weapon mounts updated, orientation mapping stabilized, temporary dev controls added.
+
+Changes
+- Mount scripts:
+  - WeaponMount.cs (general) and ProjectileLauncherMount.cs (ProjectileLauncher-specific).
+  - Pivots: yawBase (local Y) and pitchBarrel (local X) with clamped limits: yawLimitDeg (�half), pitchUpDeg, pitchDownDeg.
+  - Orientation at mount time: select launcher firing axis via launcherAxis (Up/Forward/Right) + invertLauncherAxis and map to mount direction (currently mount -Z).
+  - Runtime API: Mount/Unmount + SetYawPitch/ApplyYawDelta/ApplyPitchDelta.
+  - Auto-populate test path: autoPopulatePrefab + autoPopulateOnStart.
+- Dev input (temporary):
+  - Enable debugKeypadControl on a mount to move it during Play.
+  - Keys: j/l = yaw left/right, i/k = pitch up/down; speeds configurable; optional invertYawDirection/invertPitchDirection.
+- Fixes:
+  - Removed duplicate Update() in ProjectileLauncherMount (compile error).
+  - Ensured only one Update() contains the dev-input logic.
+
+Contracts
+- Keep transform scales positive (no mirror) for Ship/Model/Mount/pivots.
+- Baseline pose: yawBase +Z is straight ahead at yaw=0/pitch=0; pitchBarrel rotates only on X.
+- Launcher firing axis for current launchers = spawnPoint.up (+Y). If prefab differs, set launcherAxis/invert on the mount rather than editing the prefab.
+- Current mapping targets mount -Z per request; flip later if design changes.
+
+Testing notes
+- Use AutoPopulateLauncherMounts on the Ship root OR per-mount autoPopulateOnStart � not both � to avoid duplicate cannons.
+- After mounting, fire once and confirm projectile velocity aligns with mount direction (accounting for spread/jitter).

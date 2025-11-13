@@ -44,6 +44,24 @@ public class ProjectileLauncherMount : MonoBehaviour
     float _yaw;   // signed degrees, left(-)/right(+)
     float _pitch; // signed degrees, up(+)/down(-)
 
+    public enum LauncherAxis { Up, Forward, Right }
+    [Header("Launcher Axis Mapping")]
+    [Tooltip("Which local axis of the launcher's spawn point represents its firing direction.")]
+    public LauncherAxis launcherAxis = LauncherAxis.Up;
+    [Tooltip("Invert if the prefab's firing axis points negative (e.g., -Y).")]
+    public bool invertLauncherAxis = false;
+
+    [Header("Direction Tweaks")]
+    [Tooltip("Invert yaw delta application if your mount turns opposite of expected.")]
+    public bool invertYawDirection = false;
+    [Tooltip("Invert pitch delta application if your mount pitches opposite of expected.")]
+    public bool invertPitchDirection = false;
+
+    [Header("Debug Input (temporary)")]
+    public bool debugKeypadControl = false;
+    public float yawSpeedDegPerSec = 60f;
+    public float pitchSpeedDegPerSec = 45f;
+
     void Reset()
     {
         if (yawBase == null) yawBase = transform;
@@ -64,6 +82,18 @@ public class ProjectileLauncherMount : MonoBehaviour
         ApplyRotations();
     }
 
+    void Update()
+    {
+        if (!debugKeypadControl) return;
+        float dt = Time.deltaTime;
+        // Yaw left/right: j / l
+        if (Input.GetKey(KeyCode.J)) ApplyYawDelta((invertYawDirection ? 1f : -1f) * yawSpeedDegPerSec * dt);
+        if (Input.GetKey(KeyCode.L)) ApplyYawDelta((invertYawDirection ? -1f : 1f) * yawSpeedDegPerSec * dt);
+        // Pitch up/down: i / k
+        if (Input.GetKey(KeyCode.I)) ApplyPitchDelta((invertPitchDirection ? -1f : 1f) * pitchSpeedDegPerSec * dt);
+        if (Input.GetKey(KeyCode.K)) ApplyPitchDelta((invertPitchDirection ? 1f : -1f) * pitchSpeedDegPerSec * dt);
+    }
+
     public bool Mount(GameObject prefab)
     {
         if (isOccupied || prefab == null || pitchBarrel == null) return false;
@@ -77,8 +107,15 @@ public class ProjectileLauncherMount : MonoBehaviour
         currentLauncher = go.GetComponent<ProjectileLauncher>();
         Transform axisT = (currentLauncher != null && currentLauncher.spawnPoint != null)
             ? currentLauncher.spawnPoint : go.transform;
-        Vector3 fromWorld = axisT.up;            // launcher firing axis (+Y) in world
-        Vector3 toWorld   = pitchBarrel.forward; // desired world direction
+        Vector3 fromWorld;
+        switch (launcherAxis)
+        {
+            case LauncherAxis.Forward: fromWorld = axisT.forward; break;
+            case LauncherAxis.Right:   fromWorld = axisT.right;   break;
+            default:                   fromWorld = axisT.up;      break;
+        }
+        if (invertLauncherAxis) fromWorld = -fromWorld;
+        Vector3 toWorld   = -pitchBarrel.forward; // desired world direction (mount -Z per request)
         if (fromWorld.sqrMagnitude > 1e-6f && toWorld.sqrMagnitude > 1e-6f)
         {
             Quaternion delta = Quaternion.FromToRotation(fromWorld, toWorld);
@@ -109,15 +146,9 @@ public class ProjectileLauncherMount : MonoBehaviour
         ApplyRotations();
     }
 
-    public void ApplyYawDelta(float deltaDeg)
-    {
-        SetYawPitch(_yaw + deltaDeg, _pitch);
-    }
+    public void ApplyYawDelta(float deltaDeg) => SetYawPitch(_yaw + (invertYawDirection ? -deltaDeg : deltaDeg), _pitch);
 
-    public void ApplyPitchDelta(float deltaDeg)
-    {
-        SetYawPitch(_yaw, _pitch + deltaDeg);
-    }
+    public void ApplyPitchDelta(float deltaDeg) => SetYawPitch(_yaw, _pitch + (invertPitchDirection ? -deltaDeg : deltaDeg));
 
     public (float yawDeg, float pitchDeg) GetYawPitch()
     {
