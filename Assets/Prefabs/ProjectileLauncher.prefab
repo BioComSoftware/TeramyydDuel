@@ -16,7 +16,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &7031001868086137629
 Transform:
   m_ObjectHideFlags: 0
@@ -52,6 +52,8 @@ MonoBehaviour:
   fireKey: 102
   launchSpeed: 50
   spawnOffset: 1
+  angleSpreadDegrees: 5
+  speedJitterPercent: 5
 --- !u!1 &7202491767298042434
 GameObject:
   m_ObjectHideFlags: 0

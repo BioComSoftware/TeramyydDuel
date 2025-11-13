@@ -69,11 +69,23 @@ public class ProjectileLauncherMount : MonoBehaviour
         if (isOccupied || prefab == null || pitchBarrel == null) return false;
         var go = Instantiate(prefab, pitchBarrel);
         go.transform.localPosition = Vector3.zero;
-        go.transform.localRotation = Quaternion.identity;
         go.transform.localScale = Vector3.one;
 
-        currentObject = go;
+        // Align the launcher's firing axis to the mount's forward (+Z).
+        // Current launchers fire along spawnPoint.up (local +Y) by convention.
+        // Compute a world-space rotation that maps the launcher axis to pitchBarrel.forward.
         currentLauncher = go.GetComponent<ProjectileLauncher>();
+        Transform axisT = (currentLauncher != null && currentLauncher.spawnPoint != null)
+            ? currentLauncher.spawnPoint : go.transform;
+        Vector3 fromWorld = axisT.up;            // launcher firing axis (+Y) in world
+        Vector3 toWorld   = pitchBarrel.forward; // desired world direction
+        if (fromWorld.sqrMagnitude > 1e-6f && toWorld.sqrMagnitude > 1e-6f)
+        {
+            Quaternion delta = Quaternion.FromToRotation(fromWorld, toWorld);
+            go.transform.rotation = delta * go.transform.rotation;
+        }
+
+        currentObject = go;
         isOccupied = true;
         return true;
     }
@@ -120,4 +132,3 @@ public class ProjectileLauncherMount : MonoBehaviour
             pitchBarrel.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
     }
 }
-

@@ -56,7 +56,7 @@ public class ProjectileLauncher : MonoBehaviour
             MuzzleBlast.Play();
         }
 
-        // Base direction: spawnPoint's local Y points out of the barrel
+        // Base direction: spawnPoint's local +Y (up) points out of the barrel
         Vector3 launchDirection = spawnPoint.up.normalized;
 
         // Apply angular spread (cone around the base direction)
