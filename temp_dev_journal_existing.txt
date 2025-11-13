@@ -1,33 +1,4 @@
-# Teramyyd Game Development Journal
-
-## AI Snapshot (2025-11-12 — Ship HUD, collider, data stubs)
-
-Purpose: capture new ship-driven HUD wiring, triangle collider tooling, and persistence/data stubs (no square HUD overlay).
-
-Added Systems/Data
-- PlayerProfile + SaveSystem:
-  - PlayerProfile: captainId, gold, reputation, ships (OwnedShip), activeShipId, crew, Inventory (ItemStacks).
-  - SaveSystem: JSON save/load to persistentDataPath (profile_<id>.json).
-- ScriptableObjects:
-  - ItemDefinition: id/name/value/stack rules.
-  - WeaponDefinition: id, weaponPrefab, weaponType, cost, baseline stats.
-  - ShipDefinition: id, base stats, List<ShipMountConfig> (mountId + yaw/pitch limits/acceptedType).
-
-Ship HUD Representation (from Ship → HUD Canvas)
-- Ship component: ShipHUDRepresentation (on Ship root) exposes hudSprite, opacity, anchor (9‑point), anchoredOffset (px), size (px);
-  auto-registers/unregisters with the HUD.
-- HUD view: ShipHUDPanel (on HUD Canvas) builds/owns a RectTransform + Image and applies the ShipHUDRepresentation each frame.
-- Default anchor = CenterRight; design can tune from the Ship side per ship prefab.
-
-Triangle Collider Tooling
-- EquilateralTriangleCollider3D (procedural MeshCollider):
-  - Geometry: sideLength (legacy equilateral) or width+length (isosceles), thickness (Z depth).
-  - Placement/orientation: centerOffset (local), rotationEuler (local X/Y/Z). Convex MeshCollider, rebuilds on Validate.
-
-Notes
-- ProjectileLauncher variance (angle spread + speed jitter) is the firing contract; gameplay (crew skill) should tune these live.
-- Ship prefab authoring contract (Model/Deck-mounts/camera mounts) remains the basis for automatic wiring.
-
+﻿# Teramyyd Game Development Journal
 
 ## AI Snapshot (2025-11-12)
 
@@ -35,8 +6,8 @@ Purpose: late-session delta; capture runtime tuning and content wiring for quick
 
 Changes
 - ProjectileLauncher variance (runtime):
-  - Fields: angleSpreadDegrees (deg), speedJitterPercent (±%).
-  - Applied at fire: builds orthonormal basis around spawnPoint.up, rotates by random tilt ≤ spread and random azimuth; speed scaled by Random[1−jitter, 1+jitter].
+  - Fields: angleSpreadDegrees (deg), speedJitterPercent (Â±%).
+  - Applied at fire: builds orthonormal basis around spawnPoint.up, rotates by random tilt â‰¤ spread and random azimuth; speed scaled by Random[1âˆ’jitter, 1+jitter].
   - Velocity set via Rigidbody.linearVelocity if available, else Rigidbody.velocity.
 - Cannon/Cannonball pipeline maintained:
   - Cannon inherits variance; audio child node follows muzzle; health lives on 3D visual child; self-damage via CannonSelfDamage (fractional accumulate).
@@ -51,8 +22,8 @@ Runtime Tuning (code)
 - Access any launcher (Cannon derives from ProjectileLauncher) and set fields at runtime:
   - `var launcher = GetComponent<ProjectileLauncher>();`
   - `launcher.angleSpreadDegrees = 5f;`  // max angular deviation (degrees)
-  - `launcher.speedJitterPercent = 5f;`  // ±percentage of launchSpeed
-- Crew skill mapping example (0..1 skill → tighter spread/jitter):
+  - `launcher.speedJitterPercent = 5f;`  // Â±percentage of launchSpeed
+- Crew skill mapping example (0..1 skill â†’ tighter spread/jitter):
   - `float s = crew.Skill01;`
   - `launcher.angleSpreadDegrees = Mathf.Lerp(8f, 1f, s);`
   - `launcher.speedJitterPercent = Mathf.Lerp(8f, 1f, s);`
@@ -61,7 +32,7 @@ Runtime Tuning (code)
 
 Gotchas / Setup Contracts
 - Single Rigidbody per projectile hierarchy (on root). Child colliders OK. Non-trigger for collisions.
-- Explosion VFX lifetime: either PS Stop Action = Destroy (and set CannonBall.explosionEffectLifetime = 0) or ensure lifetime ≥ audio length.
+- Explosion VFX lifetime: either PS Stop Action = Destroy (and set CannonBall.explosionEffectLifetime = 0) or ensure lifetime â‰¥ audio length.
 - Sparks boxes: use URP/Particles/Unlit Additive with soft alpha edges, clamp wrap; Smoke uses Alpha blending, longer lifetime and slower alpha fade.
 
 Next
@@ -78,12 +49,12 @@ Reference layout (simplified):
     - Bridge
     - Hull_Forward_Port / Starboard / Central_* / Aft / Bow etc.
     - Deck
-    - Deck-mounts            ← parents that contain WeaponMount components as children
-    - Internal               ← anything non-visible / structural
-  - BridgeCameraMount        ← Transform for bridge view parenting
-  - FollowCameraMount        ← Transform for initial follow view placement
-  - FollowCameraFocalPoint   ← Transform for orbit focal point (used by CameraViewManager)
-  - OverheadCameraMount      ← optional; overhead auto-finds ship if absent
+    - Deck-mounts            â† parents that contain WeaponMount components as children
+    - Internal               â† anything non-visible / structural
+  - BridgeCameraMount        â† Transform for bridge view parenting
+  - FollowCameraMount        â† Transform for initial follow view placement
+  - FollowCameraFocalPoint   â† Transform for orbit focal point (used by CameraViewManager)
+  - OverheadCameraMount      â† optional; overhead auto-finds ship if absent
 
 Code expectations:
 - WeaponMount components live under `Model/Deck-mounts/...` (any depth ok). Each mount exposes:
@@ -91,9 +62,9 @@ Code expectations:
   - A stable logical `mountId` (GameObject name or explicit field) so `ShipDefinition.mounts` can bind.
 - ViewCenterAnchor may be placed under the ship root and pointed at `Model` to compute geometric center.
 - CameraViewManager:
-  - bridgeMount → BridgeCameraMount
-  - followMount → FollowCameraMount
-  - followTarget → FollowCameraFocalPoint (or auto-find by name)
+  - bridgeMount â†’ BridgeCameraMount
+  - followMount â†’ FollowCameraMount
+  - followTarget â†’ FollowCameraFocalPoint (or auto-find by name)
 
 Data mapping:
 - `ShipDefinition.mounts[*].mountId` must match a WeaponMount logical id/name under `Model/Deck-mounts`.
@@ -103,7 +74,7 @@ Reasoning:
 - Keeping visuals under `Model` lets numeric bounds and view centering ignore helper transforms.
 - Dedicated camera anchors avoid hardcoding offsets per ship.
 
-## AI Snapshot (2025-11-11 — late)
+## AI Snapshot (2025-11-11 â€” late)
 
 Purpose: fast internal delta log since last snapshot.
 
@@ -156,16 +127,16 @@ Changes Today
 UX/Authoring Notes
 - Explosion VFX prefab: built quick recipe (flash/sparks/smoke), suggested URP particle materials (Additive for flashes/sparks, Alpha for smoke). CannonBall uses `explosionEffectPrefab` and optionally `hitEffectPrefab` fallback.
 - Soft smoke sprite: explained DIY and import settings (Wrap Clamp, Alpha is Transparency, black RGB in transparent border, mipmaps on for smoke). Avoids red halos.
-- Sparks red outline: causes + fixes (texture edge bleed, mipmaps, additive + low alpha, trail material). Use white/yellow early, RGB → black as alpha → 0.
+- Sparks red outline: causes + fixes (texture edge bleed, mipmaps, additive + low alpha, trail material). Use white/yellow early, RGB â†’ black as alpha â†’ 0.
 
 URP Migration / Materials
 - Use URP Pipeline Asset in `Project Settings > Graphics (Default Render Pipeline)` and in `Project Settings > Quality` for all levels.
-- Converter path (newer Unity): `Window > Rendering > Render Pipeline Converter` (Built-in → URP). If anything remains pink, swap manually:
-  - Create real Material assets (can’t edit built-in Default-Material). Shader: `URP/Lit` for meshes; `URP/Particles/Unlit` for particles.
+- Converter path (newer Unity): `Window > Rendering > Render Pipeline Converter` (Built-in â†’ URP). If anything remains pink, swap manually:
+  - Create real Material assets (canâ€™t edit built-in Default-Material). Shader: `URP/Lit` for meshes; `URP/Particles/Unlit` for particles.
   - Assign Base Map, Normal, Metallic/Smoothness as appropriate. For trails, consider Alpha blend material.
 
 Recorder
-- Auto-start options: Recorder’s “Start Recording on Play” or a tiny Editor script to hook play state; alternative is Windows Game Bar (Win+Alt+R).
+- Auto-start options: Recorderâ€™s â€œStart Recording on Playâ€ or a tiny Editor script to hook play state; alternative is Windows Game Bar (Win+Alt+R).
 
 Open TODOs
 - Shrapnel prefab: provide a minimal example (small sphere mesh + Rigidbody + Collider + optional Projectile, own material). Consider layer masks to avoid self/caster hits; tune counts/lifetimes for perf; pooling later.
@@ -195,12 +166,12 @@ Changes Today
     - `Reset()` defaults: damage 25, lifeTime 5.
 
 Notes / Ops
-- Particle authoring: provided quick red muzzle flash recipe (short lifetime, additive, small cone, burst 20–40).
-- If blast isn’t visible in play: verify assignment on the firing instance, slight forward offset to avoid occlusion, additive material, culling mask, near clip, start size/alpha.
+- Particle authoring: provided quick red muzzle flash recipe (short lifetime, additive, small cone, burst 20â€“40).
+- If blast isnâ€™t visible in play: verify assignment on the firing instance, slight forward offset to avoid occlusion, additive material, culling mask, near clip, start size/alpha.
 
 Editor/Recording
 - Unity Recorder: installed path is Window > General > Recorder > Recorder Window (may require domain reload and clean compile to appear).
-- Auto-start approaches: use Recorder’s “Start Recording on Play” option or a tiny Editor script hook on play state. Alternative: Windows Game Bar (Win+Alt+R) or OBS.
+- Auto-start approaches: use Recorderâ€™s â€œStart Recording on Playâ€ option or a tiny Editor script hook on play state. Alternative: Windows Game Bar (Win+Alt+R) or OBS.
 
 Open TODOs (carryover + new)
 - Make `ProjectileLauncher` more extensible: split `FireProjectile()` with protected virtual pre/post hooks for subclasses (e.g., Cannon) to override.
@@ -214,7 +185,7 @@ Key Files Touched
 - `Assets/Scripts/CannonBall.cs` (new, subclass of Projectile)
 
 Resumption Tip
-- If particles or Recorder UI “don’t work,” first check Console for compile errors; new editor menus and component behaviors won’t initialize with compiler errors present.
+- If particles or Recorder UI â€œdonâ€™t work,â€ first check Console for compile errors; new editor menus and component behaviors wonâ€™t initialize with compiler errors present.
 
 ## AI Snapshot (2025-11-09)
 
@@ -238,11 +209,11 @@ Player-Facing Behavior (Overhead)
   - Ctrl+F3: snap above ship and reset zoom to baseline
 
 Key Files
-- `Assets/Scripts/OverheadViewController.cs` — Overhead camera logic (ship follow, pan offset, zoom, snap, clip planes, auto ship-target).
-- `Assets/Scripts/CameraViewManager.cs` — Mode switching and overhead wiring (assigns shipTarget, sets heightAboveShip, calls SnapToShipCenter).
-- `Assets/Scripts/GameFieldBounds.cs` — Logical bounds; not yet used for overhead clamping.
-- `Assets/Scripts/CameraOrbitMove.cs` — Follow orbit (unused in overhead).
-- `Assets/Scripts/CameraMove.cs` — Bridge controller (unused in overhead).
+- `Assets/Scripts/OverheadViewController.cs` â€” Overhead camera logic (ship follow, pan offset, zoom, snap, clip planes, auto ship-target).
+- `Assets/Scripts/CameraViewManager.cs` â€” Mode switching and overhead wiring (assigns shipTarget, sets heightAboveShip, calls SnapToShipCenter).
+- `Assets/Scripts/GameFieldBounds.cs` â€” Logical bounds; not yet used for overhead clamping.
+- `Assets/Scripts/CameraOrbitMove.cs` â€” Follow orbit (unused in overhead).
+- `Assets/Scripts/CameraMove.cs` â€” Bridge controller (unused in overhead).
 
 Config/Inspector Defaults (Overhead)
 - heightAboveShip = 1000
@@ -250,7 +221,7 @@ Config/Inspector Defaults (Overhead)
 - Zoom modes:
   - useFOVZoom = true (default)
   - minFOV = 5, maxFOV = captured at Start as baseFOV
-  - If useFOVZoom = false → height zoom with minHeightAboveGround = 50 and baseHeight captured from heightAboveShip
+  - If useFOVZoom = false â†’ height zoom with minHeightAboveGround = 50 and baseHeight captured from heightAboveShip
 - farClipPadding = 300 (ensures rendering at height)
 - snapKey = F3 (use with Ctrl)
 
@@ -271,25 +242,25 @@ Open Decisions / Next Steps
 ### Project Structure
 ```
 Teramyyd game/
-├── Assets/
-│   ├── Scripts/
-│   │   ├── PlayerAircraft.cs    (basic flight & combat)
-│   │   ├── EnemyAircraft.cs     (pursuit AI & combat)
-│   │   ├── Projectile.cs        (movement & damage)
-│   │   ├── GameManager.cs       (spawn & score systems)
-│   │   └── InputManager.cs      (input wrapper)
-│   └── Prefabs/                 (pending setup)
-└── Docs/
-    ├── Design.md               (core systems & roadmap)
-    └── Prompt.txt             (original requirements)
+â”œâ”€â”€ Assets/
+â”‚   â”œâ”€â”€ Scripts/
+â”‚   â”‚   â”œâ”€â”€ PlayerAircraft.cs    (basic flight & combat)
+â”‚   â”‚   â”œâ”€â”€ EnemyAircraft.cs     (pursuit AI & combat)
+â”‚   â”‚   â”œâ”€â”€ Projectile.cs        (movement & damage)
+â”‚   â”‚   â”œâ”€â”€ GameManager.cs       (spawn & score systems)
+â”‚   â”‚   â””â”€â”€ InputManager.cs      (input wrapper)
+â”‚   â””â”€â”€ Prefabs/                 (pending setup)
+â””â”€â”€ Docs/
+    â”œâ”€â”€ Design.md               (core systems & roadmap)
+    â””â”€â”€ Prompt.txt             (original requirements)
 ```
 
 ### Implementation Status
-1. ✅ Basic project scaffold created
-2. ⏳ Core scripts added (needs Unity testing)
-3. 🔄 Editor setup complete (VS Code integration)
-4. ⏳ Unity scene setup pending
-5. ⚠️ Original prompt needs to be added to Docs/Prompt.txt
+1. âœ… Basic project scaffold created
+2. â³ Core scripts added (needs Unity testing)
+3. ðŸ”„ Editor setup complete (VS Code integration)
+4. â³ Unity scene setup pending
+5. âš ï¸ Original prompt needs to be added to Docs/Prompt.txt
 
 ### Next Steps
 1. Create Unity scene with:
@@ -348,33 +319,33 @@ Teramyyd game/
 - Created modular Ship structure in Unity Hierarchy with simplified organization:
   ```
   Ship (main parent GameObject)
-  └── Model (contains all ship parts with visual + functional components)
-      ├── Bridge
-      │   └── Cube (has Health, ShipComponent, Box Collider, Mesh Renderer)
-      ├── Hull_Forward_Starboard
-      │   └── Cube (has Health, ShipComponent, Box Collider, Mesh Renderer)
-      ├── Hull_Forward_Port
-      │   └── Cube
-      ├── Hull_Central_Starboard
-      │   └── Cube
-      ├── Hull_Central_Port
-      │   └── Cube
-      ├── Hull_Rear_Starboard
-      │   └── Cube
-      ├── Hull_Rear_Port
-      │   └── Cube
-      ├── Hull_Aft
-      │   └── Cube
-      ├── Hull_Bow
-      │   └── Cube
-      ├── Deck
-      │   ├── Starboard_mount_1, 2, 3 (weapon mount points with WeaponMount script)
-      │   ├── Port_mount_1, 2, 3
-      │   ├── Aft_mount
-      │   ├── Bow_mount
-      │   ├── Propulsion (has Cube child with Health, ShipComponent, Collider)
-      │   └── Lift (has Cube child with Health, ShipComponent, Collider)
-      └── Deck_Mast_Forward, Central, Rear
+  â””â”€â”€ Model (contains all ship parts with visual + functional components)
+      â”œâ”€â”€ Bridge
+      â”‚   â””â”€â”€ Cube (has Health, ShipComponent, Box Collider, Mesh Renderer)
+      â”œâ”€â”€ Hull_Forward_Starboard
+      â”‚   â””â”€â”€ Cube (has Health, ShipComponent, Box Collider, Mesh Renderer)
+      â”œâ”€â”€ Hull_Forward_Port
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Hull_Central_Starboard
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Hull_Central_Port
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Hull_Rear_Starboard
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Hull_Rear_Port
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Hull_Aft
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Hull_Bow
+      â”‚   â””â”€â”€ Cube
+      â”œâ”€â”€ Deck
+      â”‚   â”œâ”€â”€ Starboard_mount_1, 2, 3 (weapon mount points with WeaponMount script)
+      â”‚   â”œâ”€â”€ Port_mount_1, 2, 3
+      â”‚   â”œâ”€â”€ Aft_mount
+      â”‚   â”œâ”€â”€ Bow_mount
+      â”‚   â”œâ”€â”€ Propulsion (has Cube child with Health, ShipComponent, Collider)
+      â”‚   â””â”€â”€ Lift (has Cube child with Health, ShipComponent, Collider)
+      â””â”€â”€ Deck_Mast_Forward, Central, Rear
   
   REMOVED: Ship/Components folder (no longer needed with simplified structure)
   REMOVED: Ship/Internal folder (consolidated into Model)
@@ -388,25 +359,25 @@ Teramyyd game/
 
 **New Scripts Created This Session:**
 
-1. **`Assets/Scripts/WeaponMount.cs`** — Weapon mount point system
+1. **`Assets/Scripts/WeaponMount.cs`** â€” Weapon mount point system
    - Manages attaching/detaching weapons to mount points on the ship
    - Properties: `mountType` (what weapons this mount accepts), `isOccupied` status
    - Methods: `MountWeapon(prefab)`, `UnmountWeapon()`, `CanMountWeaponType(type)`
    - Tracks mounted weapon's Health component if it has one
    - Usage: Add to each weapon mount GameObject (e.g., Starboard_mount_1)
 
-2. **`Assets/Scripts/Weapon.cs`** — Base weapon class
+2. **`Assets/Scripts/Weapon.cs`** â€” Base weapon class
    - Base class for all weapons (cannons, harpoons, etc.)
    - Properties: `weaponType`, `damage`, `range`, `fireRate`
    - Virtual method `Fire()` for subclasses to override
    - Tracks reference to the mount it's attached to
    - Usage: Extend this class for specific weapon types (e.g., Cannon, Harpoon)
 
-3. **`Assets/Scripts/ShipComponent.cs`** — Links Health to visual damage feedback (UPDATED for simplified structure)
+3. **`Assets/Scripts/ShipComponent.cs`** â€” Links Health to visual damage feedback (UPDATED for simplified structure)
    - Auto-finds Health component on same GameObject (no manual wiring needed)
    - Auto-finds all Renderer components in children using `GetComponentsInChildren<Renderer>()`
    - Subscribes to Health events (`onHealthChanged`, `onDeath`)
-   - Updates visual model color based on damage (white → red gradient as health decreases)
+   - Updates visual model color based on damage (white â†’ red gradient as health decreases)
    - On component destruction, changes visual to black
    - **UPDATED (Nov 7)**: Removed `visualModel` field - now automatically finds renderers
    - **FIXED**: Removed invalid null-conditional operator usage (Unity C# compatibility issue)
@@ -420,14 +391,14 @@ Teramyyd game/
 
 2. **On the Cube child, add these components:**
    1. Health script:
-      - Add Component → Health
+      - Add Component â†’ Health
       - Set `Max Health` (100 for hull, 80 for bridge, 150 for propulsion, etc.)
    2. ShipComponent script:
-      - Add Component → ShipComponent
+      - Add Component â†’ ShipComponent
       - Drag the Health component into "Health System" field (or leave empty to auto-find)
    3. Box Collider:
-      - Add Component → Box Collider
-      - Check "Is Trigger" ✓
+      - Add Component â†’ Box Collider
+      - Check "Is Trigger" âœ“
       - Set Center to (0,0,0)
       - Set Size to match cube dimensions
 
@@ -438,26 +409,26 @@ Teramyyd game/
 **Final structure per part:**
 ```
 Bridge (empty parent - organizational only)
-└── Cube
-    ├── Health script
-    ├── ShipComponent script
-    ├── Box Collider (Is Trigger = true)
-    ├── Mesh Renderer
-    └── Mesh Filter
+â””â”€â”€ Cube
+    â”œâ”€â”€ Health script
+    â”œâ”€â”€ ShipComponent script
+    â”œâ”€â”€ Box Collider (Is Trigger = true)
+    â”œâ”€â”€ Mesh Renderer
+    â””â”€â”€ Mesh Filter
 ```
 
 **Current Implementation Status:**
-- ✅ Ship hierarchy structure created in Unity scene
-- ✅ Ship structure SIMPLIFIED (Nov 7) - consolidated Model and Components into one unified structure
-- ✅ Health component added to ship part cubes
-- ✅ ShipComponent script updated for auto-detection of renderers
-- ✅ Box Colliders added to ship part cubes with Is Trigger enabled
-- ✅ WeaponMount system created for modular weapon attachment
-- ✅ Base Weapon class created for weapon prefabs
-- ⏳ Need to complete setup for all remaining ship parts
-- ⏳ Need to delete old Ship/Components folder (after migrating all parts)
-- ⏳ Need to create weapon prefabs (Cannon, Harpoon, etc.)
-- ⏳ Need to create projectile damage system for testing
+- âœ… Ship hierarchy structure created in Unity scene
+- âœ… Ship structure SIMPLIFIED (Nov 7) - consolidated Model and Components into one unified structure
+- âœ… Health component added to ship part cubes
+- âœ… ShipComponent script updated for auto-detection of renderers
+- âœ… Box Colliders added to ship part cubes with Is Trigger enabled
+- âœ… WeaponMount system created for modular weapon attachment
+- âœ… Base Weapon class created for weapon prefabs
+- â³ Need to complete setup for all remaining ship parts
+- â³ Need to delete old Ship/Components folder (after migrating all parts)
+- â³ Need to create weapon prefabs (Cannon, Harpoon, etc.)
+- â³ Need to create projectile damage system for testing
 
 **Architecture Notes (UPDATED Nov 7):**
 - **Simplified Structure**: Visuals, logic, and collision detection all on the same GameObject (the Cube)
@@ -480,20 +451,20 @@ Bridge (empty parent - organizational only)
 - Weapon mounts: 50 HP (if weapons have health)
 
 **Known Issues Resolved:**
-- ✅ ShipComponent compile error: Invalid use of null-conditional operator `?.` on left side of assignment
+- âœ… ShipComponent compile error: Invalid use of null-conditional operator `?.` on left side of assignment
   - Fixed by replacing with explicit null-checked renderer assignments
-- ✅ ShipComponent not appearing in Unity Add Component menu
+- âœ… ShipComponent not appearing in Unity Add Component menu
   - Was due to compile errors preventing script compilation
-- ✅ Complexity of separated Model/Components structure
+- âœ… Complexity of separated Model/Components structure
   - RESOLVED (Nov 7): Simplified to unified structure with everything on visual GameObject
   - Removed need for manual "Visual Model" reference wiring
-- ✅ Collider positioning issues
+- âœ… Collider positioning issues
   - RESOLVED (Nov 7): Collider now on same GameObject as Health and visual, ensuring proper alignment
  
 ### Small utilities added (Nov 5, 2025)
-- `Assets/Scripts/CameraFollow.cs` — smooth camera follow script. Attach to Main Camera and assign Player as Target.
-- `Assets/Scripts/Health.cs` — reusable Health component with UnityEvent hooks for onHealthChanged and onDeath.
-- `Assets/Scripts/HUDController.cs` — simple HUD wiring for health and score (requires Canvas + Text elements).
+- `Assets/Scripts/CameraFollow.cs` â€” smooth camera follow script. Attach to Main Camera and assign Player as Target.
+- `Assets/Scripts/Health.cs` â€” reusable Health component with UnityEvent hooks for onHealthChanged and onDeath.
+- `Assets/Scripts/HUDController.cs` â€” simple HUD wiring for health and score (requires Canvas + Text elements).
 
 Wiring notes:
 - Add `CameraFollow` to your Main Camera and set `target` to the Player GameObject. Adjust `offset` and `followSpeed` in the Inspector.
@@ -521,7 +492,7 @@ Wiring notes:
 - [X] Apply Health + ShipComponent + Box Collider to all ship part Cubes
 - [X] Delete Ship/Components folder
 - [X] Create projectile prefab that detects hits and damages ship components
-- [X] Test end-to-end: fire projectile → hit hull section → health decreases → visual changes color
+- [X] Test end-to-end: fire projectile â†’ hit hull section â†’ health decreases â†’ visual changes color
 - [X] Create simple test script to damage components and verify visual feedback
 
 **Key Setup Reminder:**
@@ -564,12 +535,12 @@ Developer has successfully migrated Bridge to the new simplified structure (Nov 
 **Cannon Setup (Final Working Configuration):**
 ```
 Cannon (parent GameObject)
-├── ProjectileLauncher script (fires projectiles)
-├── Rotation: Any orientation to aim at target
-└── Cylinder (child GameObject, scale 0.5x0.5x0.5)
-    ├── Rotation: (0, 0, 0) - kept at zero for consistent Y-axis orientation
-    ├── Opening faces along Y-axis by default
-  └── Assigned to ProjectileLauncher's "Spawn Point" field
+â”œâ”€â”€ ProjectileLauncher script (fires projectiles)
+â”œâ”€â”€ Rotation: Any orientation to aim at target
+â””â”€â”€ Cylinder (child GameObject, scale 0.5x0.5x0.5)
+    â”œâ”€â”€ Rotation: (0, 0, 0) - kept at zero for consistent Y-axis orientation
+    â”œâ”€â”€ Opening faces along Y-axis by default
+  â””â”€â”€ Assigned to ProjectileLauncher's "Spawn Point" field
 ```
 
 **Key Architecture Decisions:**
@@ -592,7 +563,7 @@ Cannon (parent GameObject)
   - **Ctrl + Arrow Keys**: Zoom in/out
     - Ctrl + Up: Move forward (zoom in)
     - Ctrl + Down: Move backward (zoom out)
-  - Configurable speeds: `rotationSpeed` (50°/s default), `moveSpeed` (10 units/s default)
+  - Configurable speeds: `rotationSpeed` (50Â°/s default), `moveSpeed` (10 units/s default)
   - Optional orbit mode: Can orbit around a target object while maintaining distance
 
 **Scripts Created/Modified This Session:**
@@ -601,23 +572,23 @@ Cannon (parent GameObject)
 3. `CameraMove.cs` - New comprehensive camera control script
 
 **Testing Status:**
-- ✅ Projectile spawning working
-- ✅ Projectile direction matches cannon orientation
-- ✅ Cannon can be rotated to any angle
-- ✅ Camera controls functional (rotation, pan, zoom)
-- ⏳ Need to test projectile hitting ship components
-- ⏳ Need to verify damage system integration
+- âœ… Projectile spawning working
+- âœ… Projectile direction matches cannon orientation
+- âœ… Cannon can be rotated to any angle
+- âœ… Camera controls functional (rotation, pan, zoom)
+- â³ Need to test projectile hitting ship components
+- â³ Need to verify damage system integration
 
 **Known Issues Resolved:**
-- ✅ Projectile firing in wrong direction (global Z-axis)
+- âœ… Projectile firing in wrong direction (global Z-axis)
   - Fixed by using cylinder's transform.up and setting explicit launch direction
-- ✅ Projectile not spawning when cylinder at (0,0,0)
+- âœ… Projectile not spawning when cylinder at (0,0,0)
   - Fixed by adding spawn distance offset in firing direction
-- ✅ Projectile ignoring cannon rotation
+- âœ… Projectile ignoring cannon rotation
   - Fixed by passing launch direction to Projectile script before Start() runs
 
 **Next Steps:**
-1. Test complete damage chain: cannon fires → projectile hits ship part → health decreases → color changes
+1. Test complete damage chain: cannon fires â†’ projectile hits ship part â†’ health decreases â†’ color changes
 2. Fine-tune projectile speed, lifetime, and spawn distance
 3. Consider adding muzzle flash or firing effects
 4. Implement weapon mounting system for cannons
@@ -642,8 +613,8 @@ Key Changes
      - Always points straight down (no tilt or roll).
      - Ctrl+F3 snaps back directly above the ship and resets zoom to the baseline.
    - Robustness:
-     - Auto-finds `Ship` or `OverheadCameraMount` (uses its parent if present) if `shipTarget` isn’t assigned.
-     - Ensures camera `farClipPlane` is extended enough for y≈1000 views (prevents “grey screen” background).
+     - Auto-finds `Ship` or `OverheadCameraMount` (uses its parent if present) if `shipTarget` isnâ€™t assigned.
+     - Ensures camera `farClipPlane` is extended enough for yâ‰ˆ1000 views (prevents â€œgrey screenâ€ background).
 
 2) Zoom support (two modes)
    - FOV Zoom (default): Ctrl+Up zooms in (narrows FOV), Ctrl+Down zooms out. `minFOV` lowered to allow very close-in views. Ctrl+F3 resets to `baseFOV`.
@@ -672,7 +643,7 @@ Notes & Decisions
 Known Fixes
 - Grey-screen in overhead mode fixed by:
   - Auto-assigning `shipTarget` when missing (prevents early bail-out in LateUpdate).
-  - Raising `farClipPlane` to exceed camera height (ensures ship/ground render at y≈1000).
+  - Raising `farClipPlane` to exceed camera height (ensures ship/ground render at yâ‰ˆ1000).
 
 Next Steps
 - Optional: add soft boundary clamping and friction near edges of the playfield.
@@ -702,14 +673,14 @@ Technical Additions
 - `ProjectileLauncher`: Added `muzzleSmoke` ParticleSystem field; plays effect on fire; default `fireKey = KeyCode.F`.
 
 How to Use New Systems
-- Keybindings: Edit `Assets/Resources/keybindings.json`, save, and play—runtime loads automatically.
+- Keybindings: Edit `Assets/Resources/keybindings.json`, save, and playâ€”runtime loads automatically.
 - HUD: Run menu `Teramyyd/Create HUD Canvas (Direct)`; assign sprite (import PNG as Sprite (2D and UI), Mode = Single) to settings button Image.
 - Muzzle Smoke: Create ParticleSystem at barrel exit, disable Play On Awake & Looping, assign to `muzzleSmoke` field.
 
 Recommended Particle Settings (Starter)
-- Main: Lifetime 0.6–1.0, Speed 5–8, Size 0.6–1.2, Color light gray (alpha 255).
-- Emission: Burst 25–40 at time 0.
-- Shape: Cone, Angle 20°, Radius 0.15.
+- Main: Lifetime 0.6â€“1.0, Speed 5â€“8, Size 0.6â€“1.2, Color light gray (alpha 255).
+- Emission: Burst 25â€“40 at time 0.
+- Shape: Cone, Angle 20Â°, Radius 0.15.
 - Color over Lifetime: fade to transparent.
 - Renderer: Billboard, Material = Particles/Standard Unlit.
 
@@ -727,17 +698,17 @@ Merged AI Changelog Snapshot (2025-11-09)
 - Known issues (still applicable): no boundary clamping; offset/zoom persistence not implemented; no smoothing.
 
 
-Here’s a clean, scalable way to handle runtime weapon placement with aiming limits and destroy/spawn during gameplay, using systems you already have.
+Hereâ€™s a clean, scalable way to handle runtime weapon placement with aiming limits and destroy/spawn during gameplay, using systems you already have.
 
 Core Concepts
 
 WeaponMount component (on fixed mount points)
-Knows what it can accept (type/class), whether it’s occupied, and its aiming limits.
+Knows what it can accept (type/class), whether itâ€™s occupied, and its aiming limits.
 Exposes two pivot transforms: yawBase (left/right) and pitchBarrel (up/down) so clamping is trivial.
 API: CanMount(type), MountWeapon(prefab), UnmountWeapon(), GetMounted().
 Weapon component (base) + specific weapons (Cannon etc.)
 Weapon uses ProjectileLauncher for firing logic, reads its mount to aim/orient/constraints.
-Health lives on the visual child (as you’re already doing). On death, unmount cleans up.
+Health lives on the visual child (as youâ€™re already doing). On death, unmount cleans up.
 ScriptableObject weapon definitions
 WeaponDefinition: id/type, prefab, default stats (damage, fire rate), cost, crew requirements.
 Lets you build inventory/shops without touching prefabs.
@@ -760,20 +731,20 @@ Instantiate weapon prefab:
 Parent under mount.pitchBarrel (so aiming moves only pivots).
 Zero local position/rotation/scale.
 Set Weapon.SetMount(mount) and mount.MountWeapon(weaponPrefab).
-For removal: mount.UnmountWeapon() → Destroy weapon GO (or pool), refund/penalize as rules dictate.
+For removal: mount.UnmountWeapon() â†’ Destroy weapon GO (or pool), refund/penalize as rules dictate.
 Aiming + Firing
 
 Aiming input goes to the mount, not the weapon:
 Convert desired aim (from cursor or target pos) into local yaw/pitch deltas for yawBase and pitchBarrel.
-Clamp per limits: yaw ∈ [−yawLimit, +yawLimit], pitch ∈ [−down, +up].
+Clamp per limits: yaw âˆˆ [âˆ’yawLimit, +yawLimit], pitch âˆˆ [âˆ’down, +up].
 Optionally smooth with RotateTowards.
 Firing lives on the weapon (ProjectileLauncher/Cannon). It just uses current barrel forward/up direction at spawnPoint.
 Integrate your variance:
 ProjectileLauncher already supports angle spread/speed jitter (runtime-adjustable). Crew quality can shrink these values while playing.
 Health/Damage
 
-Put Health on the weapon’s visual child as you have done.
-On death: UnityEvent onDeath → Weapon/WeaponMount handle clean unmount; destroy the weapon object (mount remains).
+Put Health on the weaponâ€™s visual child as you have done.
+On death: UnityEvent onDeath â†’ Weapon/WeaponMount handle clean unmount; destroy the weapon object (mount remains).
 Optional: Mount has its own Health to disable the mount if destroyed.
 Inventory + Game Systems
 
@@ -797,7 +768,7 @@ Edge Cases + Contracts
 Exactly one Rigidbody per projectile hierarchy; child colliders OK.
 For aiming checks, compute signed angles in mount local space (no world-euler surprises).
 When replacing a weapon in combat: unmount first or block replace during reload/cooldown.
-Crew effects: expose mount.AccuracyMultiplier and mount.TraverseSpeed to modulate rotation speed and call into ProjectileLauncher’s angleSpreadDegrees/speedJitterPercent at runtime.
+Crew effects: expose mount.AccuracyMultiplier and mount.TraverseSpeed to modulate rotation speed and call into ProjectileLauncherâ€™s angleSpreadDegrees/speedJitterPercent at runtime.
 Minimal APIs (pseudocode)
 
 WeaponMount
@@ -805,7 +776,7 @@ fields: acceptedType, yawLimitDeg, pitchUpDeg, pitchDownDeg, yawBase, pitchBarre
 bool CanMount(string type)
 GameObject MountWeapon(GameObject prefab)
 GameObject UnmountWeapon()
-void AimAt(Vector3 worldTarget) → computes local yaw/pitch, clamps, applies to pivots
+void AimAt(Vector3 worldTarget) â†’ computes local yaw/pitch, clamps, applies to pivots
 Weapon (base)
 void SetMount(WeaponMount mount)
 Health is on visual child
@@ -816,7 +787,7 @@ Why this design
 
 Keeps constraints and placement logic on the mount (single place of truth).
 Makes weapons plug-and-play prefabs (build/destroy at will).
-Clear separation of concerns: UI/selection → ship mount manager → WeaponMount → Weapon firing.
+Clear separation of concerns: UI/selection â†’ ship mount manager â†’ WeaponMount â†’ Weapon firing.
 If you want, I can sketch the exact fields and minimal methods for WeaponMount with clamp math and an AimAt(target) routine you can drop in.
 
 New Features
@@ -972,4 +943,5 @@ PlayerProfile.cs
 SaveSystem.cs
 +55
 -0
+
 
