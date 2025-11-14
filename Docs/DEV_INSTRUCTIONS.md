@@ -48,14 +48,161 @@ This document explains how to place, wire, and test the main scripts in this pro
 unOnStart.
 - Note: Use either this helper OR the per‑mount utoPopulateOnStart — not both — to avoid double mounting.
 
-## ShipHUDRepresentation (on Ship root) + ShipHUDPanel (on HUD Canvas)
-- Representation (model):
-  - ShipHUDRepresentation lives on the Ship; defines the ship icon sprite, opacity, anchor/offset/size.
-  - You can extend it with a list of mount markers keyed by mountId to render per‑weapon statuses.
-- Panel (view):
-  - ShipHUDPanel lives on the HUD Canvas; auto‑creates a container + Image.
-  - Reads the active representation and renders the ship icon in the chosen screen corner.
-  - To show mount markers: add marker records (normalized positions 0..1). The panel converts to anchored positions.
+## Ship HUD Mount Marker System
+- Purpose: Simplified system for designers to visually place mount icons on the ship HUD sprite. Icons automatically switch between "empty mount" and "weapon mounted" sprites.
+- Components:
+  - MountHUDMarker: attached to each mount GameObject (e.g., Bow_weapon_mount).
+  - ShipHUDDisplay: attached to HUD Canvas, renders all markers.
+  - WeaponTypeDetector: helper utility for weapon type detection.
+- How It Works:
+  - Each mount GameObject has a MountHUDMarker component.
+  - Designer sets where the icon appears on the ship sprite (normalized 0-1 coordinates).
+  - Designer assigns default "empty mount" sprite (Mount.png).
+  - At runtime, ShipHUDDisplay finds all markers and creates UI Images for them.
+  - Every frame, checks if mount is occupied and switches sprite accordingly.
+
+### Setup Instructions
+
+#### Step 1: Prepare Sprite Assets
+- Place Mount.png in Assets/UI/Icons/
+- Place ShipsHUD-cannon.png in Assets/UI/Icons/
+- Select each sprite in Unity
+- In Inspector, set:
+  - Texture Type: Sprite (2D and UI)
+  - Sprite Mode: Single
+  - Click Apply
+
+#### Step 2: Add Marker to Mount GameObject
+For each mount (e.g., Bow_weapon_mount):
+- Select the mount GameObject in Hierarchy
+- Click Add Component
+- Search for and add: Mount HUD Marker
+- Configure the marker:
+  - Default Sprite: Drag Mount.png into this field
+  - Icon Size: Set to (20, 20) or desired pixel size
+  - Position On HUD Sprite: Where the icon appears on the ship sprite (normalized 0 to 1)
+    - Examples:
+      - Bow (front): (0.5, 0.9) - center horizontally, near top
+      - Stern (back): (0.5, 0.1) - center horizontally, near bottom
+      - Port side: (0.2, 0.5) - left side, centered vertically
+      - Starboard side: (0.8, 0.5) - right side, centered vertically
+  - Custom Occupied Sprite (Optional): Leave empty to use weapon type mapping, or assign a specific sprite
+
+#### Step 3: Configure HUD Canvas
+Create Ship Silhouette Image:
+- In Hierarchy, find your HUD Canvas and expand to HUD_Root
+- Right-click on HUD_Root → UI → Image
+- Rename the new Image to ShipSilhouette
+- Select this Image GameObject
+- In Inspector, in the Image (Script) component:
+  - Source Image: Drag your ship sprite (e.g., ShipOutline)
+  - Raycast Target: Uncheck (optional optimization)
+  - Preserve Aspect: Will be controlled by Ship HUD Display
+
+Add Ship HUD Display Component:
+- Select your HUD Canvas GameObject (the root Canvas, not HUD_Root)
+- Click Add Component → Search for Ship HUD Display
+- Configure:
+  - Ship Sprite:
+    - Ship Sprite Image: Drag the ShipSilhouette Image GameObject
+    - Ship Game Object: Drag the Ship root GameObject from scene Hierarchy
+  - Ship Sprite Layout:
+    - Ship Sprite Size: Set pixel size (e.g., 300, 700)
+    - Screen Anchor: Where to anchor on screen
+      - (1, 0.5) = right side, centered vertically (default)
+      - (1, 1) = top-right corner
+      - (0.5, 0.5) = center screen
+    - Anchor Offset: Pixel offset from anchor (e.g., -30, 75)
+      - Negative X = move left from anchor
+      - Positive Y = move up from anchor
+    - Preserve Aspect: Check to prevent distortion (recommended)
+  - Weapon Sprite Mappings:
+    - Click + to add a mapping
+    - Element 0:
+      - Weapon Type: cannon
+      - Sprite: Drag ShipsHUD-cannon.png here
+  - Debug Log: Check for detailed console logging during setup (uncheck in production)
+
+Common Ship Positions:
+- Right side, centered (default): Screen Anchor: (1, 0.5), Anchor Offset: (-30, 75)
+- Top-right corner: Screen Anchor: (1, 1), Anchor Offset: (-30, -30)
+- Bottom-right corner: Screen Anchor: (1, 0), Anchor Offset: (-30, 30)
+- Center screen: Screen Anchor: (0.5, 0.5), Anchor Offset: (0, 0)
+
+#### Step 4: Test
+Play the game:
+- Empty Mount Test: Look at HUD - you should see Mount.png icon at the position you specified
+- Mounted Weapon Test: If your mount has autoPopulateOnStart enabled with a Cannon prefab, icon should switch to ShipsHUD-cannon.png
+- Runtime Mount/Unmount: Mount a weapon via code - icon updates to weapon sprite; unmount weapon - icon reverts to Mount.png
+
+### Position Guide
+Understanding Normalized Coordinates:
+- (0, 0) = bottom-left of ship sprite
+- (1, 1) = top-right of ship sprite
+- (0.5, 0.5) = exact center
+
+Common Mount Positions (Top-Down Ship View):
+- Bow: (0.5, 0.9)
+- Stern: (0.5, 0.1)
+- Port: (0.2, 0.5)
+- Starboard: (0.8, 0.5)
+
+Tips:
+- Start with approximate positions
+- Run game in Play mode
+- Adjust position values in Inspector while game is running
+- Stop game and copy final values
+
+### Adding New Weapon Types
+To support a new weapon type (e.g., "harpoon"):
+- In ShipHUDDisplay component on HUD Canvas:
+  - Click + on Weapon Sprite Mappings
+  - New Element:
+    - Weapon Type: harpoon
+    - Sprite: Drag your harpoon HUD sprite here
+- Ensure your weapon prefab:
+  - Has a ProjectileLauncher component (or subclass like Cannon)
+  - GameObject name contains "harpoon" OR
+  - You create a Harpoon class extending ProjectileLauncher
+- Update WeaponTypeDetector.cs if needed (for custom types)
+
+### Ship HUD Mount Marker Troubleshooting
+- Icon doesn't appear:
+  - Check ShipHUDDisplay.debugLog is enabled
+  - Check Console for error messages
+  - Verify shipSpriteImage and shipGameObject are assigned
+  - Verify marker has a sprite assigned to defaultSprite
+  - Check that MountHUDMarker is on the mount GameObject, not the Ship root
+- Icon appears at wrong position:
+  - Remember coordinates are normalized (0-1, not pixels)
+  - Check ship sprite's size - position is relative to sprite bounds
+  - Try (0.5, 0.5) to see center position first
+  - Enable debug logging to see calculated pixel positions
+- Ship sprite is distorted or wrong size:
+  - Adjust Ship Sprite Size in ShipHUDDisplay component
+  - Enable Preserve Aspect to prevent distortion
+  - Check that your sprite import settings are correct (Sprite 2D and UI)
+- Ship sprite is in wrong location on screen:
+  - Adjust Screen Anchor to change which corner/edge it anchors to
+  - Adjust Anchor Offset to fine-tune position in pixels
+- Icon doesn't change when weapon mounts:
+  - Check WeaponMount.isOccupied is true (enable WeaponMount debugLog)
+  - Verify weapon type string matches mapping exactly ("cannon" = "cannon")
+  - Check weapon sprite mapping is configured in ShipHUDDisplay
+  - Enable debug logging to see weapon type detection
+- Multiple icons for one mount:
+  - Each mount should have exactly ONE MountHUDMarker
+  - Check Hierarchy - remove duplicate markers
+
+### File Locations
+Current System:
+- Assets/Scripts/UI/MountHUDMarker.cs
+- Assets/Scripts/UI/ShipHUDDisplay.cs
+- Assets/Scripts/Helpers/WeaponTypeDetector.cs
+
+Archived (Old System):
+- Assets/Scripts/ARCHIVED/ShipHUDRepresentation.cs
+- Assets/Scripts/ARCHIVED/ShipHUDPanel.cs
 
 ## EquilateralTriangleCollider3D (procedural collider)
 - Add to any GameObject to create a convex triangular prism collider.
