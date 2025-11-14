@@ -102,7 +102,7 @@ public class ProjectileLauncher : MonoBehaviour
             }
             else
             {
-                rb.velocity = initialVelocity;
+                rb.linearVelocity = initialVelocity;
             }
         }
         else

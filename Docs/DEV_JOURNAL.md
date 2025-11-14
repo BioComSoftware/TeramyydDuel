@@ -1,5 +1,41 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-14 — Mount orientation, debug controls, HUD markers)
+
+Purpose: lock in weapon mount orientation rules, runtime dev controls for pivots, launcher variance knobs, and HUD ship representation markers by occupancy/type.
+
+Mounting/Orientation
+- Standardized how launchers align when auto-mounted:
+  - The selected launcher axis (usually spawnPoint.up) is mapped to the mount’s forward contract (currently mount −Z by design to satisfy the cannon prefab without editing it).
+  - Added `launcherAxis` (Up/Forward/Right) and `invertLauncherAxis` to handle prefabs whose natural axis differs or points the opposite way.
+  - Mount exposes pivots: `yawBase` (rotate around local Y) and `pitchBarrel` (rotate around local X). Weapon prefab is parented under `pitchBarrel`.
+  - Clamps: `yawLimitDeg` (± half-range), `pitchUpDeg`, `pitchDownDeg` enforce movement limits.
+- Avoid double-mounting: use either ship-level auto-populate or per-mount `autoPopulateOnStart`, not both.
+
+Runtime Dev Controls (temporary)
+- Added letter keys for quick testing during Play (when enabled on the mount):
+  - `j` = yaw left, `l` = yaw right; `i` = pitch up, `k` = pitch down.
+  - Optional direction flips: `invertYawDirection`, `invertPitchDirection`.
+  - Obeys clamps and only affects the assigned `yawBase`/`pitchBarrel`.
+
+Launcher Variance (tunable)
+- `ProjectileLauncher` exposes runtime-tunable accuracy fields:
+  - `angleSpreadDegrees = 5f` (max cone spread in degrees).
+  - `speedJitterPercent = 5f` (± percent of launch speed).
+- Gameplay code can tighten/loosen these at runtime (e.g., crew skill).
+
+HUD — Ship Representation Markers
+- Added ship-driven HUD representation that can display mount markers by `mountId`:
+  - Each marker has a normalized position within the ship icon.
+  - Code selects which sprite to show based on occupancy/type:
+    - Uses a `defaultEmptySprite` for unoccupied mounts.
+    - Uses a type→sprite map (e.g., "cannon") for occupied mounts.
+- No “unknown populated” default; populated sprites must be mapped by type.
+
+Notes
+- We deliberately “lie” the mount forward to use mount −Z, so we don’t have to edit the cannon prefab’s internal axes. If/when we standardize to +Z, keep the mapping toggles to migrate smoothly.
+- Keep transforms non-mirrored (positive scale) to avoid axis confusion.
+
 ## AI Snapshot (2025-11-12 — Ship HUD, collider, data stubs)
 
 Purpose: capture new ship-driven HUD wiring, triangle collider tooling, and persistence/data stubs (no square HUD overlay).

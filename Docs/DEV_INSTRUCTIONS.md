@@ -10,9 +10,8 @@ This document explains how to place, wire, and test the main scripts in this pro
   - launchSpeed, spawnOffset: initial speed and how far ahead of the muzzle to spawn.
   - ngleSpreadDegrees (default 5), speedJitterPercent (default 5): runtime‑tunable knobs. Set these from gameplay (e.g., crew skill).
 - Authoring steps:
-  1) In the weapon prefab, create a child “Muzzle” at the barrel tip; rotate it so +Y points out of the barrel.
-  2) Assign Muzzle to spawnPoint.
-  3) Parent muzzle effects (smoke/blast) under Muzzle; set their Simulation Space = Local.
+  1) Assign Cylinder to spawnPoint.
+  3) Parent muzzle effects (smoke/blast) under the Cannon root; set their Simulation Space = Local. Place both at teh opening of the cannon (based on the cylinder visual object.)
 
 ## WeaponMount (general mount; attach to Ship at each mount location)
 - Purpose: a generic mount with yaw/pitch pivots and runtime Mount/Unmount.

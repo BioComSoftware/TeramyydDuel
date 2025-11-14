@@ -37,6 +37,7 @@ public class WeaponMount : MonoBehaviour
     [Header("Testing (optional)")]
     [Tooltip("If set with autoPopulateOnStart, this weapon prefab is mounted at Start for quick testing")] public GameObject autoPopulatePrefab;
     public bool autoPopulateOnStart = false;
+    public bool debugLog = false;
 
     // State
     public bool isOccupied { get; private set; } = false;
@@ -65,6 +66,32 @@ public class WeaponMount : MonoBehaviour
             MountWeapon(autoPopulatePrefab);
         }
         ApplyRotations();
+        
+        if (debugLog)
+        {
+            string path = GetHierarchyPath(transform);
+            Debug.Log($"[WeaponMount] {mountId} @ '{path}': Start complete. isOccupied={isOccupied}, childCount={transform.childCount}");
+            // List immediate children
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                var child = transform.GetChild(i);
+                var launcher = child.GetComponent<ProjectileLauncher>();
+                Debug.Log($"[WeaponMount]   Child {i}: {child.name}, hasLauncher={launcher != null}");
+            }
+        }
+    }
+
+
+    string GetHierarchyPath(Transform t)
+    {
+        if (t == null) return "null";
+        string path = t.name;
+        while (t.parent != null)
+        {
+            t = t.parent;
+            path = t.name + "/" + path;
+        }
+        return path;
     }
 
     void Update()
@@ -90,6 +117,8 @@ public class WeaponMount : MonoBehaviour
         mountedWeapon.transform.localScale = Vector3.one;
 
         currentLauncher = mountedWeapon.GetComponent<ProjectileLauncher>();
+        if (debugLog) Debug.Log($"[WeaponMount] {mountId}: Mounting {weaponPrefab.name} → created {mountedWeapon.name}, launcher={currentLauncher}");
+        
         // Align launcher spawn axis (+Y) to mount forward (+Z)
         Transform axisT = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : mountedWeapon.transform;
         Vector3 fromWorld;
@@ -111,6 +140,7 @@ public class WeaponMount : MonoBehaviour
         // Cache health if available (on launcher or any child)
         weaponHealth = mountedWeapon.GetComponentInChildren<Health>();
         isOccupied = true;
+        if (debugLog) Debug.Log($"[WeaponMount] {mountId}: Mount complete, isOccupied={isOccupied}, health={weaponHealth}");
         return true;
     }
 

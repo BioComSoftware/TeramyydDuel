@@ -90,7 +90,7 @@ public class CannonBall : Projectile
                 var rb = piece.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
-                    rb.velocity = dir * shrapnelSpeed;
+                    rb.linearVelocity = dir * shrapnelSpeed;
                 }
             }
         }
