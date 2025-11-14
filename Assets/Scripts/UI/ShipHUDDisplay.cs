@@ -452,6 +452,14 @@ public class ShipHUDDisplay : MonoBehaviour
             if (!_markerImages.TryGetValue(marker, out Image img))
                 continue;
             
+            bool occupied = marker.IsOccupied();
+            ProjectileLauncher weapon = marker.GetMountedWeapon();
+            
+            if (debugLog)
+            {
+                FileLogger.Log($"Marker {marker.gameObject.name}: IsOccupied={occupied}, Weapon={(weapon != null ? weapon.gameObject.name : "null")}", "MarkerUpdate");
+            }
+            
             Sprite targetSprite = GetSpriteForMarker(marker);
             
             // Only update if sprite changed (avoid unnecessary assignments)
@@ -462,7 +470,7 @@ public class ShipHUDDisplay : MonoBehaviour
                 if (debugLog)
                 {
                     string spriteName = targetSprite != null ? targetSprite.name : "null";
-                    Debug.Log($"[ShipHUDDisplay] Updated {marker.gameObject.name} sprite to {spriteName}");
+                    FileLogger.Log($"Updated {marker.gameObject.name} sprite to {spriteName}", "MarkerUpdate");
                 }
             }
         }

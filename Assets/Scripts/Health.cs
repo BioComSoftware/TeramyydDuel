@@ -59,7 +59,20 @@ public class Health : MonoBehaviour
         if (debugLog)
             FileLogger.Log($"{gameObject.name} died - destroying GameObject", "Health");
         onDeath?.Invoke();
-        // Default: destroy gameobject. Components can override by subscribing to onDeath.
-        Destroy(gameObject);
+        
+        // Find the root weapon object (has ProjectileLauncher) to destroy the entire weapon
+        // This ensures mounted weapons are fully removed, not just damaged parts
+        ProjectileLauncher launcher = GetComponentInParent<ProjectileLauncher>();
+        if (launcher != null)
+        {
+            if (debugLog)
+                FileLogger.Log($"Found launcher in parent {launcher.gameObject.name}, destroying root weapon instead", "Health");
+            Destroy(launcher.gameObject);
+        }
+        else
+        {
+            // No launcher parent, just destroy this GameObject
+            Destroy(gameObject);
+        }
     }
 }

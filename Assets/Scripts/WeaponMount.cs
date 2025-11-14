@@ -96,6 +96,17 @@ public class WeaponMount : MonoBehaviour
 
     void Update()
     {
+        // Check if mounted weapon was destroyed externally (e.g., by Health component)
+        if (isOccupied && mountedWeapon == null)
+        {
+            FileLogger.Log($"{mountId}: Mounted weapon was destroyed externally, clearing mount", "WeaponMount");
+            
+            // Clear mount state
+            weaponHealth = null;
+            currentLauncher = null;
+            isOccupied = false;
+        }
+        
         if (!debugKeypadControl) return;
         float dt = Time.deltaTime;
         // Yaw left/right: j / l
