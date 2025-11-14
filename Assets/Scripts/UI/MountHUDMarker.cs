@@ -21,6 +21,38 @@ public class MountHUDMarker : MonoBehaviour
     [Tooltip("If set, always use this sprite when occupied (overrides weapon type mapping)")]
     public Sprite customOccupiedSprite;
     
+    [Header("Health Bar Indicator")]
+    [Tooltip("Show health bar for mounted weapon (requires Health component on weapon)")]
+    public bool showHealthBar = true;
+    
+    [Tooltip("Position offset of health bar relative to weapon icon (in pixels)")]
+    public Vector2 healthBarOffset = new Vector2(15f, 0f);
+    
+    [Tooltip("Size of health bar (width, height in pixels)")]
+    public Vector2 healthBarSize = new Vector2(6f, 20f);
+    
+    [Tooltip("Color when weapon is at full health")]
+    public Color healthFullColor = Color.green;
+    
+    [Tooltip("Color when weapon is at 0% health")]
+    public Color healthEmptyColor = Color.red;
+    
+    [Header("Ready Status Indicator")]
+    [Tooltip("Show ready status circle for mounted weapon (requires ProjectileLauncher on weapon)")]
+    public bool showReadyIndicator = true;
+    
+    [Tooltip("Position offset of ready circle relative to weapon icon (in pixels)")]
+    public Vector2 readyIndicatorOffset = new Vector2(-15f, 0f);
+    
+    [Tooltip("Diameter of ready circle indicator (in pixels)")]
+    public float readyIndicatorSize = 8f;
+    
+    [Tooltip("Color when weapon is ready to fire")]
+    public Color readyColor = Color.green;
+    
+    [Tooltip("Color when weapon is not ready (reloading)")]
+    public Color notReadyColor = Color.red;
+    
     // Runtime cached references
     private WeaponMount _weaponMount;
     

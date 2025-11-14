@@ -6,12 +6,18 @@ This document explains how to place, wire, and test the main scripts in this pro
 - Purpose: fires projectiles from a spawn point; applies variance (spread/jitter).
 - Key fields:
   - projectilePrefab: the projectile to spawn (must have Rigidbody + Collider; Projectile.cs is recommended).
-  - spawnPoint: a child Transform that marks the muzzle. The current launcher fires along spawnPoint.up (local +Y). Make the child’s green arrow (+Y) point out of the barrel.
+  - spawnPoint: a child Transform that marks the muzzle. The current launcher fires along spawnPoint.up (local +Y). Make the child's green arrow (+Y) point out of the barrel.
   - launchSpeed, spawnOffset: initial speed and how far ahead of the muzzle to spawn.
-  - ngleSpreadDegrees (default 5), speedJitterPercent (default 5): runtime‑tunable knobs. Set these from gameplay (e.g., crew skill).
+  - angleSpreadDegrees (default 5), speedJitterPercent (default 5): runtime‑tunable knobs. Set these from gameplay (e.g., crew skill).
+  - reloadTime: time in seconds before weapon can fire again after firing (default 2.0).
+  - startReady: whether weapon starts ready to fire or needs to reload first (default true).
 - Authoring steps:
   1) Assign Cylinder to spawnPoint.
-  3) Parent muzzle effects (smoke/blast) under the Cannon root; set their Simulation Space = Local. Place both at teh opening of the cannon (based on the cylinder visual object.)
+  2) Parent muzzle effects (smoke/blast) under the Cannon root; set their Simulation Space = Local. Place both at the opening of the cannon (based on the cylinder visual object.)
+  3) Add Health component to weapon prefab if you want health tracking on the HUD.
+- Runtime API:
+  - IsReadyToFire(): returns true if weapon can fire (not reloading).
+  - GetRemainingReloadTime(): returns seconds remaining until ready (0 if ready).
 
 ## WeaponMount (general mount; attach to Ship at each mount location)
 - Purpose: a generic mount with yaw/pitch pivots and runtime Mount/Unmount.
@@ -87,6 +93,18 @@ For each mount (e.g., Bow_weapon_mount):
       - Port side: (0.2, 0.5) - left side, centered vertically
       - Starboard side: (0.8, 0.5) - right side, centered vertically
   - Custom Occupied Sprite (Optional): Leave empty to use weapon type mapping, or assign a specific sprite
+  - Health Bar Indicator:
+    - Show Health Bar: Check to display health bar when weapon is mounted (requires Health component on weapon prefab)
+    - Health Bar Offset: Position offset in pixels relative to weapon icon (default: 15, 0 = right side)
+    - Health Bar Size: Width and height in pixels (default: 6, 20 = thin vertical bar)
+    - Health Full Color: Color at 100% health (default: green)
+    - Health Empty Color: Color at 0% health (default: red)
+  - Ready Status Indicator:
+    - Show Ready Indicator: Check to display ready status circle (weapon must have ProjectileLauncher with reload time)
+    - Ready Indicator Offset: Position offset in pixels relative to weapon icon (default: -15, 0 = left side)
+    - Ready Indicator Size: Diameter of circle in pixels (default: 8)
+    - Ready Color: Color when weapon is ready to fire (default: green)
+    - Not Ready Color: Color when weapon is reloading (default: red)
 
 #### Step 3: Configure HUD Canvas
 Create Ship Silhouette Image:
@@ -132,8 +150,33 @@ Common Ship Positions:
 #### Step 4: Test
 Play the game:
 - Empty Mount Test: Look at HUD - you should see Mount.png icon at the position you specified
-- Mounted Weapon Test: If your mount has autoPopulateOnStart enabled with a Cannon prefab, icon should switch to ShipsHUD-cannon.png
+- Mounted Weapon Test: If your mount has autoPopulateOnStart enabled with a Cannon prefab:
+  - Icon should switch to ShipsHUD-cannon.png
+  - Health bar should appear next to the cannon icon (if weapon has Health component)
+  - Ready indicator circle should appear and turn red after firing, green when reloaded
 - Runtime Mount/Unmount: Mount a weapon via code - icon updates to weapon sprite; unmount weapon - icon reverts to Mount.png
+- Health Testing: Use Health.TakeDamage() to reduce weapon health and watch the bar change from green to red
+- Ready Testing: Fire the weapon and watch the ready indicator turn red during reload, then green when ready
+
+### Health Bar and Ready Indicator Details
+
+The health bar and ready indicator are optional visual elements that appear next to mounted weapons:
+
+**Health Bar:**
+- Vertical bar that shows weapon's current health (requires Health component on weapon prefab)
+- Fills from bottom (0% health) to top (100% health)
+- Color gradient: Full green at 100% health → Full red at 0% health
+- Position and size customizable per mount via Health Bar Offset and Health Bar Size
+- Automatically hidden when mount is empty, shown when weapon mounted
+- Updates every frame based on Health.currentHealth and Health.maxHealth
+
+**Ready Indicator:**
+- Circular indicator that shows if weapon is ready to fire (requires ProjectileLauncher with reloadTime > 0)
+- Green when weapon.IsReadyToFire() returns true
+- Red when weapon is reloading (after firing)
+- Position and size customizable per mount via Ready Indicator Offset and Ready Indicator Size
+- Automatically hidden when mount is empty, shown when weapon mounted
+- Updates every frame based on ProjectileLauncher.IsReadyToFire()
 
 ### Position Guide
 Understanding Normalized Coordinates:
@@ -193,6 +236,24 @@ To support a new weapon type (e.g., "harpoon"):
 - Multiple icons for one mount:
   - Each mount should have exactly ONE MountHUDMarker
   - Check Hierarchy - remove duplicate markers
+- Health bar doesn't appear:
+  - Verify Show Health Bar is checked on the MountHUDMarker
+  - Ensure weapon prefab has a Health component attached
+  - Health bar only shows when weapon is mounted (hidden when mount is empty)
+- Health bar wrong color or fill:
+  - Check Health Full Color and Health Empty Color settings
+  - Verify Health component's currentHealth and maxHealth values
+  - Bar fills from bottom (0%) to top (100%)
+  - Color interpolates: green at full health → red as health decreases
+- Ready indicator doesn't appear:
+  - Verify Show Ready Indicator is checked on the MountHUDMarker
+  - Ensure weapon prefab has ProjectileLauncher component
+  - Indicator only shows when weapon is mounted
+- Ready indicator always red (or always green):
+  - Check ProjectileLauncher.reloadTime is set (default: 2.0 seconds)
+  - Verify startReady setting (if false, weapon starts reloading)
+  - Test by firing weapon - should turn red during reload, green when ready
+  - Check Ready Color and Not Ready Color settings on marker
 
 ### File Locations
 Current System:

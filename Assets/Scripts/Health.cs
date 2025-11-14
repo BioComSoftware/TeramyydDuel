@@ -13,17 +13,28 @@ public class Health : MonoBehaviour
     public IntEvent onHealthChanged;
     public UnityEvent onDeath;
 
+    [Header("Debug")]
+    public bool debugLog = false;
+
     void Awake()
     {
         currentHealth = maxHealth;
+        if (debugLog)
+            FileLogger.Log($"{gameObject.name} initialized - Health: {currentHealth}/{maxHealth}", "Health");
         onHealthChanged?.Invoke(currentHealth);
     }
 
     public void TakeDamage(int amount)
     {
         if (amount <= 0) return;
+        
+        int oldHealth = currentHealth;
         currentHealth -= amount;
         if (currentHealth < 0) currentHealth = 0;
+        
+        if (debugLog)
+            FileLogger.Log($"{gameObject.name} took {amount} damage - Health: {oldHealth} -> {currentHealth}/{maxHealth} ({(float)currentHealth/maxHealth * 100f:F1}%)", "Health");
+        
         onHealthChanged?.Invoke(currentHealth);
         if (currentHealth == 0) Die();
     }
@@ -45,6 +56,8 @@ public class Health : MonoBehaviour
 
     void Die()
     {
+        if (debugLog)
+            FileLogger.Log($"{gameObject.name} died - destroying GameObject", "Health");
         onDeath?.Invoke();
         // Default: destroy gameobject. Components can override by subscribing to onDeath.
         Destroy(gameObject);

@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 // Simplified HUD display system - finds mount markers and renders them on the ship sprite.
 // Attach to the HUD Canvas GameObject.
@@ -43,6 +46,10 @@ public class ShipHUDDisplay : MonoBehaviour
     // Runtime state
     private List<MountHUDMarker> _markers = new List<MountHUDMarker>();
     private Dictionary<MountHUDMarker, Image> _markerImages = new Dictionary<MountHUDMarker, Image>();
+    private Dictionary<MountHUDMarker, Image> _healthBarBackgrounds = new Dictionary<MountHUDMarker, Image>();
+    private Dictionary<MountHUDMarker, Image> _healthBarGreenFills = new Dictionary<MountHUDMarker, Image>();
+    private Dictionary<MountHUDMarker, Image> _healthBarRedFills = new Dictionary<MountHUDMarker, Image>();
+    private Dictionary<MountHUDMarker, Image> _readyIndicators = new Dictionary<MountHUDMarker, Image>();
     private RectTransform _shipSpriteRect;
     
     void Start()
@@ -80,6 +87,10 @@ public class ShipHUDDisplay : MonoBehaviour
     {
         // Update marker sprites every frame based on mount occupancy
         UpdateMarkerSprites();
+        
+        // Update health bars and ready indicators
+        UpdateHealthBars();
+        UpdateReadyIndicators();
     }
     
     /// <summary>
@@ -167,8 +178,266 @@ public class ShipHUDDisplay : MonoBehaviour
             // Store reference
             _markerImages[marker] = img;
             
+            // Create health bar if enabled
+            if (marker.showHealthBar)
+            {
+                CreateHealthBar(marker, markerGO.transform);
+            }
+            
+            // Create ready indicator if enabled
+            if (marker.showReadyIndicator)
+            {
+                CreateReadyIndicator(marker, markerGO.transform);
+            }
+            
             if (debugLog)
                 Debug.Log($"[ShipHUDDisplay] Created marker image for {marker.gameObject.name} at ({x:F1}, {y:F1})");
+        }
+    }
+    
+    /// <summary>
+    /// Get Unity's built-in UI sprite for rendering solid colors.
+    /// </summary>
+    Sprite GetDefaultUISprite()
+    {
+#if UNITY_EDITOR
+        return AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+#else
+        return Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+#endif
+    }
+
+    /// <summary>
+    /// Create a health bar UI element for a marker.
+    /// </summary>
+    void CreateHealthBar(MountHUDMarker marker, Transform parent)
+    {
+        if (debugLog)
+            FileLogger.Log($"Creating health bar for {marker.gameObject.name}", "HealthBar");
+        
+        // Get the default UI sprite for rendering
+        Sprite uiSprite = GetDefaultUISprite();
+        
+        // Background (dark gray bar)
+        GameObject bgGO = new GameObject($"HealthBar_BG_{marker.gameObject.name}");
+        bgGO.transform.SetParent(parent, false);
+        
+        Image bgImg = bgGO.AddComponent<Image>();
+        bgImg.sprite = uiSprite;
+        bgImg.color = new Color(0.2f, 0.2f, 0.2f, 0.8f); // Dark semi-transparent
+        bgImg.raycastTarget = false;
+        
+        RectTransform bgRT = bgGO.GetComponent<RectTransform>();
+        bgRT.anchorMin = new Vector2(0.5f, 0.5f);
+        bgRT.anchorMax = new Vector2(0.5f, 0.5f);
+        bgRT.pivot = new Vector2(0.5f, 0.5f);
+        bgRT.sizeDelta = marker.healthBarSize;
+        bgRT.anchoredPosition = marker.healthBarOffset;
+        
+        _healthBarBackgrounds[marker] = bgImg;
+        
+        // Red fill (damage/background - always full) - CREATE THIS FIRST so it's behind green
+        GameObject redFillGO = new GameObject($"HealthBar_RedFill_{marker.gameObject.name}");
+        redFillGO.transform.SetParent(bgGO.transform, false);
+        
+        Image redFillImg = redFillGO.AddComponent<Image>();
+        redFillImg.sprite = uiSprite; // Use Unity's default UI sprite
+        redFillImg.color = marker.healthEmptyColor;
+        redFillImg.raycastTarget = false;
+        redFillImg.type = Image.Type.Simple; // Simple filled image
+        
+        RectTransform redFillRT = redFillGO.GetComponent<RectTransform>();
+        redFillRT.anchorMin = Vector2.zero;
+        redFillRT.anchorMax = Vector2.one;
+        redFillRT.sizeDelta = Vector2.zero; // Fill parent completely
+        redFillRT.anchoredPosition = Vector2.zero;
+        
+        _healthBarRedFills[marker] = redFillImg;
+        
+        if (debugLog)
+            FileLogger.Log($"Red fill created - Color: {redFillImg.color}, Type: {redFillImg.type}, Sprite: {(redFillImg.sprite == null ? "null (using default)" : redFillImg.sprite.name)}", "HealthBar");
+        
+        // Green fill (healthy part - fills from bottom) - CREATE THIS SECOND so it's on top
+        GameObject greenFillGO = new GameObject($"HealthBar_GreenFill_{marker.gameObject.name}");
+        greenFillGO.transform.SetParent(bgGO.transform, false);
+        
+        Image greenFillImg = greenFillGO.AddComponent<Image>();
+        greenFillImg.sprite = uiSprite; // Use Unity's default UI sprite
+        greenFillImg.color = marker.healthFullColor;
+        greenFillImg.raycastTarget = false;
+        greenFillImg.type = Image.Type.Filled;
+        greenFillImg.fillMethod = Image.FillMethod.Vertical;
+        greenFillImg.fillOrigin = (int)Image.OriginVertical.Bottom; // Fill from bottom
+        greenFillImg.fillAmount = 1f; // Start at full
+        
+        RectTransform greenFillRT = greenFillGO.GetComponent<RectTransform>();
+        greenFillRT.anchorMin = Vector2.zero;
+        greenFillRT.anchorMax = Vector2.one;
+        greenFillRT.sizeDelta = Vector2.zero; // Fill parent
+        greenFillRT.anchoredPosition = Vector2.zero;
+        
+        _healthBarGreenFills[marker] = greenFillImg;
+        
+        if (debugLog)
+            FileLogger.Log($"Green fill created - Color: {greenFillImg.color}, Type: {greenFillImg.type}, FillMethod: {greenFillImg.fillMethod}, FillAmount: {greenFillImg.fillAmount}, Sprite: {(greenFillImg.sprite == null ? "null (using default)" : greenFillImg.sprite.name)}", "HealthBar");
+        
+        // Initially hide health bar (will show when weapon mounted)
+        bgGO.SetActive(false);
+    }
+    
+    /// <summary>
+    /// Create a ready status indicator (circle) for a marker.
+    /// </summary>
+    void CreateReadyIndicator(MountHUDMarker marker, Transform parent)
+    {
+        GameObject circleGO = new GameObject($"ReadyIndicator_{marker.gameObject.name}");
+        circleGO.transform.SetParent(parent, false);
+        
+        Image circleImg = circleGO.AddComponent<Image>();
+        // Use a circle sprite - we'll create a simple filled circle
+        // For now, use a solid color square and make it look round with transparency
+        circleImg.color = marker.notReadyColor; // Start as not ready
+        circleImg.raycastTarget = false;
+        
+        RectTransform circleRT = circleGO.GetComponent<RectTransform>();
+        circleRT.anchorMin = new Vector2(0.5f, 0.5f);
+        circleRT.anchorMax = new Vector2(0.5f, 0.5f);
+        circleRT.pivot = new Vector2(0.5f, 0.5f);
+        circleRT.sizeDelta = new Vector2(marker.readyIndicatorSize, marker.readyIndicatorSize);
+        circleRT.anchoredPosition = marker.readyIndicatorOffset;
+        
+        _readyIndicators[marker] = circleImg;
+        
+        // Initially hide ready indicator (will show when weapon mounted)
+        circleGO.SetActive(false);
+    }
+    
+    /// <summary>
+    /// Update health bar visibility and fill amount based on mounted weapon's Health component.
+    /// </summary>
+    void UpdateHealthBars()
+    {
+        foreach (var marker in _markers)
+        {
+            if (!marker.showHealthBar)
+                continue;
+            
+            if (!_healthBarBackgrounds.TryGetValue(marker, out Image bgImg) || bgImg == null)
+            {
+                if (debugLog)
+                    FileLogger.Log("Health bar background missing or null", "HealthBar");
+                continue;
+            }
+            
+            if (!_healthBarGreenFills.TryGetValue(marker, out Image greenFillImg) || greenFillImg == null)
+            {
+                if (debugLog)
+                    FileLogger.Log("Green fill image missing or null", "HealthBar");
+                continue;
+            }
+            
+            if (!_healthBarRedFills.TryGetValue(marker, out Image redFillImg) || redFillImg == null)
+            {
+                if (debugLog)
+                    FileLogger.Log("Red fill image missing or null", "HealthBar");
+                continue;
+            }
+            
+            // Check if mount is occupied
+            if (!marker.IsOccupied())
+            {
+                // Hide health bar when empty
+                if (bgImg.gameObject.activeSelf)
+                    bgImg.gameObject.SetActive(false);
+                continue;
+            }
+            
+            // Get mounted weapon
+            ProjectileLauncher weapon = marker.GetMountedWeapon();
+            if (weapon == null)
+            {
+                if (bgImg.gameObject.activeSelf)
+                    bgImg.gameObject.SetActive(false);
+                continue;
+            }
+            
+            // Get Health component (check root and children)
+            Health health = weapon.GetComponentInChildren<Health>();
+            if (health == null)
+            {
+                if (debugLog && bgImg.gameObject.activeSelf)
+                    Debug.LogWarning($"[ShipHUDDisplay] No Health component on {weapon.gameObject.name} or its children - health bar hidden");
+                if (bgImg.gameObject.activeSelf)
+                    bgImg.gameObject.SetActive(false);
+                continue;
+            }
+            
+            // Show health bar
+            if (!bgImg.gameObject.activeSelf)
+            {
+                bgImg.gameObject.SetActive(true);
+                if (debugLog)
+                    FileLogger.Log($"Showing health bar for {weapon.gameObject.name}, Health on: {health.gameObject.name}", "HealthBar");
+            }
+            
+            // Calculate health percentage
+            float healthPercent = health.maxHealth > 0 ? (float)health.currentHealth / health.maxHealth : 0f;
+            
+            // Log health bar update details
+            if (debugLog)
+            {
+                FileLogger.Log($"Weapon: {weapon.gameObject.name} | Health: {health.currentHealth}/{health.maxHealth} = {healthPercent:F2} ({healthPercent * 100f:F0}%) | " +
+                              $"GreenFill: {greenFillImg.fillAmount:F2} -> {healthPercent:F2} | " +
+                              $"GreenActive: {greenFillImg.gameObject.activeSelf} | RedActive: {redFillImg.gameObject.activeSelf} | " +
+                              $"GreenColor: {greenFillImg.color} | RedColor: {redFillImg.color}", "HealthBar");
+            }
+            
+            // Update green fill (healthy part) - fills from bottom up to health percentage
+            // At 100% health: green covers entire bar (red hidden underneath)
+            // At 50% health: green fills bottom 50%, red visible in top 50%
+            // At 0% health: green is empty, entire bar shows red
+            greenFillImg.fillAmount = healthPercent;
+        }
+    }
+    
+    /// <summary>
+    /// Update ready indicator visibility and color based on mounted weapon's ready status.
+    /// </summary>
+    void UpdateReadyIndicators()
+    {
+        foreach (var marker in _markers)
+        {
+            if (!marker.showReadyIndicator)
+                continue;
+            
+            if (!_readyIndicators.TryGetValue(marker, out Image indicatorImg) || indicatorImg == null)
+                continue;
+            
+            // Check if mount is occupied
+            if (!marker.IsOccupied())
+            {
+                // Hide indicator when empty
+                if (indicatorImg.gameObject.activeSelf)
+                    indicatorImg.gameObject.SetActive(false);
+                continue;
+            }
+            
+            // Get mounted weapon
+            ProjectileLauncher weapon = marker.GetMountedWeapon();
+            if (weapon == null)
+            {
+                if (indicatorImg.gameObject.activeSelf)
+                    indicatorImg.gameObject.SetActive(false);
+                continue;
+            }
+            
+            // Show indicator
+            if (!indicatorImg.gameObject.activeSelf)
+                indicatorImg.gameObject.SetActive(true);
+            
+            // Update color based on ready status
+            bool isReady = weapon.IsReadyToFire();
+            indicatorImg.color = isReady ? marker.readyColor : marker.notReadyColor;
         }
     }
     
@@ -261,12 +530,29 @@ public class ShipHUDDisplay : MonoBehaviour
     /// </summary>
     public void RefreshMarkers()
     {
-        // Clear old marker images
+        // Clear old marker images and indicators
         foreach (var img in _markerImages.Values)
         {
             if (img != null)
                 Destroy(img.gameObject);
         }
+        
+        foreach (var img in _healthBarBackgrounds.Values)
+        {
+            if (img != null)
+                Destroy(img.gameObject);
+        }
+        
+        foreach (var img in _healthBarBackgrounds.Values)
+        {
+            if (img != null)
+                Destroy(img.gameObject);
+        }
+        
+        _healthBarBackgrounds.Clear();
+        _healthBarGreenFills.Clear();
+        _healthBarRedFills.Clear();
+        _readyIndicators.Clear();
         
         // Rebuild
         FindMarkers();

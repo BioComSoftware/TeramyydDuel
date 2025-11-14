@@ -5028,6 +5028,7 @@ MonoBehaviour:
   onDeath:
     m_PersistentCalls:
       m_Calls: []
+  debugLog: 1
 --- !u!114 &5705238583678643015
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5042,8 +5043,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CannonSelfDamage
   cannon: {fileID: 79155038296863490}
   health: {fileID: 1849268559633723962}
-  damagePerShot: 0.5
-  minShotInterval: 0.05
+  damagePerShot: 10
+  minShotInterval: 0.5
 --- !u!1 &8476912020050355197
 GameObject:
   m_ObjectHideFlags: 0
@@ -9994,6 +9995,9 @@ MonoBehaviour:
   spawnOffset: 1
   angleSpreadDegrees: 5
   speedJitterPercent: 5
+  reloadTime: 0
+  startReady: 1
+  debugLog: 1
   fireClip: {fileID: 8300000, guid: d3d060208dd77d74589f04fec72a75ff, type: 3}
   fireVolume: 1
   pitchRange: {x: 0.95, y: 1.05}

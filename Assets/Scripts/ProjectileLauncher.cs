@@ -22,6 +22,47 @@ public class ProjectileLauncher : MonoBehaviour
     public float angleSpreadDegrees = 5f;
     [Tooltip("Random speed variance as a percentage of launchSpeed (e.g., 5 means +/-5%). Lower = more consistent speed.")]
     public float speedJitterPercent = 5f;
+    
+    [Header("Reload Settings")]
+    [Tooltip("Time in seconds before weapon can fire again after firing")]
+    public float reloadTime = 2f;
+    
+    [Tooltip("Can this weapon fire immediately at start, or does it need to reload first?")]
+    public bool startReady = true;
+    
+    [Header("Debug")]
+    [Tooltip("Enable debug logging")]
+    public bool debugLog = false;
+    
+    // Runtime state
+    private float _nextFireTime = 0f;
+    
+    /// <summary>
+    /// Check if this weapon is ready to fire (not reloading).
+    /// </summary>
+    public bool IsReadyToFire()
+    {
+        return Time.time >= _nextFireTime;
+    }
+    
+    /// <summary>
+    /// Get remaining reload time in seconds. Returns 0 if ready.
+    /// </summary>
+    public float GetRemainingReloadTime()
+    {
+        float remaining = _nextFireTime - Time.time;
+        return remaining > 0f ? remaining : 0f;
+    }
+    
+    void Start()
+    {
+        // If weapon doesn't start ready, set initial reload time
+        if (!startReady)
+        {
+            _nextFireTime = Time.time + reloadTime;
+        }
+    }
+    
     void Update()
     {
         if (Input.GetKeyDown(fireKey))
@@ -32,6 +73,14 @@ public class ProjectileLauncher : MonoBehaviour
 
     protected virtual void FireProjectile()
     {
+        // Check if weapon is ready to fire
+        if (!IsReadyToFire())
+        {
+            if (debugLog)
+                Debug.Log($"[ProjectileLauncher] Weapon not ready. Reloading... ({GetRemainingReloadTime():F1}s remaining)");
+            return;
+        }
+        
         if (projectilePrefab == null)
         {
             Debug.LogWarning("ProjectileLauncher: No projectile prefab assigned!");
@@ -118,6 +167,9 @@ public class ProjectileLauncher : MonoBehaviour
             Physics.IgnoreCollision(projCol, cannonCol);
         }
 
+        // Set reload time
+        _nextFireTime = Time.time + reloadTime;
+        
         Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={(launchSpeed * speedMul):F1}, spread={angleSpreadDegrees:F1}");
     }
 }
