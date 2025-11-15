@@ -2,24 +2,35 @@ using UnityEngine;
 
 /// <summary>
 /// JetEngine: Specialized engine subclass for atmospheric/space jet propulsion.
-/// Represents a specific mode of being-in-motion within the ship system.
-/// Inherits the hermeneutic circle from Engine base class.
+/// Extends base Engine with heat management that affects power output and efficiency.
+/// Inherits full thrust/power/priority system from Engine base class.
 /// </summary>
 [AddComponentMenu("Teramyyd/Ship Systems/Jet Engine")]
 public class JetEngine : Engine
 {
-    [Header("Jet Engine Specifics")]
-    [Tooltip("Efficiency modifier for jet propulsion (1.0 = standard, >1.0 = more efficient).")]
-    public float jetEfficiency = 1.0f;
+    [Header("Heat Management")]
+    [Tooltip("Maximum safe operating temperature.")]
+    public float maxSafeTemperature = 100f;
     
     [Tooltip("Heat generation per second at 100% burn.")]
-    public float heatGenerationPerSecond = 10f;
+    public float heatGenerationRate = 10f;
     
-    [SerializeField] private float _currentHeat = 0f;
-    [SerializeField] private float _maxHeat = 100f;
+    [Tooltip("Heat dissipation per second when idle.")]
+    public float heatDissipationRate = 5f;
     
-    public float CurrentHeat => _currentHeat;
-    public float MaxHeat => _maxHeat;
+    [Tooltip("Power output penalty per degree above safe temperature.")]
+    [Range(0f, 0.1f)]
+    public float heatEfficiencyPenalty = 0.01f;
+    
+    [Tooltip("Damage per second when overheated.")]
+    public float overheatDamageRate = 5f;
+    
+    [Header("Heat Status (Read-Only)")]
+    [SerializeField] private float _currentTemperature = 0f;
+    [SerializeField] private bool _isOverheating = false;
+    
+    public float CurrentTemperature => _currentTemperature;
+    public bool IsOverheating => _isOverheating;
     
     protected override void Start()
     {
@@ -27,88 +38,101 @@ public class JetEngine : Engine
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} [JetEngine] - Efficiency: {jetEfficiency}, HeatGen: {heatGenerationPerSecond}/s", "JetEngine");
+            FileLogger.Log($"{gameObject.name} [JetEngine] - MaxTemp: {maxSafeTemperature}, HeatGen: {heatGenerationRate}/s, Dissipation: {heatDissipationRate}/s", "JetEngine");
         }
     }
     
-    protected override void Update()
+    protected override void FixedUpdate()
     {
-        base.Update();
+        // Manage heat BEFORE calculating power (heat affects power output)
+        ManageHeat(Time.fixedDeltaTime);
         
-        // Jet-specific: Manage heat
-        ManageHeat(Time.deltaTime);
+        // Call base to handle power/thrust/allocation
+        base.FixedUpdate();
     }
     
-    protected override void CalculateOutputs()
+    /// <summary>
+    /// Override power calculation to include heat efficiency penalty.
+    /// </summary>
+    protected override void CalculatePowerOutput()
     {
-        // Calculate base outputs
-        base.CalculateOutputs();
+        // Calculate base power from burn rate
+        float burnMultiplier = burnRatePercent / 100f;
+        float basePower = maxPowerPerSecond * burnMultiplier;
         
-        // Apply jet efficiency modifier to thrust
-        _actualThrustOutput *= jetEfficiency;
-        
-        // If overheating, reduce efficiency
-        if (_currentHeat > _maxHeat * 0.8f)
+        // Apply heat efficiency penalty if overheating
+        float heatPenalty = 0f;
+        if (_currentTemperature > maxSafeTemperature)
         {
-            float overheatPenalty = 1f - ((_currentHeat - _maxHeat * 0.8f) / (_maxHeat * 0.2f)) * 0.5f;
-            _actualThrustOutput *= overheatPenalty;
-            
-            if (debugLog)
-            {
-                FileLogger.Log($"{gameObject.name} overheating - thrust reduced by {(1f - overheatPenalty) * 100f:F1}%", "JetEngine");
-            }
+            float excessHeat = _currentTemperature - maxSafeTemperature;
+            heatPenalty = excessHeat * heatEfficiencyPenalty;
+            heatPenalty = Mathf.Clamp01(heatPenalty); // Max 100% penalty
+        }
+        
+        _currentPowerOutput = basePower * (1f - heatPenalty);
+        
+        // Calculate damage rate based on burn multiplier
+        _damagePerSecond = usageDamagePerSecond * burnMultiplier;
+        
+        onPowerOutputChanged?.Invoke(_currentPowerOutput);
+        
+        if (debugLog && Time.frameCount % 120 == 0)
+        {
+            FileLogger.Log($"{gameObject.name} - Temp: {_currentTemperature:F1}/{maxSafeTemperature}, Power: {_currentPowerOutput:F1}/{basePower:F1} (penalty: {heatPenalty * 100f:F1}%)", "JetEngine");
         }
     }
     
     /// <summary>
     /// Manage heat generation and dissipation.
-    /// Temporal-thermal dialectic: Heat accumulates (being-towards-overload) and dissipates (return-to-equilibrium).
+    /// Heat accumulates during operation and dissipates when idle/low burn.
     /// </summary>
     void ManageHeat(float deltaTime)
     {
         // Generate heat based on burn rate
         float burnMultiplier = burnRatePercent / 100f;
-        float heatGenerated = heatGenerationPerSecond * burnMultiplier * deltaTime;
+        float heatGenerated = heatGenerationRate * burnMultiplier * deltaTime;
         
-        // Natural heat dissipation (10% of max heat per second)
-        float heatDissipated = (_maxHeat * 0.1f) * deltaTime;
+        // Dissipate heat (scales with how far we are from max temp)
+        float dissipationEfficiency = _currentTemperature / (maxSafeTemperature * 2f); // More efficient when hotter
+        float heatDissipated = heatDissipationRate * (1f + dissipationEfficiency) * deltaTime;
         
-        // Update current heat
-        _currentHeat += heatGenerated - heatDissipated;
-        _currentHeat = Mathf.Clamp(_currentHeat, 0f, _maxHeat * 1.2f); // Can overheat up to 120%
+        // Update current temperature
+        _currentTemperature += heatGenerated - heatDissipated;
+        _currentTemperature = Mathf.Max(0f, _currentTemperature);
         
-        // Critical overheat damage
-        if (_currentHeat > _maxHeat)
+        // Check overheat status
+        _isOverheating = _currentTemperature > maxSafeTemperature;
+        
+        // Apply overheat damage
+        if (_isOverheating && healthComponent != null)
         {
-            float overheatDamage = (_currentHeat - _maxHeat) * 0.5f * deltaTime;
+            float excessHeat = _currentTemperature - maxSafeTemperature;
+            float overheatDamage = overheatDamageRate * (excessHeat / maxSafeTemperature) * deltaTime;
             int damageToApply = Mathf.FloorToInt(overheatDamage);
             
-            if (damageToApply > 0 && healthComponent != null)
+            if (damageToApply > 0)
             {
                 healthComponent.TakeDamage(damageToApply);
                 
                 if (debugLog)
                 {
-                    FileLogger.Log($"{gameObject.name} taking {damageToApply} overheat damage! Heat: {_currentHeat:F1}/{_maxHeat}", "JetEngine");
+                    FileLogger.Log($"{gameObject.name} taking {damageToApply} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature}", "JetEngine");
                 }
             }
         }
     }
     
     /// <summary>
-    /// Emergency heat dump - reduces heat at cost of power/thrust interruption.
-    /// Player tactical choice: Trade immediate capability for thermal safety.
+    /// Emergency heat dump - reduces burn rate to cool down.
+    /// Player tactical choice: Trade thrust for thermal safety.
     /// </summary>
     public void EmergencyHeatDump()
     {
-        _currentHeat *= 0.5f; // Dump 50% of heat
-        burnRatePercent *= 0.3f; // Temporarily reduce burn to 30%
+        burnRatePercent = Mathf.Max(25f, burnRatePercent * 0.3f); // Drop to 30% or minimum 25%
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} emergency heat dump - Heat: {_currentHeat:F1}, Burn reduced to {burnRatePercent:F1}%", "JetEngine");
+            FileLogger.Log($"{gameObject.name} emergency heat dump - Burn reduced to {burnRatePercent:F1}%", "JetEngine");
         }
-        
-        CalculateOutputs();
     }
 }

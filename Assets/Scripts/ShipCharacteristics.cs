@@ -84,47 +84,38 @@ public class ShipCharacteristics : MonoBehaviour
     
     void FixedUpdate()
     {
-        // Hermeneutic calculation: Thrust (possibility) acts upon mass (thrownness) to produce velocity (being-in-motion)
-        CalculateMovement(Time.fixedDeltaTime);
+        // Update movement tracking
+        UpdateMovementTracking();
     }
     
     /// <summary>
-    /// The hermeneutic core of ship movement:
-    /// Engines (parts) provide thrust → Ship mass (whole) resists → Velocity emerges from dialectic
+    /// Update velocity and speed tracking.
+    /// Engine.ApplyThrust() now handles force application directly.
     /// </summary>
-    void CalculateMovement(float deltaTime)
+    void UpdateMovementTracking()
     {
-        // Aggregate total thrust from all engines
-        _totalThrustAvailable = 0f;
-        foreach (var engine in engines)
-        {
-            if (engine != null && engine.enabled)
-            {
-                _totalThrustAvailable += engine.ActualThrustOutput;
-            }
-        }
-        
-        // Calculate acceleration: F = ma → a = F/m
-        // Thrust is force in Newtons, mass is in kg (tons * 1000)
-        float massKg = shipWeightTons * 1000f;
-        _accelerationMPS2 = _totalThrustAvailable / massKg;
-        
-        // Apply thrust in forward direction
-        Vector3 thrustForce = transform.forward * _totalThrustAvailable;
-        rb.AddForce(thrustForce, ForceMode.Force);
-        
-        // Apply drag (resistance proportional to velocity squared)
-        Vector3 dragForce = -rb.linearVelocity * rb.linearVelocity.magnitude * dragCoefficient;
-        rb.AddForce(dragForce, ForceMode.Force);
-        
         // Update velocity tracking
         _velocity = rb.linearVelocity;
         _currentSpeedMetersPerSecond = _velocity.magnitude;
         _currentSpeedKnots = _currentSpeedMetersPerSecond * MPS_TO_KNOTS;
         
+        // Track total available thrust for display purposes
+        _totalThrustAvailable = 0f;
+        foreach (var engine in engines)
+        {
+            if (engine != null && engine.enabled)
+            {
+                _totalThrustAvailable += engine.ActualForceNewtons;
+            }
+        }
+        
+        // Calculate current acceleration
+        float massKg = shipWeightTons * 1000f;
+        _accelerationMPS2 = (massKg > 0f) ? _totalThrustAvailable / massKg : 0f;
+        
         if (debugLog && Time.frameCount % 60 == 0) // Log once per second (at 60fps)
         {
-            FileLogger.Log($"{gameObject.name} - Thrust: {_totalThrustAvailable:F1}N, Accel: {_accelerationMPS2:F2}m/s², Speed: {_currentSpeedKnots:F1}kt ({_currentSpeedMetersPerSecond:F1}m/s), Engines: {engines.Count}", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} - Speed: {_currentSpeedKnots:F1}kt ({_currentSpeedMetersPerSecond:F1}m/s), TotalThrust: {_totalThrustAvailable:F1}N, Engines: {engines.Count}", "ShipCharacteristics");
         }
     }
     
