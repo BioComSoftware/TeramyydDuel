@@ -20,16 +20,23 @@ public class Projectile : MonoBehaviour
         }
     }
 
-    // We’re using standard (non-trigger) colliders, so use OnCollisionEnter
+        // We're using standard (non-trigger) colliders, so use OnCollisionEnter
     void OnCollisionEnter(Collision collision)
     {
         GameObject other = collision.gameObject;
+        
+        FileLogger.Log($"{gameObject.name} hit {other.name} at {collision.contacts[0].point}", "Projectile");
 
         // 1️⃣ Attempt to find the Health component on what we hit
         Health targetHealth = other.GetComponent<Health>();
         if (targetHealth != null)
         {
             targetHealth.TakeDamage(damage);
+            FileLogger.Log($"{gameObject.name} dealt {damage} damage to {other.name}", "Projectile");
+        }
+        else
+        {
+            FileLogger.Log($"{gameObject.name} hit {other.name} but it has no Health component", "Projectile");
         }
 
         // 2️⃣ Optional: Spawn impact effect at collision point
@@ -40,6 +47,7 @@ public class Projectile : MonoBehaviour
         }
 
         // 3️⃣ Destroy the projectile after applying damage
+        FileLogger.Log($"{gameObject.name} destroying self after impact", "Projectile");
         Destroy(gameObject);
     }
 }

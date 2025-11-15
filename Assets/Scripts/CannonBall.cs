@@ -12,8 +12,6 @@ public class CannonBall : Projectile
     public GameObject shrapnelPrefab;           // Prefab with Rigidbody + Collider + (optional) Projectile
     public int shrapnelCount = 16;              // Number of shrapnel pieces
     public float shrapnelSpeed = 30f;           // Initial speed for shrapnel
-    public float shrapnelLifeTime = 1.5f;       // Lifetime of shrapnel projectiles
-    public int shrapnelDamage = 5;              // Damage per shrapnel hit
     [Tooltip("Small offset along the surface normal to spawn shrapnel outside colliding surface")]
     public float shrapnelSpawnOffset = 0.05f;
     [Range(0f, 1f)] [Tooltip("0 = random directions, 1 = fully biased outward along impact normal")]
@@ -26,8 +24,6 @@ public class CannonBall : Projectile
         if (lifeTime <= 0f) lifeTime = 5f;
         if (shrapnelCount <= 0) shrapnelCount = 16;
         if (shrapnelSpeed <= 0f) shrapnelSpeed = 30f;
-        if (shrapnelLifeTime <= 0f) shrapnelLifeTime = 1.5f;
-        if (shrapnelDamage <= 0) shrapnelDamage = 5;
         if (explosionEffectLifetime <= 0f) explosionEffectLifetime = 2f;
     }
 
@@ -68,7 +64,13 @@ public class CannonBall : Projectile
         // 3) Emit shrapnel pieces (physics will handle occlusion by walls/geometry)
         if (shrapnelPrefab != null && shrapnelCount > 0)
         {
+            FileLogger.Log($"Spawning {shrapnelCount} shrapnel pieces at {hitPoint}", "Shrapnel");
+            
             Vector3 spawnOrigin = hitPoint + hitNormal * shrapnelSpawnOffset;
+            
+            // Track all spawned shrapnel to disable inter-shrapnel collisions
+            GameObject[] shrapnelPieces = new GameObject[shrapnelCount];
+            
             for (int i = 0; i < shrapnelCount; i++)
             {
                 // Random direction on unit sphere, biased toward outward normal
@@ -77,22 +79,86 @@ public class CannonBall : Projectile
 
                 Quaternion rot = Quaternion.LookRotation(dir, Vector3.up);
                 GameObject piece = Instantiate(shrapnelPrefab, spawnOrigin, rot);
+                shrapnelPieces[i] = piece;
+                
+                // Check if shrapnel is visible
+                var renderer = piece.GetComponent<Renderer>();
+                if (renderer == null)
+                {
+                    FileLogger.Log($"WARNING: Shrapnel {i} has NO RENDERER - will be invisible!", "Shrapnel");
+                }
+                else if (!renderer.enabled)
+                {
+                    FileLogger.Log($"WARNING: Shrapnel {i} renderer is DISABLED", "Shrapnel");
+                }
+                else if (renderer.sharedMaterial == null)
+                {
+                    FileLogger.Log($"WARNING: Shrapnel {i} has NO MATERIAL - will be invisible!", "Shrapnel");
+                }
+                else
+                {
+                    FileLogger.Log($"Shrapnel {i} renderer OK: enabled={renderer.enabled}, material={renderer.sharedMaterial.name}", "Shrapnel");
+                }
+                
+                FileLogger.Log($"Spawned shrapnel {i}: {piece.name} at {spawnOrigin}, direction {dir}, scale={piece.transform.localScale}", "Shrapnel");
 
-                // If the shrapnel has a Projectile component, configure its damage and lifetime
+                // Ensure the shrapnel has a Rigidbody (required for physics)
+                var rb = piece.GetComponent<Rigidbody>();
+                if (rb == null)
+                {
+                    rb = piece.AddComponent<Rigidbody>();
+                    rb.mass = 0.1f; // Light shrapnel
+                    rb.useGravity = true;
+                    FileLogger.Log($"Added Rigidbody to shrapnel {i}", "Shrapnel");
+                }
+                
+                // Apply initial velocity
+                rb.linearVelocity = dir * shrapnelSpeed;
+                
+                // Add random angular velocity (spin)
+                rb.angularVelocity = Random.insideUnitSphere * 10f; // Random spin on all axes
+                
+                FileLogger.Log($"Set shrapnel {i} velocity to {rb.linearVelocity} (speed={shrapnelSpeed})", "Shrapnel");
+
+                // If the shrapnel has a Projectile component, use its damage and lifetime
                 var proj = piece.GetComponent<Projectile>();
                 if (proj != null)
                 {
-                    proj.damage = shrapnelDamage;
-                    if (shrapnelLifeTime > 0f) proj.lifeTime = shrapnelLifeTime;
+                    // Use the prefab's own settings - don't override
+                    FileLogger.Log($"Shrapnel {i} using Projectile settings: damage={proj.damage}, lifetime={proj.lifeTime}", "Shrapnel");
                 }
-
-                // Apply initial velocity via Rigidbody if present
-                var rb = piece.GetComponent<Rigidbody>();
-                if (rb != null)
+                else
                 {
-                    rb.linearVelocity = dir * shrapnelSpeed;
+                    // No Projectile component - add SimpleShrapnel with default values
+                    var shrapnel = piece.AddComponent<SimpleShrapnel>();
+                    shrapnel.damage = 5;  // Default damage if no Projectile
+                    shrapnel.lifeTime = 1.5f;  // Default lifetime if no Projectile
+                    FileLogger.Log($"Added SimpleShrapnel to shrapnel {i}: damage={shrapnel.damage}, lifetime={shrapnel.lifeTime}", "Shrapnel");
                 }
             }
+            
+            // Disable collisions between all shrapnel pieces
+            for (int i = 0; i < shrapnelPieces.Length; i++)
+            {
+                for (int j = i + 1; j < shrapnelPieces.Length; j++)
+                {
+                    var col1 = shrapnelPieces[i].GetComponent<Collider>();
+                    var col2 = shrapnelPieces[j].GetComponent<Collider>();
+                    if (col1 != null && col2 != null)
+                    {
+                        Physics.IgnoreCollision(col1, col2);
+                    }
+                }
+            }
+            
+            FileLogger.Log("Disabled inter-shrapnel collisions", "Shrapnel");
+        }
+        else
+        {
+            if (shrapnelPrefab == null)
+                FileLogger.Log("Shrapnel prefab is NULL - no shrapnel spawned", "Shrapnel");
+            if (shrapnelCount <= 0)
+                FileLogger.Log($"Shrapnel count is {shrapnelCount} - no shrapnel spawned", "Shrapnel");
         }
 
         // 4) Destroy the cannonball after impact processing

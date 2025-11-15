@@ -5043,7 +5043,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CannonSelfDamage
   cannon: {fileID: 79155038296863490}
   health: {fileID: 1849268559633723962}
-  damagePerShot: 10
+  damagePerShot: 0.5
   minShotInterval: 0.5
 --- !u!1 &8476912020050355197
 GameObject:
