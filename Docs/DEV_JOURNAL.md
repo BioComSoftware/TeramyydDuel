@@ -1,5 +1,148 @@
 # Teramyyd Game Development Journal
 
+## AI Snapshot (2025-11-15 — Ship Physics: Engines, Lift Devices, Direct Altitude Control)
+
+Purpose: Implemented comprehensive ship systems for thrust, lift, and movement with direct altitude control (no physics forces).
+
+**New Ship Systems Created**
+
+1. **Engine.cs** — Base class for all engine types
+   - Power management: allocatedPowerPerSecond (0-100), converts to thrust via power-to-thrust ratio
+   - Burn rate control: burnRateMultiplier (0-300%), affects power consumption and damage
+   - Health integration: Takes damage over time based on burn rate
+   - Auto-finds ShipCharacteristics parent for thrust application
+   - Protected fields for subclass extension (_actualThrustOutput, _powerConsumption, etc.)
+
+2. **JetEngine.cs** — Specialized engine with heat management
+   - Extends Engine with heat generation/dissipation mechanics
+   - Heat accumulates during operation, dissipates when idle
+   - Overheat damage: Applies additional damage when heat exceeds max safe temperature
+   - Emergency heat dump: Temporary thrust reduction to cool down
+   - Heat efficiency: Higher heat reduces effective thrust output
+
+3. **ShipCharacteristics.cs** — Ship-level physics coordinator
+   - Mass management: shipWeightTons converted to kg for Rigidbody (tons * 1000)
+   - Engine aggregation: Finds all Engine children, sums total thrust
+   - Movement calculation: F=ma physics (thrust ÷ mass = acceleration)
+   - Gravity control: useGravity enabled by default for lift devices to counteract
+   - **Rotation locked**: RigidbodyConstraints.FreezeRotation prevents tumbling during lift
+   - Drag coefficient: Configurable air/space resistance
+
+4. **LiftDevice.cs** — Base class for anti-gravity and lift systems
+   - **Direct altitude control**: Moves ship position directly, no physics forces
+   - **Gravity management**: Disables gravity when power > 0, enables when power = 0
+   - Power-based operation:
+     - Power = 0: Gravity enabled, Unity physics handles fall
+     - Power > 0: Gravity disabled, direct altitude control active
+   - Hover mechanics (Power = Minimum):
+     - Perfect hover: allocatedPowerPerSecond = minimumPowerPerSecond → 0 m/s vertical velocity
+     - Auto-allocates minimum power at start if not set
+   - Climb mechanics (Power > Minimum):
+     - Velocity = excessPower / (shipWeightTons * powerPerTonPerMeterPerSecond)
+     - Example: 30 tons, PPTPMPS=1, power=45 → excess=15 → velocity = 0.5 m/s ✓
+     - Example: 30 tons, PPTPMPS=1, power=60 → excess=30 → velocity = 1.0 m/s ✓
+   - Descent mechanics (Power < Minimum):
+     - Controlled fall at rate: 9.82 m/s * (1 - powerRatio)
+     - Example: power=15, min=30, ratio=0.5 → descent = 4.91 m/s ✓
+     - Example: power=7.5, min=30, ratio=0.25 → descent = 7.365 m/s ✓
+     - No acceleration during powered descent (constant velocity)
+   - Usage damage: Continuous wear based on power consumption
+   - Health integration: Device failure on health depletion
+
+5. **AntiGravityDevice.cs** — Anti-gravity implementation
+   - Extends LiftDevice with field efficiency/stability
+   - Field efficiency: Multiplier on effective power (>1.0 = more efficient)
+   - Field stability: Affects lift force consistency (<1.0 = fluctuating)
+   - Overload protection: Damage when field strength exceeds safe limits
+   - Altitude measurement: Real-time altitude with calibration offset
+   - Emergency boost: Increase efficiency at cost of stability
+   - Power calculation helpers: CalculatePowerForVelocity(), CalculateMinimumHoverPower()
+
+**Physics Implementation Details**
+
+Lift Device Altitude Control:
+- Uses Rigidbody.MovePosition() for smooth, physics-aware movement
+- Maintains ship attitude perfectly (no rotation from lift operations)
+- Power = 0: Switches to Unity gravity for natural fall
+- Power > 0: Direct vertical movement at calculated velocity
+- Ship maintains exact pitch/roll/yaw during all lift operations
+- Works at any ship orientation (nose-down, banking, etc.)
+
+Ship Rigidbody Configuration:
+- Mass: shipWeightTons * 1000 (kilograms for physics)
+- Gravity: Enabled (lift devices counteract when powered)
+- Constraints: FreezeRotation (prevents tumbling from ground contact or lift)
+- Linear Damping: 0.1 (slight air resistance)
+- Angular Damping: 1.0 (rotation stability)
+
+**Key Operational Parameters**
+
+Example Ship (30 tons):
+- minimumPowerPerSecond = 30 (hover power)
+- powerPerTonPerMeterPerSecond = 1 (climb rate multiplier)
+- shipWeightTons = 30
+- Power Settings:
+  - 0: Falls at 9.82 m/s² (Unity gravity)
+  - 15: Descends at 4.91 m/s (constant)
+  - 30: Perfect hover (0 m/s)
+  - 45: Climbs at 0.5 m/s
+  - 60: Climbs at 1.0 m/s
+  - 120: Climbs at 3.0 m/s
+
+**Architecture Decisions**
+
+1. **No Physics Forces for Lift**: Direct position control via MovePosition() ensures predictable, non-accelerating vertical movement
+2. **Gravity Toggle**: Power on/off controls whether Unity gravity affects the ship
+3. **Frozen Rotation**: Ship maintains attitude during lift operations; separate attitude controls will be added later
+4. **Power Auto-Allocation**: Lift devices auto-set to minimum power at start for immediate hover capability
+5. **Modular Design**: Engine and LiftDevice are independent systems that can be mixed/matched
+
+**File Locations**
+- Assets/Scripts/Engine.cs
+- Assets/Scripts/JetEngine.cs
+- Assets/Scripts/ShipCharacteristics.cs
+- Assets/Scripts/LiftDevice.cs
+- Assets/Scripts/AntiGravityDevice.cs
+
+**Setup Instructions**
+
+Ship Root GameObject:
+1. Add ShipCharacteristics component
+   - Set shipWeightTons (e.g., 30)
+   - Set dragCoefficient (e.g., 0.5)
+   - Rigidbody will be auto-created with correct settings
+
+Engine GameObject (child of Ship):
+1. Add JetEngine component (or Engine for basic)
+   - Set allocatedPowerPerSecond (0-100)
+   - Set powerToThrustRatio (e.g., 1000 N per unit power)
+   - Set burnRateMultiplier (100-300%, affects power draw and damage)
+   - Add Health component for damage tracking
+
+Lift Device GameObject (child of Ship):
+1. Add AntiGravityDevice component (or LiftDevice for basic)
+   - Set minimumPowerPerSecond (should equal ship weight in tons for 1:1 hover)
+   - Set powerPerTonPerMeterPerSecond (1 = standard climb rate)
+   - Set allocatedPowerPerSecond (auto-sets to minimum if 0)
+   - Set altitudeCalibration (offset for altitude reading)
+   - Add Health component for damage tracking
+   - For AntiGravityDevice: Set fieldEfficiency (1.0 standard) and fieldStability (1.0 perfect)
+
+**Known Issues Resolved**
+- ✅ Ship climbing rapidly at game start: Fixed by correcting power allocation and velocity calculation
+- ✅ Ship tumbling after ground contact: Fixed by freezing rotation in Rigidbody
+- ✅ Descent acceleration: Fixed by using constant descent velocity instead of gravity forces
+- ✅ Mass calculation error: Fixed by converting tons to kg (tons * 1000)
+- ✅ Compilation errors: Fixed duplicate code and variable declarations in LiftDevice.cs
+
+**Next Steps**
+- [ ] Add attitude control system (pitch/roll/yaw)
+- [ ] Implement power distribution system (allocate power between engines/lift/weapons)
+- [ ] Add visual feedback for lift device operation (field effects, etc.)
+- [ ] Create UI for power allocation controls
+- [ ] Add engine visual effects (exhaust, heat distortion)
+- [ ] Implement damage effects on engine performance degradation
+
 ## AI Snapshot (2025-11-14 — Mount orientation, debug controls, HUD markers)
 
 Purpose: lock in weapon mount orientation rules, runtime dev controls for pivots, launcher variance knobs, and HUD ship representation markers by occupancy/type.

@@ -93,7 +93,7 @@ public class WeaponMount : MonoBehaviour
         }
         return path;
     }
-
+ 
     void Update()
     {
         // Check if mounted weapon was destroyed externally (e.g., by Health component)

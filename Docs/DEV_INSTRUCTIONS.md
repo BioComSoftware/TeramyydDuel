@@ -2,7 +2,205 @@
 
 This document explains how to place, wire, and test the main scripts in this project. It is written for designers/devs authoring ships, mounts, and prefabs — not for players. The goal is a predictable authoring contract with minimal surprises.
 
-## ProjectileLauncher (on a weapon prefab, e.g., Cannon)
+## Table of Contents
+1. [Ship Systems](#ship-systems)
+   - [ShipCharacteristics](#shipcharacteristics)
+   - [Engine & JetEngine](#engine--jetengine)
+   - [LiftDevice & AntiGravityDevice](#liftdevice--antigravitydevice)
+2. [Weapon Systems](#weapon-systems)
+   - [ProjectileLauncher](#projectilelauncher)
+   - [Cannon](#cannon)
+   - [CannonBall](#cannonball)
+   - [Projectile & Shrapnel](#projectile--shrapnel)
+3. [Mount Systems](#mount-systems)
+4. [HUD Systems](#hud-systems)
+
+---
+
+## Ship Systems
+
+### ShipCharacteristics
+**Purpose**: Central ship physics coordinator; manages mass, aggregates thrust from engines, calculates movement.
+
+**Location**: Attach to Ship root GameObject.
+
+**Key Fields**:
+- `shipWeightTons`: Total ship mass in metric tons (converted to kg internally: tons * 1000)
+- `dragCoefficient`: Air/space resistance (0 = no drag, higher = more resistance)
+- Read-only status: `currentSpeedKnots`, `currentSpeedMetersPerSecond`, `totalThrustAvailable`
+
+**Automatic Setup**:
+- Creates/configures Rigidbody automatically:
+  - Mass = shipWeightTons * 1000 (kilograms)
+  - useGravity = true (lift devices will counteract)
+  - Constraints = FreezeRotation (prevents tumbling)
+  - linearDamping = 0.1, angularDamping = 1.0
+- Finds all Engine children and aggregates thrust
+- Applies F=ma physics: acceleration = totalThrust / mass
+
+**Usage Example**:
+```csharp
+// On Ship root GameObject:
+ShipCharacteristics shipStats = gameObject.AddComponent<ShipCharacteristics>();
+shipStats.shipWeightTons = 30f; // 30-ton ship
+shipStats.dragCoefficient = 0.5f;
+```
+
+### Engine & JetEngine
+**Purpose**: Provides thrust for ship movement; power-based with burn rate control and heat management (JetEngine).
+
+**Location**: Attach to engine GameObject (child of Ship). Ship must have ShipCharacteristics.
+
+**Base Engine Fields**:
+- **Power Control**:
+  - `allocatedPowerPerSecond`: Power input (0-100 units/s)
+  - `powerToThrustRatio`: Newtons of thrust per unit of power (e.g., 1000)
+  - `burnRateMultiplier`: Burn intensity (100-300%, affects power draw and damage)
+- **Damage**:
+  - `usageDamagePerSecond`: Base damage rate
+  - `burnDamageMultiplier`: Extra damage from high burn rates
+  - Requires Health component on same GameObject
+
+**JetEngine Additional Fields** (extends Engine):
+- **Heat Management**:
+  - `maxSafeTemperature`: Maximum safe operating heat (e.g., 100)
+  - `heatGenerationRate`: Heat per second when running
+  - `heatDissipationRate`: Cooling rate when idle
+  - `overheatDamageRate`: Damage per second when overheated
+- **Performance**:
+  - `heatEfficiencyPenalty`: Thrust loss per degree over safe temp
+  - Read-only: `currentTemperature`, `isOverheating`
+
+**Automatic Behavior**:
+- Auto-finds ShipCharacteristics parent
+- Calculates thrust based on power and burn rate
+- Applies usage damage continuously
+- JetEngine: Manages heat, applies overheat damage
+
+**Usage Example**:
+```csharp
+// On engine GameObject (child of Ship):
+JetEngine engine = gameObject.AddComponent<JetEngine>();
+engine.allocatedPowerPerSecond = 50f;
+engine.powerToThrustRatio = 1000f; // 50,000 N thrust at 100% burn
+engine.burnRateMultiplier = 150f; // 50% extra burn
+engine.maxSafeTemperature = 100f;
+
+// Requires Health component
+Health health = gameObject.AddComponent<Health>();
+health.maxHealth = 500;
+```
+
+**Runtime Control**:
+```csharp
+// Adjust power allocation
+engine.allocatedPowerPerSecond = 75f;
+
+// Increase burn for emergency thrust
+engine.burnRateMultiplier = 250f; // Caution: high damage!
+
+// Emergency heat dump (JetEngine only)
+jetEngine.EmergencyHeatDump();
+```
+
+### LiftDevice & AntiGravityDevice
+**Purpose**: Provides vertical lift for ships using direct altitude control (not physics forces).
+
+**Location**: Attach to lift device GameObject (child of Ship). Ship must have ShipCharacteristics.
+
+**Core Mechanics**:
+- **Power = 0**: Gravity enabled, Unity physics handles fall at 9.82 m/s²
+- **Power > 0**: Gravity disabled, direct altitude control active
+- **Auto-allocates** minimum power at start for immediate hover
+
+**LiftDevice Base Fields**:
+- **Power Settings**:
+  - `minimumPowerPerSecond`: Power needed to hover (recommend = shipWeightTons)
+  - `powerPerTonPerMeterPerSecond`: Climb rate multiplier (1 = standard)
+  - `allocatedPowerPerSecond`: Current power input (auto-sets to minimum if 0)
+- **Damage**:
+  - `usageDamagePerSecond`: Wear-and-tear damage rate
+  - Requires Health component
+
+**AntiGravityDevice Additional Fields** (extends LiftDevice):
+- **Field Properties**:
+  - `fieldEfficiency`: Power multiplier (1.0 standard, >1.0 more efficient)
+  - `fieldStability`: Lift consistency (1.0 perfect, <1.0 fluctuating)
+  - `maxSafeFieldStrength`: Overload threshold (% of ship weight)
+  - `altitudeCalibration`: Offset for altitude reading
+- **Read-only Status**:
+  - `currentAltitude`: Current altitude with calibration applied
+  - `fieldStrengthPercent`: Field strength as % of ship weight
+  - `isFieldOverloaded`: Overload warning
+
+**Power-to-Velocity Formula**:
+```
+Hover (power = minimum):
+  verticalVelocity = 0 m/s
+
+Climb (power > minimum):
+  excessPower = allocatedPower - minimumPower
+  verticalVelocity = excessPower / (shipWeightTons * powerPerTonPerMeterPerSecond)
+  
+Descend (power < minimum):
+  powerRatio = allocatedPower / minimumPower
+  descentRate = 9.82 * (1 - powerRatio) m/s
+
+Examples (30-ton ship, PPTPMPS=1, minimum=30):
+  Power = 0   → Falls at 9.82 m/s² (Unity gravity)
+  Power = 7.5 → Descends at 7.365 m/s (constant)
+  Power = 15  → Descends at 4.91 m/s (constant)
+  Power = 30  → Hovers at 0 m/s
+  Power = 45  → Climbs at 0.5 m/s
+  Power = 60  → Climbs at 1.0 m/s
+  Power = 120 → Climbs at 3.0 m/s
+```
+
+**Usage Example**:
+```csharp
+// On lift device GameObject (child of Ship):
+AntiGravityDevice lift = gameObject.AddComponent<AntiGravityDevice>();
+lift.minimumPowerPerSecond = 30f; // Match ship weight (30 tons)
+lift.powerPerTonPerMeterPerSecond = 1f;
+lift.allocatedPowerPerSecond = 30f; // Start at hover (or leave 0 to auto-set)
+lift.fieldEfficiency = 1.2f; // 20% more efficient
+lift.altitudeCalibration = -100f; // Set ground level as altitude 0
+
+// Requires Health component
+Health health = gameObject.AddComponent<Health>();
+health.maxHealth = 300;
+```
+
+**Runtime Control**:
+```csharp
+// Hover
+lift.allocatedPowerPerSecond = lift.minimumPowerPerSecond;
+
+// Climb at 1 m/s (30-ton ship, PPTPMPS=1)
+lift.allocatedPowerPerSecond = 60f; // minimum(30) + 30 = 1 m/s climb
+
+// Descend at ~5 m/s
+lift.allocatedPowerPerSecond = 15f; // 50% power = 50% gravity descent
+
+// Emergency boost (AntiGravityDevice only)
+antiGravLift.EmergencyFieldBoost(); // Increases efficiency, reduces stability
+
+// Calculate power needed for specific climb rate
+float powerNeeded = antiGravLift.CalculatePowerForVelocity(2.0f); // 2 m/s climb
+```
+
+**Important Notes**:
+- Ship maintains exact attitude (pitch/roll/yaw) during all lift operations
+- No tumbling or rotation from ground contact (rotation is frozen)
+- Altitude control works at any ship orientation (nose-down, banking, etc.)
+- Power allocation can be changed at runtime for dynamic control
+- Health depletion causes lift failure → ship falls under gravity
+
+---
+
+## Weapon Systems
+
+### ProjectileLauncher (on a weapon prefab, e.g., Cannon)
 - Purpose: fires projectiles from a spawn point; applies variance (spread/jitter).
 - Key fields:
   - projectilePrefab: the projectile to spawn (must have Rigidbody + Collider; Projectile.cs is recommended).
@@ -19,7 +217,89 @@ This document explains how to place, wire, and test the main scripts in this pro
   - IsReadyToFire(): returns true if weapon can fire (not reloading).
   - GetRemainingReloadTime(): returns seconds remaining until ready (0 if ready).
 
-## WeaponMount (general mount; attach to Ship at each mount location)
+### Cannon
+**Purpose**: Specialized cannon weapon with audio effects (extends ProjectileLauncher).
+
+**Additional Features**:
+- Audio support via child AudioSource at muzzle
+- Spatial 3D audio with configurable min/max distance
+- Optional pitch variance for audio variety
+- All ProjectileLauncher features (spread, jitter, reload, etc.)
+
+**Setup**:
+1. Create Cannon prefab from ProjectileLauncher base
+2. Add Cannon component (replaces or extends ProjectileLauncher)
+3. Child AudioSource will be auto-created at muzzle location
+4. Configure audio clip for firing sound
+
+**Fields** (in addition to ProjectileLauncher):
+- `fireClip`: AudioClip to play when firing
+- `audioMinDistance`: Minimum hearing distance (default: 10)
+- `audioMaxDistance`: Maximum hearing distance (default: 500)
+- `pitchRange`: Random pitch variance (default: 0.1)
+- `fireVolume`: Sound volume (default: 0.8)
+
+### CannonBall
+**Purpose**: Cannon projectile with explosion and shrapnel (extends Projectile).
+
+**Features**:
+- Direct-hit damage to Health components
+- Explosion VFX at impact point
+- Shrapnel spawn with physics-driven spread
+- Shrapnel ignores collision with each other
+- Rotation spin for visual effect
+
+**Fields**:
+- `explosionEffectPrefab`: VFX prefab spawned at impact
+- `explosionEffectLifetime`: How long explosion VFX lives (0 = use VFX Stop Action)
+- `shrapnelPrefab`: Shrapnel prefab (requires Rigidbody + Collider)
+- `shrapnelCount`: Number of shrapnel pieces (default: 16)
+- `shrapnelSpeed`: Initial shrapnel velocity (default: 10)
+- `shrapnelLifetime`: How long shrapnel exists (default: 2s)
+- `shrapnelDamage`: Damage per shrapnel piece (default: 5)
+- `shrapnelSpinSpeed`: Angular rotation speed (default: 360°/s)
+
+**Shrapnel Setup**:
+- Prefab must have:
+  - Rigidbody (useGravity = true recommended)
+  - Collider (non-trigger for collision detection)
+  - Optional: Projectile component for damage-on-hit
+  - Optional: Visual mesh (small sphere, etc.)
+
+**Impact Behavior**:
+1. Apply direct-hit damage from cannonball
+2. Spawn explosion VFX at impact point
+3. Spawn shrapnel in random outward directions
+4. Apply Physics.IgnoreCollision between all shrapnel pieces
+5. Destroy cannonball
+
+### Projectile & Shrapnel
+**Purpose**: Base projectile class with damage-on-collision.
+
+**Features**:
+- Collision-based damage (OnCollisionEnter)
+- Automatic lifetime destruction
+- Optional hit VFX at impact
+- Rigidbody-based physics movement
+
+**Requirements**:
+- Rigidbody component (required)
+- Collider component (required, non-trigger)
+- Velocity set by spawner (ProjectileLauncher)
+
+**Fields**:
+- `damage`: Damage dealt on collision
+- `lifeTime`: Auto-destroy after this many seconds
+- `hitEffectPrefab`: Optional VFX on impact
+
+**SimpleShrapnel**:
+- Lightweight shrapnel without Projectile component
+- Just physics object that exists for lifetime then destroys
+- No damage-on-hit (pure visual/physics)
+
+---
+
+## Mount Systems
 - Purpose: a generic mount with yaw/pitch pivots and runtime Mount/Unmount.
 - Fields:
   - Identity: mountId (unique), mountType (e.g., "cannon").
@@ -275,13 +555,152 @@ otationEuler (local X/Y/Z).
 
 ## Common Troubleshooting
 - Weapon fires the wrong way:
-  - Check the mount’s baseline: local +Z should be straight ahead at yaw=0/pitch=0.
-  - In the mount, set launcherAxis to the spawn point’s firing axis (often Up) and toggle invertLauncherAxis.
+  - Check the mount's baseline: local +Z should be straight ahead at yaw=0/pitch=0.
+  - In the mount, set launcherAxis to the spawn point's firing axis (often Up) and toggle invertLauncherAxis.
   - Ensure no negative scale on Ship/Model/Mount/pivots.
 - Two projectiles/smoke plumes:
-  - Ensure you aren’t mounting twice (Ship helper + per‑mount auto). Use only one path.
-- Cannon doesn’t move with keys:
+  - Ensure you aren't mounting twice (Ship helper + per‑mount auto). Use only one path.
+- Cannon doesn't move with keys:
   - Enable debugKeypadControl on the correct mount; make sure the Game view has focus; check that pivots are assigned and limits are non‑zero.
+- Ship falls instead of hovering:
+  - Check LiftDevice.allocatedPowerPerSecond is set (should auto-set to minimum at start)
+  - Verify minimumPowerPerSecond matches or exceeds ship weight in tons
+  - Enable debugLog on LiftDevice to see power allocation
+- Ship climbs too fast or falls too slowly:
+  - Check powerPerTonPerMeterPerSecond value (1 = standard)
+  - Verify ship weight in ShipCharacteristics matches actual design
+  - Check allocatedPowerPerSecond value relative to minimumPowerPerSecond
+- Ship tumbles after touching ground:
+  - Should be fixed by FreezeRotation constraint (auto-applied by ShipCharacteristics)
+  - Verify Rigidbody.constraints = FreezeRotation
+- Lift device not working:
+  - Ensure ship has ShipCharacteristics component
+  - Verify LiftDevice has Health component
+  - Check that gravity toggles correctly (watch Rigidbody.useGravity in Inspector during play)
+- Engine not providing thrust:
+  - Ensure ship has ShipCharacteristics component
+  - Verify Engine.allocatedPowerPerSecond > 0
+  - Check Engine has Health component
+  - Enable debugLog to see thrust calculations
+
+## Complete Ship Setup Workflow
+
+### Step 1: Ship Root GameObject
+```
+Ship (root)
+├── Add ShipCharacteristics component
+│   ├── shipWeightTons = 30
+│   └── dragCoefficient = 0.5
+└── Rigidbody auto-created with:
+    ├── mass = 30000 kg
+    ├── useGravity = true
+    ├── constraints = FreezeRotation
+    └── linearDamping = 0.1
+```
+
+### Step 2: Add Engines (children of Ship)
+```
+Ship
+└── Engine_Main (child GameObject)
+    ├── Add JetEngine component
+    │   ├── allocatedPowerPerSecond = 50
+    │   ├── powerToThrustRatio = 1000
+    │   ├── burnRateMultiplier = 150
+    │   └── maxSafeTemperature = 100
+    └── Add Health component
+        └── maxHealth = 500
+```
+
+### Step 3: Add Lift Device (child of Ship)
+```
+Ship
+└── AntiGrav_Main (child GameObject)
+    ├── Add AntiGravityDevice component
+    │   ├── minimumPowerPerSecond = 30 (match ship weight)
+    │   ├── powerPerTonPerMeterPerSecond = 1
+    │   ├── allocatedPowerPerSecond = 0 (auto-sets to 30)
+    │   ├── fieldEfficiency = 1.0
+    │   ├── fieldStability = 1.0
+    │   └── altitudeCalibration = -100 (ground = 0)
+    └── Add Health component
+        └── maxHealth = 300
+```
+
+### Step 4: Add Weapon Mounts (under Ship/Model/Deck-mounts)
+```
+Ship/Model/Deck-mounts
+└── Bow_mount_1
+    ├── Add WeaponMount component
+    │   ├── mountId = "bow_01"
+    │   ├── mountType = "cannon"
+    │   ├── yawLimitDeg = 90
+    │   ├── pitchUpDeg = 30
+    │   └── pitchDownDeg = 10
+    ├── Create YawBase child → assign to yawBase field
+    └── Create PitchBarrel child of YawBase → assign to pitchBarrel field
+```
+
+### Step 5: Create Weapon Prefabs
+```
+Cannon Prefab
+├── Add Cannon component (extends ProjectileLauncher)
+│   ├── projectilePrefab = CannonBall prefab
+│   ├── fireKey = F
+│   ├── launchSpeed = 50
+│   ├── reloadTime = 2.0
+│   ├── angleSpreadDegrees = 5
+│   └── speedJitterPercent = 5
+├── Add Health component
+│   └── maxHealth = 100
+├── Create Cylinder child (visual + spawnPoint)
+│   └── Assign to spawnPoint field
+├── Create MuzzleSmoke ParticleSystem child
+│   └── Assign to muzzleSmoke field
+└── Create MuzzleBlast ParticleSystem child
+    └── Assign to MuzzleBlast field
+```
+
+### Step 6: Create Projectile Prefabs
+```
+CannonBall Prefab
+├── Add CannonBall component (extends Projectile)
+│   ├── damage = 25
+│   ├── lifeTime = 5
+│   ├── explosionEffectPrefab = Explosion VFX prefab
+│   ├── shrapnelPrefab = Shrapnel prefab
+│   ├── shrapnelCount = 16
+│   ├── shrapnelSpeed = 10
+│   └── shrapnelDamage = 5
+├── Add Rigidbody component
+│   └── useGravity = true
+└── Add Collider component (Sphere/Capsule)
+    └── isTrigger = false
+```
+
+### Step 7: Test Power Allocation
+**Hover Test** (30-ton ship):
+1. Set LiftDevice.allocatedPowerPerSecond = 30
+2. Enter Play mode
+3. Ship should hover perfectly (altitude unchanging)
+
+**Climb Test**:
+1. Set LiftDevice.allocatedPowerPerSecond = 60
+2. Ship should climb at 1 m/s
+3. Check AntiGravityDevice.currentAltitude increases steadily
+
+**Descent Test**:
+1. Set LiftDevice.allocatedPowerPerSecond = 15
+2. Ship should descend at ~4.91 m/s (constant, no acceleration)
+
+**Fall Test**:
+1. Set LiftDevice.allocatedPowerPerSecond = 0
+2. Ship should fall at 9.82 m/s² (Unity gravity)
+
+**Thrust Test**:
+1. Engine.allocatedPowerPerSecond = 50, burnRate = 150%, powerToThrustRatio = 1000
+2. Expected thrust = 50 * 1.5 * 1000 = 75,000 N
+3. Ship mass = 30,000 kg
+4. Expected acceleration = 75,000 / 30,000 = 2.5 m/s²
 
 ## Minimal Code Snippets
 - Mount a weapon by id:
