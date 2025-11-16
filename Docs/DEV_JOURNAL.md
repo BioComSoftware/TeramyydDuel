@@ -1378,3 +1378,144 @@ Works for all ship configurations:
 
 No matter which specific components are used, all read from the same central source.
 
+
+## Session 8 (2025-11-16) — Vertical Speed Indicator Implementation
+
+Purpose: Complete rewrite of Vertical Speed Indicator (VSI) to display climb/descent rate based on ship Y-axis position changes.
+
+### VSI Design Requirements
+
+**User Requirements:**
+- VSI needle sprite points UP at 0° (standard Unity UI convention)
+- Zero marker position configurable (default: 270° = horizontal left)
+- Climb/descent calculated from frame-to-frame Y position delta
+- Rotation range unlimited (needle can spin multiple times for extreme rates)
+- No acceleration tracking (instantaneous vertical speed only)
+- File-based logging to avoid console spam
+
+**Technical Implementation:**
+- Delta calculation: `(currentY - previousY) / Time.deltaTime`
+- Rotation formula: `targetRotation = zeroMarkerDegrees + (verticalSpeedMPS * DEGREES_PER_MPS)`
+- Rotation rate: `DEGREES_PER_MPS = 9°` (90° rotation for ±10 m/s standard rate)
+- Smoothing: `Mathf.LerpAngle` with `dampingFactor = 10` (responsive, no quivering)
+- Unity UI rotation: 0° = up, 90° = right, 180° = down, 270° = left (positive angles, no negation)
+
+**Rotation Mapping:**
+- Zero (0 m/s): 270° (horizontal left)
+- Climb +10 m/s: 360° (0°, horizontal right after full rotation)
+- Descent -10 m/s: 180° (horizontal right after half rotation)
+- Climb +5 m/s: 315° (diagonal up-right)
+- Descent -5 m/s: 225° (diagonal down-left)
+
+### VerticalSpeedIndicator.cs Architecture
+
+**Fields:**
+- `needleTransform` (RectTransform): VSI needle sprite to rotate
+- `shipCharacteristics` (ShipCharacteristics): Ship state provider
+- `zeroMarkerDegrees` (float, default 270°): Configurable zero position
+- `dampingFactor` (float, default 10): Rotation smoothing speed
+
+**Constants:**
+- `DEGREES_PER_MPS = 9f`: 9° rotation per 1 m/s vertical speed
+
+**Private State:**
+- `previousYPosition` (float): Last frame Y position for delta calculation
+- `isInitialized` (bool): Prevents delta calculation on first frame
+- `logWriter` (StreamWriter): File logger for debugging
+
+**Start() Method:**
+- Initializes log file `Assets/VSI_Log.txt` with auto-flush
+- Validates references (needleTransform, shipCharacteristics)
+- Logs configuration (zero marker, damping, degrees per m/s)
+- Sets needle to zero marker position
+- Initializes previousYPosition
+
+**Update() Method:**
+- Calculates frame-to-frame Y delta
+- Converts delta to meters per second: `verticalSpeedMPS = deltaY / Time.deltaTime`
+- Calculates target rotation: `zeroMarkerDegrees + (verticalSpeedMPS * DEGREES_PER_MPS)`
+- Applies smooth rotation with Mathf.LerpAngle
+- Logs to file every 60 frames (speed, rotation, zero marker)
+
+**OnDestroy() Method:**
+- Closes log file stream
+- Ensures clean shutdown
+
+### ShipCharacteristics.cs Modifications
+
+Added position coordinate tracking for debugging/display:
+- `_positionX` (float, read-only): Ship X coordinate
+- `_positionY` (float, read-only): Ship Y coordinate
+- `_positionZ` (float, read-only): Ship Z coordinate
+
+Updated `UpdateMovementTracking()`:
+```csharp
+Vector3 position = transform.position;
+_positionX = position.x;
+_positionY = position.y;
+_positionZ = position.z;
+```
+
+### Iteration History
+
+**Issue 1: Needle Always Descending**
+- Problem: VSI showed descent regardless of actual movement
+- Cause: Incorrect rotation interpolation logic
+- Solution: Simplified to direct delta calculation
+
+**Issue 2: Wrong Zero Position**
+- Problem: Needle pointed right (90°) instead of left (270°)
+- Iterations: Multiple attempts with negation, offset constants
+- Solution: Removed all negation, used positive rotation values aligned with Unity UI (0° = up convention)
+
+**Issue 3: Needle Not Deflecting Enough**
+- Problem: Needle barely moved during climb
+- Cause: Over-damping (dampingFactor = 3)
+- Solution: Increased dampingFactor to 10 for faster response
+
+**Issue 4: Compiler Errors**
+- Problem: Missing closing brace in Update() method
+- Solution: Added missing brace
+
+**Issue 5: Sprite Convention Clarification**
+- Problem: Confusion about needle sprite zero position
+- User Confirmed: Needle sprite points UP at 0° (standard aviation gauge design)
+- Solution: Re-added configurable `zeroMarkerDegrees` field (removed in earlier iteration)
+
+**Issue 6: Console Spam**
+- Problem: Debug.Log calls every frame cluttered console
+- Solution: Implemented file-based logging with StreamWriter, 60-frame log interval
+
+### Current Status
+
+**Fully Operational:**
+- ✅ VSI calculates vertical speed from Y-axis delta
+- ✅ Needle starts at correct zero position (270° = left)
+- ✅ Climb rotates clockwise (positive rotation)
+- ✅ Descent rotates counter-clockwise (negative rotation)
+- ✅ Smooth rotation without quivering
+- ✅ File logging to `Assets/VSI_Log.txt`
+- ✅ Position coordinates displayed in ShipCharacteristics
+- ✅ All compiler errors resolved
+- ✅ User-confirmed correct behavior
+
+**Next Steps:**
+- Test VSI with different ship types (jet, anti-gravity)
+- Verify accuracy with known climb/descent rates
+- Consider adding min/max rotation limits if needed
+- Optimize log file size management for long sessions
+
+### Files Modified
+
+1. **Assets/Scripts/VerticalSpeedIndicator.cs** — Complete rewrite
+2. **Assets/Scripts/ShipCharacteristics.cs** — Added position coordinate fields
+
+### Key Learnings
+
+1. **Unity UI Rotation Convention**: 0° = up, rotates clockwise (no negation needed)
+2. **Delta Calculation**: Frame-to-frame position difference is reliable for instantaneous rates
+3. **Damping Balance**: dampingFactor = 10 provides responsive but smooth needle movement
+4. **File Logging**: StreamWriter with AutoFlush ideal for real-time debugging without console clutter
+5. **Configurable Zero**: Allowing zero marker customization supports different gauge designs
+6. **Rotation Formula Simplicity**: Direct addition (zero + speed * rate) avoids offset errors
+

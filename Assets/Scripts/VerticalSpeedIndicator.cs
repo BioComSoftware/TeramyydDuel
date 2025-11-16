@@ -2,7 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Vertical Speed Indicator (VSI) - Displays rate of climb/descent.
-/// Reads actual vertical velocity from ship's Rigidbody.
+/// Calculates vertical speed from Y-axis position changes and teleports needle to position.
 /// </summary>
 [AddComponentMenu("Teramyyd/HUD/Vertical Speed Indicator")]
 public class VerticalSpeedIndicator : MonoBehaviour
@@ -17,9 +17,6 @@ public class VerticalSpeedIndicator : MonoBehaviour
     [Header("Configuration")]
     [Tooltip("The rotation in degrees where the zero marker is on the gauge (e.g., 270 = left, 0 = up).")]
     public float zeroMarkerDegrees = 270f;
-    
-    [Tooltip("Smoothing factor for needle movement (higher = smoother/slower).")]
-    public float dampingFactor = 10f;
     
     // VSI scale: 10 m/s climb = 90° clockwise from zero marker
     // This means: degreesPerMPS = 90 / 10 = 9° per m/s
@@ -37,7 +34,8 @@ public class VerticalSpeedIndicator : MonoBehaviour
         logWriter = new System.IO.StreamWriter(logPath, false); // false = overwrite
         logWriter.AutoFlush = true;
         logWriter.WriteLine($"=== VSI Log Started at {System.DateTime.Now} ===");
-        logWriter.WriteLine($"Zero Marker set to: {zeroMarkerDegrees}°");
+        logWriter.WriteLine($"Zero Marker: {zeroMarkerDegrees}°");
+        logWriter.WriteLine($"Degrees per m/s: {DEGREES_PER_MPS}°");
         
         // Auto-find ShipCharacteristics if not assigned
         if (shipCharacteristics == null)
@@ -58,11 +56,11 @@ public class VerticalSpeedIndicator : MonoBehaviour
             logWriter.WriteLine("ERROR: Cannot find ShipCharacteristics!");
         }
         
-        // Set needle to zero marker position
+        // PERMANENTLY set needle to zero marker position at start
         if (needleTransform != null)
         {
             needleTransform.localRotation = Quaternion.Euler(0f, 0f, zeroMarkerDegrees);
-            logWriter.WriteLine($"Needle initialized to {zeroMarkerDegrees}° (zero marker). Actual rotation: {needleTransform.localEulerAngles.z}°");
+            logWriter.WriteLine($"Needle PERMANENTLY set to {zeroMarkerDegrees}° (zero marker)");
         }
         
         // Initialize previous position
@@ -79,44 +77,40 @@ public class VerticalSpeedIndicator : MonoBehaviour
         if (needleTransform == null || shipCharacteristics == null || !isInitialized)
             return;
         
-        // Get current Y position
+        // STEP 1: Get current Y position (needle is NOT moved during this step)
         float currentY = shipCharacteristics.transform.position.y;
         
-        // Calculate altitude change since last frame (in meters)
+        // STEP 2: Determine altitude change since last frame (in meters)
         float deltaY = currentY - previousYPosition;
         
-        // Convert to meters per second
+        // STEP 3: Calculate vertical speed in meters per second (needle still NOT moved)
         float verticalSpeedMPS = deltaY / Time.deltaTime;
         
-        // Calculate rotation from zero marker
+        // STEP 4: Calculate rotation based on vertical speed (still just calculating, NOT moving needle)
         // Positive (climb) = clockwise, Negative (descent) = counter-clockwise
         // +10 m/s = +90°, -10 m/s = -90°
-        float speedRotation = verticalSpeedMPS * DEGREES_PER_MPS;
+        float rotationFromSpeed = verticalSpeedMPS * DEGREES_PER_MPS;
         
-        // Target rotation: zero marker + rotation based on speed
+        // STEP 5: Calculate where needle SHOULD be pointing (needle completely unaffected during calculation)
         // If zero marker = 270° (left):
-        //   At 0 m/s: 270° (left)
-        //   At +10 m/s: 270° + 90° = 360° = 0° (up) - clockwise
-        //   At -10 m/s: 270° - 90° = 180° (down) - counter-clockwise
-        float targetRotation = zeroMarkerDegrees + speedRotation;
+        //   At 0 m/s: Should point at 270° (left)
+        //   At +10 m/s: Should point at 270° + 90° = 360° = 0° (up) - clockwise
+        //   At -10 m/s: Should point at 270° - 90° = 180° (down) - counter-clockwise
+        float targetRotationDegrees = zeroMarkerDegrees + rotationFromSpeed;
         
-        // Get current rotation
-        float currentRotation = needleTransform.localEulerAngles.z;
+        // Log calculation (needle still hasn't moved)
+        logWriter.WriteLine($"Frame {Time.frameCount}: DeltaY={deltaY:F3}m, Speed={verticalSpeedMPS:F2}m/s, Target={targetRotationDegrees:F1}°");
         
-        // Log every 60 frames to file
-        if (Time.frameCount % 60 == 0)
-        {
-            logWriter.WriteLine($"Frame {Time.frameCount}: Speed={verticalSpeedMPS:F2} m/s, Rotation={speedRotation:F1}°, Current={currentRotation:F1}°, Target={targetRotation:F1}°");
-        }
+        // STEP 6: PERMANENTLY teleport needle to calculated position
+        // This is the ONLY place the needle moves - instant teleportation to target
+        needleTransform.localRotation = Quaternion.Euler(0f, 0f, targetRotationDegrees);
         
-        // Smoothly interpolate to target rotation
-        float smoothedRotation = Mathf.LerpAngle(currentRotation, targetRotation, Time.deltaTime * dampingFactor);
+        logWriter.WriteLine($"         Needle PERMANENTLY teleported to {targetRotationDegrees:F1}°");
         
-        // Apply rotation
-        needleTransform.localRotation = Quaternion.Euler(0f, 0f, smoothedRotation);
-        
-        // Update previous position for next frame
+        // STEP 7: Update previous position for next frame's delta calculation
         previousYPosition = currentY;
+        
+        // Next Update() will repeat: calculate delta → calculate speed → calculate target → teleport
     }
     
     private void OnDestroy()
