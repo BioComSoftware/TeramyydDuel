@@ -1179,3 +1179,202 @@ Contracts
 Testing notes
 - Use AutoPopulateLauncherMounts on the Ship root OR per-mount autoPopulateOnStart � not both � to avoid duplicate cannons.
 - After mounting, fire once and confirm projectile velocity aligns with mount direction (accounting for spread/jitter).
+
+---
+
+
+## Session 7 (Nov 16, 2025 - Thrust System Refactor + Instrument Panel HUD)
+
+### Part 1: Physics-Based Thrust System
+
+**Summary**
+- Completely refactored thrust system using Heideggerian hermeneutic analysis
+- Integrated thrust directly into Engine.cs base class (removed standalone ThrustEngine)
+- Implemented separate knotsAhead and knotsAstern controls for intuitive forward/reverse motion
+- Physics-based motion using Unity Rigidbody.AddForce with F=ma calculations
+- Power allocation system mediates between thrust and lift with three priority modes
+
+**Technical Implementation**
+
+Engine.cs - Integrated thrust and power generation:
+- Player Controls:
+  - knotsAhead: Desired forward speed (positive Z-axis toward bow)
+  - knotsAstern: Desired reverse speed (negative Z-axis toward stern)
+  - Setting one automatically clears the other
+- Power Allocation:
+  - CalculatePowerAllocation(): Mediates power between thrust and lift
+  - Calculates required force using F=ma physics
+  - Supports three priority modes: LiftPriority, ThrustPriority, Balanced
+- Thrust Application:
+  - ApplyThrust(): Uses ship transform.forward for direction
+  - Handles forward motion, reverse motion, and direction changes
+  - Overcomes inertia when changing direction
+  - Applied force magnitude: actualForceNewtons = allocatedPower * forcePerUnitPower
+- Physics Constants:
+  - forcePerUnitPower: 1000N per power unit
+  - powerPerTonPerMeterPerSecond: Acceleration rate per ton
+  - Knots conversion: 1 knot = 0.514444 m/s
+
+API Methods:
+- SetKnotsAhead(float knots): Move forward at specified speed
+- SetKnotsAstern(float knots): Move backward at specified speed
+- AllStop(): Clears both controls and applies braking
+- SetPriorityMode(PowerPriorityMode mode): Control lift vs thrust preference
+
+### Part 2: Aircraft-Style Instrument Panel HUD
+
+**Summary**
+- Created comprehensive instrument panel system based on real aircraft gauges
+- Four instruments: Airspeed, Altimeter, Vertical Speed, Attitude Indicator
+- Clock-hand rotation for analog display (like real steam gauges)
+- All instruments read from ShipCharacteristics automatically
+
+**Scripts Created:**
+
+AirspeedIndicator.cs - Speed gauge with rotating needle:
+- Single rotating hand points to speed in knots
+- Maps 0-12 knots (configurable) to full 360 degree rotation
+- Clockwise rotation (12 oclock = 0 knots)
+- Smoothing via damping factor
+
+AltimeterIndicator.cs - Three-hand altitude gauge:
+- Tens hand: 0-100 meters (one rotation per 100m)
+- Hundreds hand: 0-1000 meters (one rotation per 1000m)
+- Thousands hand: 0-10000 meters (one rotation per 10000m)
+- Example: 2,456m = thousands at 2, hundreds at 4.56, tens at 5.6
+- All hands rotate independently like real altimeter
+
+VerticalSpeedIndicator.cs - Climb/descent rate:
+- Single rotating needle showing vertical velocity
+- 12 oclock = 0 m/s (level flight)
+- Right side (3 oclock) = climbing (positive)
+- Left side (9 oclock) = descending (negative)
+- Range: plus/minus 20 m/s (configurable)
+- Intentional lag (damping=3) like real VSI
+
+AttitudeIndicator.cs - Pitch/roll/yaw display:
+- Airplane silhouette:
+  - Rotates for ROLL (wings tilt left/right)
+  - Translates vertically for PITCH (nose up/down)
+  - Pivot at center, moves within gauge circle
+- Yaw triangle:
+  - Translates horizontally for YAW (heading left/right)
+  - Separate indicator below airplane
+- Based on real artificial horizon instrument
+
+InstrumentPanelManager.cs - Coordinator:
+- Auto-discovers ShipCharacteristics
+- Links ship to all instruments
+- Unified enable/disable control
+- Optional canvas group for panel fading
+- Debug logging for setup verification
+
+**Documentation Created:**
+- INSTRUMENT_PANEL_SETUP_GUIDE.md: Complete 7-phase step-by-step setup
+  - Phase 1: Sprite import and pivot configuration
+  - Phase 2: Canvas creation and scaling
+  - Phase 3: Panel background and manager setup
+  - Phase 4: Individual instrument construction (4 detailed guides)
+  - Phase 5: Manager linking and reference wiring
+  - Phase 6: Testing and validation
+  - Phase 7: Fine-tuning and troubleshooting
+- Includes quick reference hierarchy diagram
+- Troubleshooting section for common issues
+- Tips for pivot points, layer order, and performance
+
+**Next Steps:**
+- Add numeric readouts alongside analog gauges
+- Create engine power/heat indicators
+- Add throttle/control input UI
+- Implement warning lights (overspeed, altitude alerts)
+- Add HUD fade based on game state/damage
+
+## CENTRALIZATION OF SHIP STATE - Changes Made
+
+### Problem
+Ship state data (altitude, speed) was duplicated across multiple scripts:
+- currentAltitude in AntiGravityDevice
+- currentSpeedKnots in Engine base class
+- currentAltitude and verticalVelocityMPS missing from ShipCharacteristics
+
+### Solution
+Centralized ALL ship state tracking in ShipCharacteristics as single source of truth.
+
+### Changes to ShipCharacteristics.cs
+
+Added new tracked properties:
+- _currentAltitude (Y position in world space)
+- _verticalVelocityMPS (Y component of velocity)
+- currentAltitude (public property)
+- verticalVelocityMPS (public property)
+- currentSpeedKnots (public property, lowercase alias)
+
+Updated in UpdateMovementTracking():
+`csharp
+_currentAltitude = transform.position.y;
+_verticalVelocityMPS = rb.linearVelocity.y;
+`
+
+### Changes to Engine.cs
+
+Removed duplicate tracking:
+- Removed _currentSpeedKnots field
+- Removed CurrentSpeedKnots property
+- Removed UpdateCurrentSpeed() method
+- Removed call to UpdateCurrentSpeed() in FixedUpdate()
+
+Debug logging now reads from ShipCharacteristics:
+`csharp
+float currentSpeedKnots = shipCharacteristics != null ? shipCharacteristics.currentSpeedKnots : 0f;
+`
+
+### Changes to AntiGravityDevice.cs
+
+Removed duplicate tracking:
+- Removed _currentAltitude field
+- Removed CurrentAltitude property
+- Removed altitude update from CalculateLift()
+
+Debug logging now reads from ShipCharacteristics:
+`csharp
+float currentAltitude = shipCharacteristics != null ? 
+    shipCharacteristics.currentAltitude + altitudeCalibration : 
+    transform.position.y + altitudeCalibration;
+`
+
+### Data Flow Architecture
+
+**Single Source of Truth:**
+ShipCharacteristics (on Ship root)
+   Tracks: position, velocity, altitude, vertical velocity
+   Updates: Every FixedUpdate()
+   Provides: Public read-only properties
+
+**Consumers:**
+- Engine scripts: Read currentSpeedKnots for logging
+- LiftDevice scripts: Read currentAltitude for logging
+- HUD Instruments:
+  - AirspeedIndicator: Reads currentSpeedKnots
+  - AltimeterIndicator: Reads currentAltitude
+  - VerticalSpeedIndicator: Reads verticalVelocityMPS
+  - AttitudeIndicator: Reads transform (pitch/roll/yaw)
+
+### Benefits
+
+1. **No Duplication**: Each value calculated once per frame
+2. **Consistency**: All consumers see same values
+3. **Performance**: Single calculation instead of multiple
+4. **Maintainability**: One place to update calculations
+5. **Clarity**: Clear data ownership and flow
+
+### All Ships Compatibility
+
+Works for all ship configurations:
+- Ships with Engine (base)  read currentSpeedKnots
+- Ships with JetEngine  read currentSpeedKnots (inherited)
+- Ships with LiftDevice (base)  read currentAltitude
+- Ships with AntiGravityDevice  read currentAltitude (inherited)
+- HUD Instruments  always read from ShipCharacteristics
+
+No matter which specific components are used, all read from the same central source.
+

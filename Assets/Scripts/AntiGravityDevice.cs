@@ -29,11 +29,9 @@ public class AntiGravityDevice : LiftDevice
     public float altitudeCalibration = 0f;
     
     [Header("Status (Read-Only)")]
-    [SerializeField] private float _currentAltitude = 0f;
     [SerializeField] private float _fieldStrengthPercent = 0f;
     [SerializeField] private bool _fieldOverload = false;
     
-    public float CurrentAltitude => _currentAltitude;
     public float FieldStrengthPercent => _fieldStrengthPercent;
     public bool IsFieldOverloaded => _fieldOverload;
     
@@ -49,9 +47,6 @@ public class AntiGravityDevice : LiftDevice
     
     protected override void CalculateLift()
     {
-        // Update altitude measurement with calibration offset
-        _currentAltitude = transform.position.y + altitudeCalibration;
-        
         // Apply field efficiency to effective power
         float effectivePower = allocatedPowerPerSecond * fieldEfficiency;
         float originalPower = allocatedPowerPerSecond;
@@ -90,7 +85,8 @@ public class AntiGravityDevice : LiftDevice
         
         if (debugLog && Time.frameCount % 120 == 0) // Log every 2 seconds
         {
-            FileLogger.Log($"{gameObject.name} [AntiGrav] - Altitude: {_currentAltitude:F2}m, FieldStrength: {_fieldStrengthPercent:F1}%, Overload: {_fieldOverload}, Stability: {fieldStability}", "AntiGrav");
+            float currentAltitude = shipCharacteristics != null ? shipCharacteristics.currentAltitude + altitudeCalibration : transform.position.y + altitudeCalibration;
+            FileLogger.Log($"{gameObject.name} [AntiGrav] - Altitude: {currentAltitude:F2}m, FieldStrength: {_fieldStrengthPercent:F1}%, Overload: {_fieldOverload}, Stability: {fieldStability}", "AntiGrav");
         }
     }
     

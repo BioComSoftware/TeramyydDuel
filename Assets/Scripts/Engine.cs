@@ -49,7 +49,6 @@ public abstract class Engine : MonoBehaviour
     
     [Header("Status (Read-Only)")]
     [SerializeField] protected float _currentPowerOutput;
-    [SerializeField] protected float _currentSpeedKnots;
     [SerializeField] protected float _requestedThrustPower;
     [SerializeField] protected float _allocatedThrustPower;
     [SerializeField] protected float _actualForceNewtons;
@@ -76,7 +75,6 @@ public abstract class Engine : MonoBehaviour
     
     // Public read-only properties
     public float CurrentPowerOutput => _currentPowerOutput;
-    public float CurrentSpeedKnots => _currentSpeedKnots;
     public float RequestedThrustPower => _requestedThrustPower;
     public float AllocatedThrustPower => _allocatedThrustPower;
     public float ActualForceNewtons => _actualForceNewtons;
@@ -136,9 +134,6 @@ public abstract class Engine : MonoBehaviour
         
         // Apply thrust based on allocated power
         ApplyThrust(deltaTime);
-        
-        // Update current speed
-        UpdateCurrentSpeed();
         
         // Apply usage damage
         ApplyUsageDamage(deltaTime);
@@ -291,7 +286,8 @@ public abstract class Engine : MonoBehaviour
         {
             string movementStr = (knotsAhead > 0f) ? $"AHEAD {knotsAhead}kt" : 
                                 (knotsAstern > 0f) ? $"ASTERN {knotsAstern}kt" : "STOP";
-            FileLogger.Log($"{gameObject.name} - Power: {_currentPowerOutput:F1}/s, Movement: {movementStr}, CurrentSpeed: {_currentSpeedKnots:F1}kt, ThrustPower: {_allocatedThrustPower:F1}/{_requestedThrustPower:F1}, Mode: {priorityMode}", "Engine");
+            float currentSpeedKnots = shipCharacteristics != null ? shipCharacteristics.currentSpeedKnots : 0f;
+            FileLogger.Log($"{gameObject.name} - Power: {_currentPowerOutput:F1}/s, Movement: {movementStr}, CurrentSpeed: {currentSpeedKnots:F1}kt, ThrustPower: {_allocatedThrustPower:F1}/{_requestedThrustPower:F1}, Mode: {priorityMode}", "Engine");
         }
     }
     
@@ -438,30 +434,6 @@ public abstract class Engine : MonoBehaviour
         }
         
         onThrustOutputChanged?.Invoke(_actualForceNewtons);
-    }
-    
-    /// <summary>
-    /// Update current speed in knots for display.
-    /// </summary>
-    protected virtual void UpdateCurrentSpeed()
-    {
-        if (shipCharacteristics == null || shipRigidbody == null)
-            return;
-        
-        float speedMPS = shipRigidbody.linearVelocity.magnitude;
-        
-        // Determine sign based on direction relative to ship's forward (bow)
-        if (shipRigidbody.linearVelocity.magnitude > 0.01f)
-        {
-            Vector3 shipForward = shipCharacteristics.transform.forward;
-            float dot = Vector3.Dot(shipRigidbody.linearVelocity.normalized, shipForward);
-            if (dot < 0f)
-            {
-                speedMPS = -speedMPS; // Negative for reverse (moving toward stern)
-            }
-        }
-        
-        _currentSpeedKnots = speedMPS * MPS_TO_KNOTS;
     }
     
     /// <summary>

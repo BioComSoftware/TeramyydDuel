@@ -721,3 +721,199 @@ if (launcher != null)
 
 ---
 Keep this document close as you author ships and mounts. If a script slot isn’t clear, search for the component file referenced above to see fields and defaults.
+
+---
+
+## HUD Systems
+
+### Instrument Panel Overview
+**Purpose**: Aircraft-style analog gauges displaying ship telemetry in real-time. All instruments read from ShipCharacteristics automatically.
+
+**Complete Setup Guide**: See INSTRUMENT_PANEL_SETUP_GUIDE.md for full 7-phase step-by-step instructions.
+
+### AirspeedIndicator
+**Purpose**: Displays ship speed in knots using a rotating clock-hand.
+
+**Location**: Attach to empty GameObject positioned over airspeed gauge face.
+
+**Key Fields**:
+- 
+eedleTransform: RectTransform of the rotating needle (pivot at bottom-center)
+- shipCharacteristics: Auto-discovered if not set
+- maxAirspeedKnots: Maximum speed shown (default 12 knots = full rotation)
+- dampingFactor: Smoothing speed (5 = smooth, 0 = instant)
+
+**Setup**:
+1. Create UI Image for needle sprite (thin pointer)
+2. Set RectTransform pivot to (0.5, 0) - bottom center
+3. Attach AirspeedIndicator script to parent container
+4. Assign needle RectTransform reference
+
+**Behavior**: Needle rotates clockwise from 12 o'clock (0 knots) to full circle (maxAirspeedKnots).
+
+### AltimeterIndicator
+**Purpose**: Three-hand altitude display (like real aircraft altimeter).
+
+**Location**: Attach to empty GameObject positioned over altimeter gauge face.
+
+**Key Fields**:
+- 	ensHandTransform: Fastest hand (0-100m per rotation)
+- hundredsHandTransform: Medium hand (0-1000m per rotation)
+- 	housandsHandTransform: Slowest hand (0-10000m per rotation)
+- shipCharacteristics: Auto-discovered if not set
+
+**Setup**:
+1. Create three UI Image needles (different colors for visibility)
+2. All needles: pivot (0.5, 0), stacked at same position
+3. Layer order: thousands (bottom)  hundreds  tens (top)
+4. Attach AltimeterIndicator script
+5. Assign all three hand RectTransforms
+
+**Behavior**: 
+- At 2,456 meters: thousands hand at 2, hundreds hand at 4.56, tens hand at 5.6
+- All hands rotate independently and continuously
+
+### VerticalSpeedIndicator
+**Purpose**: Shows climb/descent rate in meters per second.
+
+**Location**: Attach to empty GameObject positioned over VSI gauge face.
+
+**Key Fields**:
+- 
+eedleTransform: Single rotating needle
+- maxClimbRateMPS: Maximum rate shown (default 20 m/s)
+- maxClimbRotationDegrees: Rotation for max climb (default 180 right)
+- maxDescentRotationDegrees: Rotation for max descent (default -180 left)
+- dampingFactor: Lag factor (3 = realistic VSI lag)
+
+**Setup**:
+1. Create UI Image needle
+2. Set pivot to (0.5, 0)
+3. Attach VerticalSpeedIndicator script
+4. Assign needle RectTransform
+
+**Behavior**:
+- 12 o'clock = 0 m/s (level flight)
+- Right (3 o'clock) = climbing
+- Left (9 o'clock) = descending
+- Intentional lag mimics real VSI behavior
+
+### AttitudeIndicator
+**Purpose**: Displays pitch, roll, and yaw using airplane silhouette and yaw triangle.
+
+**Location**: Attach to empty GameObject positioned over attitude gauge face.
+
+**Key Fields**:
+- irplaneTransform: RectTransform of airplane sprite (rotates for roll, moves Y for pitch)
+- yawTriangleTransform: RectTransform of triangle sprite (moves X for yaw)
+- maxPitchDegrees: Pitch angle range (default 45)
+- maxPitchMovementPixels: Vertical movement range for max pitch (default 40px)
+- maxYawDegrees: Yaw angle range (default 45)
+- maxYawMovementPixels: Horizontal movement range for max yaw (default 50px)
+
+**Setup**:
+1. Create airplane silhouette sprite (top-down view, wings visible)
+2. Create triangle sprite for yaw indicator
+3. Both: pivot (0.5, 0.5) - center
+4. Position yaw triangle below airplane
+5. Attach AttitudeIndicator script
+6. Assign both RectTransforms
+
+**Behavior**:
+- **Roll**: Airplane sprite rotates (wings tilt)
+- **Pitch**: Airplane sprite moves vertically (nose up/down)
+- **Yaw**: Triangle moves horizontally (heading deviation)
+
+### InstrumentPanelManager
+**Purpose**: Coordinates all instruments; provides unified control and auto-wiring.
+
+**Location**: Attach to container GameObject under instrument panel background.
+
+**Key Fields**:
+- shipCharacteristics: Auto-discovered if not set
+- irspeedIndicator, ltimeterIndicator, erticalSpeedIndicator, ttitudeIndicator: Auto-discovered from children
+- instrumentsEnabled: Master enable/disable
+- panelCanvasGroup: Optional for fading entire panel
+
+**Setup**:
+1. Create manager GameObject as child of panel background
+2. Attach InstrumentPanelManager script
+3. Create all four instruments as siblings
+4. Manager auto-links everything on Start()
+
+**API Methods**:
+- SetInstrumentsEnabled(bool enabled): Enable/disable all instruments
+- SetPanelAlpha(float alpha): Fade panel (requires CanvasGroup)
+- ShowPanel(): Make panel visible and enabled
+- HidePanel(): Make panel invisible and disabled
+
+### Quick Setup Workflow
+
+1. **Import Sprites**:
+   - Instrument panel background (brass panel image)
+   - Needle sprites (thin pointers, pivot at bottom)
+   - Airplane silhouette (top-down view)
+   - Yaw triangle
+
+2. **Create Canvas**:
+   - UI  Canvas (Screen Space Overlay)
+   - Add Canvas Scaler (Scale With Screen Size)
+   - Set reference resolution (1920x1080)
+
+3. **Add Background**:
+   - UI  Image (child of Canvas)
+   - Assign panel background sprite
+   - Position at bottom of screen
+
+4. **Build Instruments** (for each):
+   - Create empty GameObject over gauge position
+   - Add indicator script
+   - Create needle Image children (correct pivots!)
+   - Assign references
+
+5. **Add Manager**:
+   - Create empty GameObject
+   - Attach InstrumentPanelManager
+   - Enable debugLog for first test
+
+6. **Test**:
+   - Enter Play Mode
+   - Check Console for setup confirmation
+   - Move ship and verify instruments respond
+
+### Troubleshooting
+
+**Needles don't move**:
+- Check ShipCharacteristics exists in scene
+- Verify needle RectTransforms assigned
+- Check pivot points (should be 0.5, 0 for needles)
+
+**Wrong rotation direction**:
+- Toggle otateClockwise setting
+- Adjust zeroRotationDegrees
+
+**Needles point wrong way**:
+- Check pivot point (bottom-center for clock hands)
+- Verify sprite points UP in source image
+
+**Movement too fast/slow**:
+- Adjust dampingFactor (higher = slower)
+
+### Advanced Configuration
+
+**Custom Ranges**:
+- Airspeed: Change maxAirspeedKnots (if ship goes faster than 12 knots)
+- VSI: Change maxClimbRateMPS (for higher climb rates)
+- Pitch: Change maxPitchDegrees (for more extreme maneuvers)
+
+**Visual Customization**:
+- Needle colors: Select Image component, change Color
+- Needle length: Adjust RectTransform Height
+- Needle thickness: Adjust RectTransform Width
+
+**Performance**:
+- All instruments use Update() loop
+- Damping reduces visual jitter
+- Consider lower update rates if needed (modify scripts)
+
+---

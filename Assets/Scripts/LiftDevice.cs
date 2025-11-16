@@ -213,21 +213,19 @@ public abstract class LiftDevice : MonoBehaviour
     }
     
     /// <summary>
-    /// Apply direct altitude control by moving the ship vertically at calculated velocity.
-    /// No physics forces - direct position manipulation.
+    /// Apply altitude control by setting the Rigidbody's vertical velocity directly.
+    /// This creates smooth movement that instruments can track.
     /// </summary>
     protected virtual void ApplyAltitudeControl(float deltaTime)
     {
         if (shipRigidbody == null || _powerConsumption <= 0f)
             return;
         
-        // Move ship directly based on vertical velocity
-        if (Mathf.Abs(_verticalVelocityMPS) > 0.001f)
-        {
-            Vector3 newPosition = shipRigidbody.position;
-            newPosition.y += _verticalVelocityMPS * deltaTime;
-            shipRigidbody.MovePosition(newPosition);
-        }
+        // Set the vertical velocity on the Rigidbody
+        // This allows physics tracking while maintaining direct altitude control
+        Vector3 velocity = shipRigidbody.linearVelocity;
+        velocity.y = _verticalVelocityMPS;
+        shipRigidbody.linearVelocity = velocity;
     }
     
     /// <summary>

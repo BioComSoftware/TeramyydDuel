@@ -25,9 +25,16 @@ public class ShipCharacteristics : MonoBehaviour
     [Header("Movement State (Read-Only)")]
     [SerializeField] private float _currentSpeedKnots = 0f;
     [SerializeField] private float _currentSpeedMetersPerSecond = 0f;
+    [SerializeField] private float _currentAltitude = 0f;
+    [SerializeField] private float _verticalVelocityMPS = 0f;
     [SerializeField] private Vector3 _velocity = Vector3.zero;
     [SerializeField] private float _totalThrustAvailable = 0f;
     [SerializeField] private float _accelerationMPS2 = 0f;
+    
+    [Header("Position (Read-Only)")]
+    [SerializeField] private float _positionX = 0f;
+    [SerializeField] private float _positionY = 0f;
+    [SerializeField] private float _positionZ = 0f;
     
     [Header("Debug")]
     public bool debugLog = false;
@@ -43,6 +50,9 @@ public class ShipCharacteristics : MonoBehaviour
     // Public read-only properties
     public float CurrentSpeedKnots => _currentSpeedKnots;
     public float CurrentSpeedMetersPerSecond => _currentSpeedMetersPerSecond;
+    public float currentAltitude => _currentAltitude;
+    public float verticalVelocityMPS => _verticalVelocityMPS;
+    public float currentSpeedKnots => _currentSpeedKnots; // Alias for HUD compatibility
     public Vector3 Velocity => _velocity;
     public float TotalThrustAvailable => _totalThrustAvailable;
     
@@ -99,6 +109,18 @@ public class ShipCharacteristics : MonoBehaviour
         _currentSpeedMetersPerSecond = _velocity.magnitude;
         _currentSpeedKnots = _currentSpeedMetersPerSecond * MPS_TO_KNOTS;
         
+        // Update position coordinates
+        Vector3 pos = transform.position;
+        _positionX = pos.x;
+        _positionY = pos.y;
+        _positionZ = pos.z;
+        
+        // Update altitude (Y position in world space)
+        _currentAltitude = pos.y;
+        
+        // Update vertical velocity (Y component of velocity)
+        _verticalVelocityMPS = rb.linearVelocity.y;
+        
         // Track total available thrust for display purposes
         _totalThrustAvailable = 0f;
         foreach (var engine in engines)
@@ -115,7 +137,7 @@ public class ShipCharacteristics : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0) // Log once per second (at 60fps)
         {
-            FileLogger.Log($"{gameObject.name} - Speed: {_currentSpeedKnots:F1}kt ({_currentSpeedMetersPerSecond:F1}m/s), TotalThrust: {_totalThrustAvailable:F1}N, Engines: {engines.Count}", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} - Altitude: {_currentAltitude:F2}m, VertVel: {_verticalVelocityMPS:F2}m/s, Speed: {_currentSpeedKnots:F1}kt, Position: {transform.position}, RBVelocity: {rb.linearVelocity}", "ShipCharacteristics");
         }
     }
     
