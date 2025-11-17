@@ -1,5 +1,7 @@
 # Teramyyd Game Development Journal
 
+When creating log output, always write the log output to a file so you, the AI, can read it for troubleshooting. 
+
 ## AI Snapshot (2025-11-15 — Ship Physics: Engines, Lift Devices, Direct Altitude Control)
 
 Purpose: Implemented comprehensive ship systems for thrust, lift, and movement with direct altitude control (no physics forces).

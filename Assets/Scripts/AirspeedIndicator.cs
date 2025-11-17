@@ -2,8 +2,10 @@ using UnityEngine;
 
 /// <summary>
 /// Airspeed Indicator - Single rotating hand pointing to knots on gauge face.
-/// Ontological structure: Ready-to-hand disclosure of ship's velocity magnitude.
-/// Maps airspeed (0-10+ knots) to 0-9 scale positions (0° = top/12 o'clock = 0).
+/// Displays HORIZONTAL airspeed only (X-Z plane movement, ignoring vertical climb/descent).
+/// This represents movement across the ground/battlefield, not total 3D velocity.
+/// Needle rotates continuously: 10 knots = 1 full rotation (matching 0-9 gauge scale).
+/// No speed limitation - needle can rotate multiple times for higher speeds.
 /// Based on real aircraft airspeed indicator behavior.
 /// </summary>
 [AddComponentMenu("Teramyyd/HUD/Airspeed Indicator")]
@@ -17,8 +19,8 @@ public class AirspeedIndicator : MonoBehaviour
     public ShipCharacteristics shipCharacteristics;
     
     [Header("Configuration")]
-    [Tooltip("Maximum airspeed value on the gauge (typically 10 knots for 0-9 scale, or custom max).")]
-    public float maxAirspeedKnots = 10f;
+    [Tooltip("Knots per dial increment (default 10, so 10kt = '1', 20kt = '2', etc.). Needle rotates continuously for unlimited speed.")]
+    public float knotsPerDialIncrement = 10f;
     
     [Tooltip("Rotation at zero airspeed (0° = top/12 o'clock).")]
     public float zeroRotationDegrees = 0f;
@@ -33,6 +35,9 @@ public class AirspeedIndicator : MonoBehaviour
     [Header("Status")]
     [SerializeField] private float currentAirspeedKnots;
     [SerializeField] private float currentRotation;
+    
+    [Header("Debug")]
+    public bool debugLog = false;
     
     private float targetRotation;
     
@@ -53,6 +58,12 @@ public class AirspeedIndicator : MonoBehaviour
         {
             Debug.LogError($"AirspeedIndicator on {gameObject.name}: Cannot find ShipCharacteristics!");
         }
+        
+        // Initialize currentRotation to current needle position to avoid sudden jumps
+        if (needleTransform != null)
+        {
+            currentRotation = -needleTransform.localEulerAngles.z;
+        }
     }
     
     private void Update()
@@ -60,21 +71,23 @@ public class AirspeedIndicator : MonoBehaviour
         if (shipCharacteristics == null || needleTransform == null)
             return;
         
-        // Get current airspeed from ship
-        currentAirspeedKnots = shipCharacteristics.currentSpeedKnots;
+        // Get current HORIZONTAL airspeed from ship (X-Z plane only, no vertical component)
+        currentAirspeedKnots = shipCharacteristics.horizontalSpeedKnots;
         
         // Calculate target rotation
-        // Map airspeed (0 to maxAirspeedKnots) to full rotation (0° to 360°)
-        float normalizedSpeed = Mathf.Clamp01(currentAirspeedKnots / maxAirspeedKnots);
-        float rotationRange = 360f;
+        // Each dial number represents knotsPerDialIncrement (default 10 knots)
+        // 10kt = '1', 20kt = '2', 30kt = '3', etc.
+        // The 0-9 dial has 10 positions, so 36° per position
+        float dialPosition = currentAirspeedKnots / knotsPerDialIncrement;
+        float rotationDegrees = dialPosition * 36f; // 36° per dial increment (360° / 10 positions)
         
         if (rotateClockwise)
         {
-            targetRotation = zeroRotationDegrees + (normalizedSpeed * rotationRange);
+            targetRotation = zeroRotationDegrees + rotationDegrees;
         }
         else
         {
-            targetRotation = zeroRotationDegrees - (normalizedSpeed * rotationRange);
+            targetRotation = zeroRotationDegrees - rotationDegrees;
         }
         
         // Smooth rotation
@@ -89,6 +102,11 @@ public class AirspeedIndicator : MonoBehaviour
         
         // Apply rotation (rotate around Z-axis for UI)
         needleTransform.localRotation = Quaternion.Euler(0f, 0f, -currentRotation);
+        
+        if (debugLog && Time.frameCount % 60 == 0)
+        {
+            FileLogger.Log($"[AirspeedIndicator] HorizontalSpeed: {currentAirspeedKnots:F2}kt, DialPosition: {dialPosition:F2}, TargetRot: {targetRotation:F1}°, CurrentRot: {currentRotation:F1}°", "AirspeedIndicator");
+        }
     }
     
     /// <summary>

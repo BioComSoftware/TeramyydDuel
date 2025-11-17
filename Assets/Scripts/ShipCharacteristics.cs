@@ -25,6 +25,8 @@ public class ShipCharacteristics : MonoBehaviour
     [Header("Movement State (Read-Only)")]
     [SerializeField] private float _currentSpeedKnots = 0f;
     [SerializeField] private float _currentSpeedMetersPerSecond = 0f;
+    [SerializeField] private float _horizontalSpeedKnots = 0f;
+    [SerializeField] private float _horizontalSpeedMetersPerSecond = 0f;
     [SerializeField] private float _currentAltitude = 0f;
     [SerializeField] private float _verticalVelocityMPS = 0f;
     [SerializeField] private Vector3 _velocity = Vector3.zero;
@@ -50,9 +52,12 @@ public class ShipCharacteristics : MonoBehaviour
     // Public read-only properties
     public float CurrentSpeedKnots => _currentSpeedKnots;
     public float CurrentSpeedMetersPerSecond => _currentSpeedMetersPerSecond;
+    public float HorizontalSpeedKnots => _horizontalSpeedKnots;
+    public float HorizontalSpeedMetersPerSecond => _horizontalSpeedMetersPerSecond;
     public float currentAltitude => _currentAltitude;
     public float verticalVelocityMPS => _verticalVelocityMPS;
     public float currentSpeedKnots => _currentSpeedKnots; // Alias for HUD compatibility
+    public float horizontalSpeedKnots => _horizontalSpeedKnots; // Alias for airspeed indicator
     public Vector3 Velocity => _velocity;
     public float TotalThrustAvailable => _totalThrustAvailable;
     
@@ -104,10 +109,16 @@ public class ShipCharacteristics : MonoBehaviour
     /// </summary>
     void UpdateMovementTracking()
     {
-        // Update velocity tracking
+        // Update velocity tracking (full 3D velocity)
         _velocity = rb.linearVelocity;
         _currentSpeedMetersPerSecond = _velocity.magnitude;
         _currentSpeedKnots = _currentSpeedMetersPerSecond * MPS_TO_KNOTS;
+        
+        // Update horizontal airspeed (X-Z plane only, ignoring Y-axis vertical movement)
+        // This is true airspeed for aircraft/ships - movement across the ground
+        Vector3 horizontalVelocity = new Vector3(_velocity.x, 0f, _velocity.z);
+        _horizontalSpeedMetersPerSecond = horizontalVelocity.magnitude;
+        _horizontalSpeedKnots = _horizontalSpeedMetersPerSecond * MPS_TO_KNOTS;
         
         // Update position coordinates
         Vector3 pos = transform.position;
@@ -137,7 +148,7 @@ public class ShipCharacteristics : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0) // Log once per second (at 60fps)
         {
-            FileLogger.Log($"{gameObject.name} - Altitude: {_currentAltitude:F2}m, VertVel: {_verticalVelocityMPS:F2}m/s, Speed: {_currentSpeedKnots:F1}kt, Position: {transform.position}, RBVelocity: {rb.linearVelocity}", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} - Altitude: {_currentAltitude:F2}m, VertVel: {_verticalVelocityMPS:F2}m/s, TotalSpeed: {_currentSpeedKnots:F1}kt, HorizontalSpeed: {_horizontalSpeedKnots:F1}kt, Position: {transform.position}, RBVelocity: {rb.linearVelocity}", "ShipCharacteristics");
         }
     }
     
