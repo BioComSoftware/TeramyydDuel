@@ -1519,3 +1519,26 @@ _positionZ = position.z;
 5. **Configurable Zero**: Allowing zero marker customization supports different gauge designs
 6. **Rotation Formula Simplicity**: Direct addition (zero + speed * rate) avoids offset errors
 
+---
+
+## AI Snapshot (2025-11-17 – VSI Sample-and-Teleport Update)
+
+Purpose: Addressed remaining jitter/under-deflection by removing interpolation from the Vertical Speed Indicator.
+
+**Implementation Notes**
+- Added `sampleIntervalSeconds` so altitude deltas can be taken each frame or at longer cadences (>=1s) for smoothing.
+- Update loop is intentionally minimal: sample altitude, compute vertical speed, convert directly to dial angle (`zero + speed * degreesPerMPS`), then instantly set the RectTransform rotation (no lerp/easing).
+- Needle remains at the previously computed angle until the next sample; no auto-return logic exists.
+
+**Files Touched**
+1. `Assets/Scripts/VerticalSpeedIndicator.cs` – rewritten with sampling interval state and teleport-style rotation helper.
+
+**Operational Guidance**
+- Use `sampleIntervalSeconds = 0` for per-frame responsiveness; increase to mitigate noise.
+- `degreesPerMeterPerSecond` preserves dial scaling (default 9° ⇒ ±20 m/s spans ±180° from zero).
+- Ensure `zeroRotationDegrees` reflects how the needle sprite is posed in-editor (270° when sprite stays pointing up).
+
+**Next Steps**
+- Stress-test under large climb/descent rates to confirm unbounded rotation remains intuitive.
+- Consider optional averaging of multiple altitude samples if future pilots request additional smoothing without interpolation.
+
