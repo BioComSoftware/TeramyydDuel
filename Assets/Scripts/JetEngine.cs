@@ -12,11 +12,14 @@ public class JetEngine : Engine
     [Tooltip("Maximum safe operating temperature.")]
     public float maxSafeTemperature = 100f;
     
+    [Tooltip("Minimum operating temperature when engine is running (idle heat).")]
+    public float minOperatingTemperature = 20f;
+    
     [Tooltip("Heat generation per second at 100% burn.")]
     public float heatGenerationRate = 10f;
     
-    [Tooltip("Heat dissipation per second when idle.")]
-    public float heatDissipationRate = 5f;
+    [Tooltip("Heat dissipation per second (constant rate).")]
+    public float heatDissipationRate = 10f;
     
     [Tooltip("Power output penalty per degree above safe temperature.")]
     [Range(0f, 0.1f)]
@@ -84,30 +87,56 @@ public class JetEngine : Engine
     
     /// <summary>
     /// Manage heat generation and dissipation.
-    /// Heat accumulates during operation and dissipates when idle/low burn.
+    /// Heat generation:
+    /// - At ≤100% BRP: Linear (BRP% × heatGenerationRate)
+    /// - At >100% BRP: Exponential via 5th power ((BRP/100)^5 × heatGenerationRate)
+    /// Dissipation: Constant rate, cannot go below minOperatingTemperature
     /// </summary>
     void ManageHeat(float deltaTime)
     {
         // Generate heat based on burn rate
         float burnMultiplier = burnRatePercent / 100f;
-        float heatGenerated = heatGenerationRate * burnMultiplier * deltaTime;
+        float heatGenerationPerSecond;
         
-        // Dissipate heat (scales with how far we are from max temp)
-        float dissipationEfficiency = _currentTemperature / (maxSafeTemperature * 2f); // More efficient when hotter
-        float heatDissipated = heatDissipationRate * (1f + dissipationEfficiency) * deltaTime;
+        if (burnMultiplier <= 1f)
+        {
+            // Linear heat generation at or below 100% BRP
+            heatGenerationPerSecond = heatGenerationRate * burnMultiplier;
+        }
+        else
+        {
+            // 5th power heat generation above 100% BRP
+            // Example: 110% = 1.1^5 = 1.61×, 120% = 1.2^5 = 2.49×, 150% = 1.5^5 = 7.59×
+            float overpowerMultiplier = Mathf.Pow(burnMultiplier, 5f);
+            heatGenerationPerSecond = heatGenerationRate * overpowerMultiplier;
+        }
+        
+        float heatGenerated = heatGenerationPerSecond * deltaTime;
+        
+        // Constant heat dissipation
+        float heatDissipated = heatDissipationRate * deltaTime;
         
         // Update current temperature
         _currentTemperature += heatGenerated - heatDissipated;
-        _currentTemperature = Mathf.Max(0f, _currentTemperature);
+        
+        // Clamp to minimum operating temperature (engine maintains idle heat when running)
+        _currentTemperature = Mathf.Max(minOperatingTemperature, _currentTemperature);
         
         // Check overheat status
         _isOverheating = _currentTemperature > maxSafeTemperature;
         
-        // Apply overheat damage
+        // Apply overheat damage with 5th power scaling
         if (_isOverheating && healthComponent != null)
         {
             float excessHeat = _currentTemperature - maxSafeTemperature;
-            float overheatDamage = overheatDamageRate * (excessHeat / maxSafeTemperature) * deltaTime;
+            float percentOver = excessHeat / maxSafeTemperature;
+            
+            // 5th power damage scaling
+            // Example: 10% over (110°/100°) = 1.1^5 = 1.61× damage
+            //          20% over (120°/100°) = 1.2^5 = 2.49× damage
+            float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
+            
+            float overheatDamage = overheatDamageRate * damageMultiplier * deltaTime;
             int damageToApply = Mathf.FloorToInt(overheatDamage);
             
             if (damageToApply > 0)
@@ -116,7 +145,7 @@ public class JetEngine : Engine
                 
                 if (debugLog)
                 {
-                    FileLogger.Log($"{gameObject.name} taking {damageToApply} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature}", "JetEngine");
+                    FileLogger.Log($"{gameObject.name} taking {damageToApply} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature} ({percentOver * 100f:F1}% over, {damageMultiplier:F2}× multiplier)", "JetEngine");
                 }
             }
         }
