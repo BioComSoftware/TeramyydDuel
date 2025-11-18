@@ -193,8 +193,8 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
     {
         isDragging = false;
         
-        // Play bell if we're at stop position
-        if (Mathf.Abs(_currentRotation) < 1f && audioSource != null && stopBellSound != null)
+        // Play bell if we're at stop position (within dead zone)
+        if (Mathf.Abs(_currentRotation) <= 5f && audioSource != null && stopBellSound != null)
         {
             audioSource.PlayOneShot(stopBellSound, 0.5f);
         }
@@ -207,6 +207,7 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
     
     /// <summary>
     /// Set the handle rotation and update engine commands.
+    /// Dead zone: ±5° around center is considered STOP.
     /// </summary>
     /// <param name="angleDegrees">Angle in degrees: 0 = stop, positive = ahead, negative = astern</param>
     public void SetRotation(float angleDegrees)
@@ -220,12 +221,26 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
             handleTransform.localRotation = Quaternion.Euler(0f, 0f, -_currentRotation); // Negative for clockwise = forward
         }
         
-        // Calculate percentage (0-100%)
-        _currentPercentage = Mathf.Abs(_currentRotation);
+        // Apply 5° dead zone around center
+        const float DEAD_ZONE = 5f;
+        float effectiveRotation = _currentRotation;
         
-        // Determine direction
-        _isAhead = _currentRotation > 0.5f;
-        _isAstern = _currentRotation < -0.5f;
+        if (Mathf.Abs(_currentRotation) <= DEAD_ZONE)
+        {
+            // Within dead zone - treat as stop
+            effectiveRotation = 0f;
+            _currentPercentage = 0f;
+        }
+        else
+        {
+            // Outside dead zone - subtract dead zone from percentage
+            // This keeps 10° = 10%, 20° = 20%, etc.
+            _currentPercentage = Mathf.Abs(effectiveRotation);
+        }
+        
+        // Determine direction (outside dead zone)
+        _isAhead = _currentRotation > DEAD_ZONE;
+        _isAstern = _currentRotation < -DEAD_ZONE;
         
         // Calculate requested speed in knots
         if (targetEngine != null)
