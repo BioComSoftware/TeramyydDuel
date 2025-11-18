@@ -38,6 +38,9 @@ public abstract class Engine : MonoBehaviour
     public float burnRatePercent = 100f;
     
     [Header("Player Controls")]
+    [Tooltip("Maximum speed the ship can achieve in knots (used by Chadburn/telegraph controls).")]
+    public float maxSpeedKnots = 100f;
+    
     [Tooltip("Desired speed FORWARD (positive Z-axis) in knots. Set to 0 if moving astern.")]
     public float knotsAhead = 0f;
     
