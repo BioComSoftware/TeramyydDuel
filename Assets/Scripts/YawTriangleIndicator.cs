@@ -81,25 +81,31 @@ public class YawTriangleIndicator : MonoBehaviour
         // Get ship's velocity (actual movement direction)
         Vector3 velocity = shipCharacteristics.Velocity;
         
-        // Get ship's forward direction (heading)
-        Vector3 shipForward = shipCharacteristics.transform.forward;
+        // Get ship's right direction (starboard side)
+        Vector3 shipRight = shipCharacteristics.transform.right;
         
-        // Calculate slip angle in horizontal plane only (ignore vertical component)
+        // Calculate horizontal velocity only (ignore vertical component)
         Vector3 velocityHorizontal = new Vector3(velocity.x, 0f, velocity.z);
-        Vector3 forwardHorizontal = new Vector3(shipForward.x, 0f, shipForward.z).normalized;
+        Vector3 rightHorizontal = new Vector3(shipRight.x, 0f, shipRight.z).normalized;
         
         // Check if ship is moving
         if (velocityHorizontal.magnitude > 0.1f)
         {
-            // Normalize velocity direction
-            Vector3 velocityDirection = velocityHorizontal.normalized;
+            // Calculate how much of the velocity is to the right (starboard)
+            // Positive = sliding right, negative = sliding left
+            float lateralVelocity = Vector3.Dot(velocityHorizontal, rightHorizontal);
             
-            // Calculate slip angle using signed angle
-            // Positive angle = slipping right, negative = slipping left
-            _currentSlipAngle = Vector3.SignedAngle(forwardHorizontal, velocityDirection, Vector3.up);
+            // Calculate forward/backward velocity (for magnitude reference only)
+            Vector3 forwardHorizontal = new Vector3(shipCharacteristics.transform.forward.x, 0f, shipCharacteristics.transform.forward.z).normalized;
+            float forwardVelocity = Vector3.Dot(velocityHorizontal, forwardHorizontal);
+            
+            // Calculate slip angle based on lateral velocity only
+            // Use atan2 to get angle from lateral vs forward/backward components
+            // This gives us the drift angle regardless of forward/backward direction
+            _currentSlipAngle = Mathf.Atan2(lateralVelocity, Mathf.Abs(forwardVelocity)) * Mathf.Rad2Deg;
             
             // Set rotation directly (no smoothing)
-            // 0° slip = 0° rotation (pointing down)
+            // 0° slip = 0° rotation (pointing down - no sideways drift)
             // +90° slip (right) = +90° rotation (pointing right)
             // -90° slip (left) = -90° rotation (pointing left)
             _currentRotation = _currentSlipAngle;
