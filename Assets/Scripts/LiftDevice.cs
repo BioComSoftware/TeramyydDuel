@@ -30,6 +30,10 @@ public abstract class LiftDevice : MonoBehaviour
     [Tooltip("Is the lift device currently active?")]
     public bool isActive = true;
     
+    [Header("Control Limits")]
+    [Tooltip("Maximum power per second that telegraph/UI controls can command (100% position).")]
+    public float maxLiftPowerPerSecond = 200f;
+    
     [Header("Status (Read-Only)")]
     [SerializeField] protected float _currentLiftForce;
     [SerializeField] protected float _verticalVelocityMPS;
@@ -54,6 +58,14 @@ public abstract class LiftDevice : MonoBehaviour
     public float VerticalVelocityMPS => _verticalVelocityMPS;
     public float PowerConsumption => _powerConsumption;
     public bool IsHovering => _isHovering;
+    public float MaxLiftPowerPerSecond => Mathf.Max(maxLiftPowerPerSecond, minimumPowerPerSecond);
+    public float CurrentLiftAllocationPercent => (MaxLiftPowerPerSecond > 0f) ? (allocatedPowerPerSecond / MaxLiftPowerPerSecond) * 100f : 0f;
+    
+    protected virtual float ClampPowerAllocation(float requestedPower)
+    {
+        float maxAllowed = Mathf.Max(0f, MaxLiftPowerPerSecond);
+        return Mathf.Clamp(requestedPower, 0f, maxAllowed);
+    }
     
     protected virtual void Awake()
     {
@@ -81,12 +93,16 @@ public abstract class LiftDevice : MonoBehaviour
         // If no power allocated, default to minimum power for hover
         if (allocatedPowerPerSecond <= 0f && isActive)
         {
-            allocatedPowerPerSecond = minimumPowerPerSecond;
+            SetPowerAllocation(minimumPowerPerSecond);
             
             if (debugLog)
             {
                 FileLogger.Log($"{gameObject.name} auto-setting power to minimum ({minimumPowerPerSecond}/s) for hover", "LiftDevice");
             }
+        }
+        else
+        {
+            allocatedPowerPerSecond = ClampPowerAllocation(allocatedPowerPerSecond);
         }
         
         if (debugLog)
@@ -121,6 +137,7 @@ public abstract class LiftDevice : MonoBehaviour
         if (shipCharacteristics == null)
             return;
         
+        allocatedPowerPerSecond = ClampPowerAllocation(allocatedPowerPerSecond);
         float shipWeightTons = shipCharacteristics.shipWeightTons;
         _powerConsumption = allocatedPowerPerSecond;
         
