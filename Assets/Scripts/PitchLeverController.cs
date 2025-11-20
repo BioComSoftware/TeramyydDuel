@@ -32,6 +32,9 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
     [Range(5f, 90f)]
     public float maxPitchDownDegrees = 20f;
 
+    [Tooltip("Reverse pitch direction: When checked, lever up = nose down, lever down = nose up.")]
+    public bool reversePitchDirection = false;
+
     [Tooltip("Snap lever to increments (0 = smooth, 5 = snap every 5 degrees).")]
     [Range(0f, 15f)]
     public float snapIncrement = 0f;
@@ -216,9 +219,11 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
 
         // Convert lever angle to ship pitch angle
         // Lever 90° = 0° pitch (level)
-        // Lever 60° = +30° pitch (nose up)
-        // Lever 110° = -20° pitch (nose down)
-        float shipPitchAngle = LEVEL_FLIGHT_ANGLE - _currentLeverAngle;
+        // Normal: Lever 60° = +30° pitch (nose up), Lever 110° = -20° pitch (nose down)
+        // Reversed: Lever 60° = -30° pitch (nose down), Lever 110° = +20° pitch (nose up)
+        float shipPitchAngle = reversePitchDirection ? 
+            (_currentLeverAngle - LEVEL_FLIGHT_ANGLE) : 
+            (LEVEL_FLIGHT_ANGLE - _currentLeverAngle);
 
         // Apply pitch to ship (attitude only, no velocity change)
         if (targetShip != null)
