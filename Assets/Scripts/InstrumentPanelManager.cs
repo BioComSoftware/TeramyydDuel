@@ -31,6 +31,10 @@ public class InstrumentPanelManager : MonoBehaviour
     [Tooltip("Attitude indicator component.")]
     public AttitudeIndicator attitudeIndicator;
     
+    [Header("Attitude Indicator Configuration")]
+    [Tooltip("Pixels to move vertically per degree of pitch. E.g., 3 means 30° pitch = 90 pixels movement.")]
+    public float pixelsPerPitchDegree = 3f;
+    
     [Header("Panel Control")]
     [Tooltip("Enable/disable all instruments.")]
     public bool instrumentsEnabled = true;
@@ -99,7 +103,13 @@ public class InstrumentPanelManager : MonoBehaviour
             verticalSpeedIndicator.shipCharacteristics = shipCharacteristics;
         
         if (attitudeIndicator != null)
+        {
             attitudeIndicator.shipCharacteristics = shipCharacteristics;
+            
+            // Apply pixels per degree setting
+            // Calculate maxPitchMovementPixels based on pixelsPerPitchDegree and maxPitchDegrees
+            attitudeIndicator.maxPitchMovementPixels = pixelsPerPitchDegree * attitudeIndicator.maxPitchDegrees;
+        }
     }
     
     /// <summary>

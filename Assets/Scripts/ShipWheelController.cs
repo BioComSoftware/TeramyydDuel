@@ -141,12 +141,28 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     
     void FixedUpdate()
     {
-        // Apply rotation to ship
+        // Apply rotation to ship via ShipCharacteristics (if available)
         if (targetShip != null && Mathf.Abs(_shipRotationSpeed) > 0.01f)
         {
-            // Rotate ship around its Y-axis (horizontal plane only)
-            float rotationThisFrame = _shipRotationSpeed * Time.fixedDeltaTime;
-            targetShip.Rotate(Vector3.up, rotationThisFrame, Space.World);
+            ShipCharacteristics shipChar = targetShip.GetComponent<ShipCharacteristics>();
+            
+            if (shipChar != null)
+            {
+                // Calculate desired yaw change this frame
+                float yawChange = _shipRotationSpeed * Time.fixedDeltaTime;
+                
+                // Add to current yaw target (continuous rotation - no normalization)
+                // This allows unlimited rotation in either direction
+                float newYaw = shipChar.targetYawDegrees + yawChange;
+                
+                shipChar.SetYawAttitude(newYaw);
+            }
+            else
+            {
+                // Fallback: Direct rotation if no ShipCharacteristics
+                float rotationThisFrame = _shipRotationSpeed * Time.fixedDeltaTime;
+                targetShip.Rotate(Vector3.up, rotationThisFrame, Space.World);
+            }
         }
     }
     

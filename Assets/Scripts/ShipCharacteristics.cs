@@ -265,6 +265,7 @@ public class ShipCharacteristics : MonoBehaviour
     
     /// <summary>
     /// Update attitude tracking - smoothly interpolate toward target attitude.
+    /// CRITICAL: Yaw rotates around GLOBAL Y-axis, while roll/pitch are local to ship.
     /// </summary>
     void UpdateAttitudeTracking()
     {
@@ -273,20 +274,38 @@ public class ShipCharacteristics : MonoBehaviour
         float pitchDelta = pitchRotationSpeed * Time.fixedDeltaTime;
         float yawDelta = yawRotationSpeed * Time.fixedDeltaTime;
         
+        // Roll and pitch use MoveTowards (limited range)
         _currentRollDegrees = Mathf.MoveTowards(_currentRollDegrees, _targetRollDegrees, rollDelta);
         _currentPitchDegrees = Mathf.MoveTowards(_currentPitchDegrees, _targetPitchDegrees, pitchDelta);
-        _currentYawDegrees = Mathf.MoveTowards(_currentYawDegrees, _targetYawDegrees, yawDelta);
         
-        // Apply current attitude to transform
-        transform.eulerAngles = new Vector3(_currentPitchDegrees, _currentYawDegrees, _currentRollDegrees);
+        // Yaw: continuous rotation without wrapping or shortest-path behavior
+        // Simply move current toward target at fixed speed, preserving rotation direction
+        if (_currentYawDegrees < _targetYawDegrees)
+        {
+            _currentYawDegrees = Mathf.Min(_currentYawDegrees + yawDelta, _targetYawDegrees);
+        }
+        else if (_currentYawDegrees > _targetYawDegrees)
+        {
+            _currentYawDegrees = Mathf.Max(_currentYawDegrees - yawDelta, _targetYawDegrees);
+        }
+        
+        // Build rotation using quaternions to ensure yaw is always around GLOBAL Y-axis
+        // Order: Yaw (global Y) -> Pitch (local X) -> Roll (local Z)
+        Quaternion yawRotation = Quaternion.AngleAxis(_currentYawDegrees, Vector3.up);
+        Quaternion pitchRotation = Quaternion.AngleAxis(_currentPitchDegrees, Vector3.right);
+        Quaternion rollRotation = Quaternion.AngleAxis(_currentRollDegrees, Vector3.forward);
+        
+        // Apply: Global yaw first, then local pitch and roll
+        transform.rotation = yawRotation * pitchRotation * rollRotation;
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
             float rollDiff = Mathf.Abs(_currentRollDegrees - _targetRollDegrees);
             float pitchDiff = Mathf.Abs(_currentPitchDegrees - _targetPitchDegrees);
-            if (rollDiff > 0.1f || pitchDiff > 0.1f)
+            float yawDiff = Mathf.Abs(_currentYawDegrees - _targetYawDegrees);
+            if (rollDiff > 0.1f || pitchDiff > 0.1f || yawDiff > 0.1f)
             {
-                FileLogger.Log($"{gameObject.name} attitude transitioning - Roll: {_currentRollDegrees:F1}°→{_targetRollDegrees:F1}°, Pitch: {_currentPitchDegrees:F1}°→{_targetPitchDegrees:F1}°", "ShipCharacteristics");
+                FileLogger.Log($"{gameObject.name} attitude - Roll: {_currentRollDegrees:F1}°→{_targetRollDegrees:F1}°, Pitch: {_currentPitchDegrees:F1}°→{_targetPitchDegrees:F1}°, Yaw: {_currentYawDegrees:F1}°→{_targetYawDegrees:F1}°", "ShipCharacteristics");
             }
         }
     }
