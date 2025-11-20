@@ -279,12 +279,22 @@ public abstract class LiftDevice : MonoBehaviour
     /// </summary>
     public virtual void SetPowerAllocation(float powerPerSecond)
     {
-        allocatedPowerPerSecond = Mathf.Max(0f, powerPerSecond);
+        allocatedPowerPerSecond = ClampPowerAllocation(powerPerSecond);
         
         if (debugLog)
         {
             FileLogger.Log($"{gameObject.name} power allocation set to {allocatedPowerPerSecond}/s", "LiftDevice");
         }
+    }
+    
+    /// <summary>
+    /// Set lift allocation as a percentage of MaxLiftPowerPerSecond.
+    /// </summary>
+    public virtual void SetLiftPowerPercentage(float percentage)
+    {
+        float clampedPercent = Mathf.Clamp(percentage, 0f, 100f);
+        float targetPower = (MaxLiftPowerPerSecond * clampedPercent) / 100f;
+        SetPowerAllocation(targetPower);
     }
     
     /// <summary>

@@ -28,6 +28,13 @@ public class AntiGravityDevice : LiftDevice
     [Tooltip("Altitude calibration offset - added to measured altitude for display.")]
     public float altitudeCalibration = 0f;
     
+    [Header("Lift Control Tuning")]
+    [Tooltip("Enable response remapping so telegraph percentages can be curved for fine control.")]
+    public bool useTelegraphResponseCurve = false;
+    
+    [Tooltip("Response curve mapping telegraph percent (X 0-1) to applied percent (Y 0-1).")]
+    public AnimationCurve telegraphResponseCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+    
     [Header("Status (Read-Only)")]
     [SerializeField] private float _fieldStrengthPercent = 0f;
     [SerializeField] private bool _fieldOverload = false;
@@ -88,6 +95,20 @@ public class AntiGravityDevice : LiftDevice
             float currentAltitude = shipCharacteristics != null ? shipCharacteristics.currentAltitude + altitudeCalibration : transform.position.y + altitudeCalibration;
             FileLogger.Log($"{gameObject.name} [AntiGrav] - Altitude: {currentAltitude:F2}m, FieldStrength: {_fieldStrengthPercent:F1}%, Overload: {_fieldOverload}, Stability: {fieldStability}", "AntiGrav");
         }
+    }
+    
+    public override void SetLiftPowerPercentage(float percentage)
+    {
+        float appliedPercent = percentage;
+        
+        if (useTelegraphResponseCurve && telegraphResponseCurve != null && telegraphResponseCurve.length > 0)
+        {
+            float normalized = Mathf.Clamp01(percentage / 100f);
+            float curveValue = Mathf.Clamp01(telegraphResponseCurve.Evaluate(normalized));
+            appliedPercent = curveValue * 100f;
+        }
+        
+        base.SetLiftPowerPercentage(appliedPercent);
     }
     
     /// <summary>
