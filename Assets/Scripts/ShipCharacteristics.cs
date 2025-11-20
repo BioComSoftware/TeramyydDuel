@@ -61,6 +61,19 @@ public class ShipCharacteristics : MonoBehaviour
     [Range(1f, 180f)]
     public float yawRotationSpeed = 10f;
     
+    [Header("Attitude Limits")]
+    [Tooltip("Maximum roll angle in degrees (symmetric: port and starboard). Limits how far ship can bank.")]
+    [Range(10f, 180f)]
+    public float maxRollDegrees = 45f;
+    
+    [Tooltip("Maximum nose-up pitch angle in degrees. Limits how far ship can pitch upward.")]
+    [Range(5f, 90f)]
+    public float maxPitchUpDegrees = 30f;
+    
+    [Tooltip("Maximum nose-down pitch angle in degrees. Limits how far ship can pitch downward.")]
+    [Range(5f, 90f)]
+    public float maxPitchDownDegrees = 20f;
+    
     [Header("Debug")]
     public bool debugLog = false;
     
@@ -291,9 +304,11 @@ public class ShipCharacteristics : MonoBehaviour
         
         // Build rotation using quaternions to ensure yaw is always around GLOBAL Y-axis
         // Order: Yaw (global Y) -> Pitch (local X) -> Roll (local Z)
+        // Note: Roll is negated because positive roll (right wing down) should rotate clockwise,
+        // but Unity's Z-axis rotation is counter-clockwise positive
         Quaternion yawRotation = Quaternion.AngleAxis(_currentYawDegrees, Vector3.up);
         Quaternion pitchRotation = Quaternion.AngleAxis(_currentPitchDegrees, Vector3.right);
-        Quaternion rollRotation = Quaternion.AngleAxis(_currentRollDegrees, Vector3.forward);
+        Quaternion rollRotation = Quaternion.AngleAxis(-_currentRollDegrees, Vector3.forward);
         
         // Apply: Global yaw first, then local pitch and roll
         transform.rotation = yawRotation * pitchRotation * rollRotation;

@@ -31,9 +31,6 @@ public class WingLevelerIndicator : MonoBehaviour
     [Tooltip("Pixels to move vertically per degree of pitch. E.g., 3 means 30° pitch = 90 pixels movement.")]
     public float pixelsPerPitchDegree = 3f;
     
-    [Tooltip("Maximum pitch angle to display (degrees). Prevents excessive movement.")]
-    public float maxPitchDegrees = 45f;
-    
     [Header("Smoothing")]
     [Tooltip("How quickly indicator responds (0 = instant, higher = smoother). Typical: 5-10.")]
     public float dampingFactor = 8f;
@@ -109,8 +106,12 @@ public class WingLevelerIndicator : MonoBehaviour
         // PITCH: Move wing image vertically
         // Ship pitched nose-up (+) → Image moves UP (+Y)
         // Ship pitched nose-down (-) → Image moves DOWN (-Y)
-        float clampedPitch = Mathf.Clamp(currentShipPitchDegrees, -maxPitchDegrees, maxPitchDegrees);
-        float pitchOffsetPixels = clampedPitch * pixelsPerPitchDegree;
+        // Use ship's max pitch limits from ShipCharacteristics
+        float maxPitch = Mathf.Max(shipCharacteristics.maxPitchUpDegrees, shipCharacteristics.maxPitchDownDegrees);
+        float clampedPitch = Mathf.Clamp(currentShipPitchDegrees, -maxPitch, maxPitch);
+        
+        // Negate pitch to correct direction: positive pitch (nose up) = move image UP
+        float pitchOffsetPixels = -clampedPitch * pixelsPerPitchDegree;
         
         targetImagePosition = wingImageStartPosition + new Vector2(0f, pitchOffsetPixels);
         
@@ -171,7 +172,8 @@ public class WingLevelerIndicator : MonoBehaviour
         currentShipPitchDegrees = pitchDegrees;
         
         targetImageRotation = -rollDegrees;
-        float clampedPitch = Mathf.Clamp(pitchDegrees, -maxPitchDegrees, maxPitchDegrees);
+        float maxPitch = Mathf.Max(shipCharacteristics.maxPitchUpDegrees, shipCharacteristics.maxPitchDownDegrees);
+        float clampedPitch = Mathf.Clamp(pitchDegrees, -maxPitch, maxPitch);
         float pitchOffsetPixels = clampedPitch * pixelsPerPitchDegree;
         targetImagePosition = wingImageStartPosition + new Vector2(0f, pitchOffsetPixels);
         

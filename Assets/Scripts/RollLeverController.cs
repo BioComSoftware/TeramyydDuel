@@ -21,10 +21,6 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
     public ShipCharacteristics targetShip;
 
     [Header("Roll Limits")]
-    [Tooltip("Maximum roll angle in degrees (same left and right). Lever constraint matches this.")]
-    [Range(10f, 180f)]
-    public float maxRollDegrees = 50f;
-
     [Tooltip("Snap lever to increments (0 = smooth, 5 = snap every 5 degrees).")]
     [Range(0f, 15f)]
     public float snapIncrement = 0f;
@@ -46,9 +42,13 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
     [Header("Status (Read-Only)")]
     [SerializeField] private float _currentLeverAngle = 0f;
     [SerializeField] private float _currentShipRoll = 0f;
+    [SerializeField] private float _maxRollDegrees = 45f; // Synced from ShipCharacteristics
 
     [Header("Debug")]
     public bool debugLog = false;
+    
+    // Public accessor for maxRollDegrees
+    public float maxRollDegrees => _maxRollDegrees;
 
     // Components
     private Image leverImage;
@@ -100,9 +100,15 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
         {
             Debug.LogWarning("[RollLever] No ShipCharacteristics found. Lever is idle.");
         }
-        else if (debugLog)
+        else
         {
-            FileLogger.Log($"Roll Lever controlling {targetShip.gameObject.name}, max roll: ±{maxRollDegrees}°", "RollLever");
+            // Sync max roll from ShipCharacteristics
+            _maxRollDegrees = targetShip.maxRollDegrees;
+            
+            if (debugLog)
+            {
+                FileLogger.Log($"Roll Lever controlling {targetShip.gameObject.name}, max roll: ±{_maxRollDegrees}° (synced from ShipCharacteristics)", "RollLever");
+            }
         }
 
         // Initialize at wings level
@@ -134,7 +140,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
         float angle = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
 
         // Clamp to ±maxRollDegrees
-        angle = Mathf.Clamp(angle, -maxRollDegrees, maxRollDegrees);
+        angle = Mathf.Clamp(angle, -_maxRollDegrees, _maxRollDegrees);
 
         // Apply snapping if enabled
         if (snapIncrement > 0f)
@@ -177,8 +183,8 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
     /// </summary>
     public void SetLeverAngle(float angleDegrees)
     {
-        // Clamp to valid range
-        _currentLeverAngle = Mathf.Clamp(angleDegrees, -maxRollDegrees, maxRollDegrees);
+        // Clamp to valid roll range
+        _currentLeverAngle = Mathf.Clamp(angleDegrees, -_maxRollDegrees, _maxRollDegrees);
 
         // Update visual lever rotation
         if (leverTransform != null)
@@ -219,7 +225,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
         if (leverImage == null)
             return;
 
-        float normalizedRoll = Mathf.Abs(_currentLeverAngle) / maxRollDegrees;
+        float normalizedRoll = Mathf.Abs(_currentLeverAngle) / _maxRollDegrees;
         leverImage.color = Color.Lerp(levelColor, maxRollColor, normalizedRoll);
     }
 
@@ -247,7 +253,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
     /// </summary>
     public void SetRollPercentage(float percentage)
     {
-        float angle = Mathf.Clamp(percentage, -100f, 100f) * (maxRollDegrees / 100f);
+        float angle = Mathf.Clamp(percentage, -100f, 100f) * (_maxRollDegrees / 100f);
         SetLeverAngle(angle);
     }
 }

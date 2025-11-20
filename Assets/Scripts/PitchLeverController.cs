@@ -118,9 +118,15 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
         {
             Debug.LogWarning("[PitchLever] No ShipCharacteristics found. Lever is idle.");
         }
-        else if (debugLog)
+        else
         {
-            FileLogger.Log($"Pitch Lever controlling {targetShip.gameObject.name}, pitch range: +{maxPitchUpDegrees}° / -{maxPitchDownDegrees}°", "PitchLever");
+            // Recalculate limits now that we have targetShip reference
+            RecalculateLeverLimits();
+            
+            if (debugLog)
+            {
+                FileLogger.Log($"Pitch Lever controlling {targetShip.gameObject.name}, pitch range: +{maxPitchUpDegrees}° / -{maxPitchDownDegrees}°", "PitchLever");
+            }
         }
 
         // Initialize at level flight (90°)
@@ -129,13 +135,20 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
 
     void RecalculateLeverLimits()
     {
+        // Sync pitch limits from ShipCharacteristics if available
+        if (targetShip != null)
+        {
+            maxPitchUpDegrees = targetShip.maxPitchUpDegrees;
+            maxPitchDownDegrees = targetShip.maxPitchDownDegrees;
+        }
+        
         // Lever range: (90 - maxPitchUp) to (90 + maxPitchDown)
         _minLeverAngle = LEVEL_FLIGHT_ANGLE - maxPitchUpDegrees;
         _maxLeverAngle = LEVEL_FLIGHT_ANGLE + maxPitchDownDegrees;
 
         if (debugLog)
         {
-            FileLogger.Log($"Pitch Lever limits: {_minLeverAngle:F1}° (max nose-up) to {_maxLeverAngle:F1}° (max nose-down), level at {LEVEL_FLIGHT_ANGLE}°", "PitchLever");
+            FileLogger.Log($"Pitch Lever limits: {_minLeverAngle:F1}° (max nose-up) to {_maxLeverAngle:F1}° (max nose-down), level at {LEVEL_FLIGHT_ANGLE}° (synced from ShipCharacteristics)", "PitchLever");
         }
     }
 
