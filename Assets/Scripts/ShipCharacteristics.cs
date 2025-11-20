@@ -38,6 +38,29 @@ public class ShipCharacteristics : MonoBehaviour
     [SerializeField] private float _positionY = 0f;
     [SerializeField] private float _positionZ = 0f;
     
+    [Header("Attitude (Read-Only)")]
+    [Tooltip("Current roll angle in degrees (positive = right wing down, negative = left wing down).")]
+    [SerializeField] private float _currentRollDegrees = 0f;
+    
+    [Tooltip("Current pitch angle in degrees (positive = nose up, negative = nose down).")]
+    [SerializeField] private float _currentPitchDegrees = 0f;
+    
+    [Tooltip("Current yaw angle in degrees (heading).")]
+    [SerializeField] private float _currentYawDegrees = 0f;
+    
+    [Header("Attitude Rotation Speed")]
+    [Tooltip("How fast the ship rolls to target attitude (degrees per second). Higher = faster.")]
+    [Range(1f, 180f)]
+    public float rollRotationSpeed = 20f;
+    
+    [Tooltip("How fast the ship pitches to target attitude (degrees per second). Higher = faster.")]
+    [Range(1f, 180f)]
+    public float pitchRotationSpeed = 15f;
+    
+    [Tooltip("How fast the ship yaws to target attitude (degrees per second). Higher = faster.")]
+    [Range(1f, 180f)]
+    public float yawRotationSpeed = 10f;
+    
     [Header("Debug")]
     public bool debugLog = false;
     
@@ -61,6 +84,20 @@ public class ShipCharacteristics : MonoBehaviour
     public Vector3 Velocity => _velocity;
     public float TotalThrustAvailable => _totalThrustAvailable;
     
+    // Attitude properties
+    public float currentRollDegrees => _currentRollDegrees;
+    public float currentPitchDegrees => _currentPitchDegrees;
+    public float currentYawDegrees => _currentYawDegrees;
+    
+    // Target attitude (what the levers are commanding)
+    private float _targetRollDegrees = 0f;
+    private float _targetPitchDegrees = 0f;
+    private float _targetYawDegrees = 0f;
+    
+    public float targetRollDegrees => _targetRollDegrees;
+    public float targetPitchDegrees => _targetPitchDegrees;
+    public float targetYawDegrees => _targetYawDegrees;
+    
     void Awake()
     {
         // Get or add Rigidbody
@@ -81,12 +118,15 @@ public class ShipCharacteristics : MonoBehaviour
             rb.useGravity = true;
             rb.linearDamping = 0.1f;
             
-            // Freeze rotation to maintain attitude during lift/descent
-            rb.constraints = RigidbodyConstraints.FreezeRotation;
+            // DO NOT freeze rotation - we need manual attitude control
+            rb.constraints = RigidbodyConstraints.None;
         }
         
         // Set mass from weight (tons to kg)
         rb.mass = shipWeightTons * 1000f;
+        
+        // Initialize attitude tracking
+        UpdateAttitudeTracking();
         
         // Find all engines on this ship
         engines.AddRange(GetComponentsInChildren<Engine>());
@@ -101,6 +141,9 @@ public class ShipCharacteristics : MonoBehaviour
     {
         // Update movement tracking
         UpdateMovementTracking();
+        
+        // Update attitude tracking
+        UpdateAttitudeTracking();
     }
     
     /// <summary>
@@ -213,5 +256,121 @@ public class ShipCharacteristics : MonoBehaviour
         {
             FileLogger.Log($"{gameObject.name} refreshed engine list - found {engines.Count} engines", "ShipCharacteristics");
         }
+    }
+    
+    // ========== ATTITUDE CONTROL METHODS ==========
+    // Hermeneutic principle: Attitude is PURELY VISUAL ORIENTATION.
+    // Roll/pitch/yaw do NOT affect velocity vector - ship can climb while pitched nose-down.
+    // This decouples appearance (attitude) from Being (trajectory).
+    
+    /// <summary>
+    /// Update attitude tracking - smoothly interpolate toward target attitude.
+    /// </summary>
+    void UpdateAttitudeTracking()
+    {
+        // Smoothly rotate toward target attitude at configured speed
+        float rollDelta = rollRotationSpeed * Time.fixedDeltaTime;
+        float pitchDelta = pitchRotationSpeed * Time.fixedDeltaTime;
+        float yawDelta = yawRotationSpeed * Time.fixedDeltaTime;
+        
+        _currentRollDegrees = Mathf.MoveTowards(_currentRollDegrees, _targetRollDegrees, rollDelta);
+        _currentPitchDegrees = Mathf.MoveTowards(_currentPitchDegrees, _targetPitchDegrees, pitchDelta);
+        _currentYawDegrees = Mathf.MoveTowards(_currentYawDegrees, _targetYawDegrees, yawDelta);
+        
+        // Apply current attitude to transform
+        transform.eulerAngles = new Vector3(_currentPitchDegrees, _currentYawDegrees, _currentRollDegrees);
+        
+        if (debugLog && Time.frameCount % 60 == 0)
+        {
+            float rollDiff = Mathf.Abs(_currentRollDegrees - _targetRollDegrees);
+            float pitchDiff = Mathf.Abs(_currentPitchDegrees - _targetPitchDegrees);
+            if (rollDiff > 0.1f || pitchDiff > 0.1f)
+            {
+                FileLogger.Log($"{gameObject.name} attitude transitioning - Roll: {_currentRollDegrees:F1}°→{_targetRollDegrees:F1}°, Pitch: {_currentPitchDegrees:F1}°→{_targetPitchDegrees:F1}°", "ShipCharacteristics");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Set ship roll attitude target (visual orientation only, no velocity change).
+    /// Ship will smoothly rotate to this angle at rollRotationSpeed.
+    /// Positive = right wing down, Negative = left wing down.
+    /// </summary>
+    public void SetRollAttitude(float rollDegrees)
+    {
+        _targetRollDegrees = rollDegrees;
+        
+        if (debugLog && Time.frameCount % 60 == 0)
+        {
+            FileLogger.Log($"{gameObject.name} roll target set to {rollDegrees:F1}° (current: {_currentRollDegrees:F1}°, velocity unchanged)", "ShipCharacteristics");
+        }
+    }
+    
+    /// <summary>
+    /// Set ship pitch attitude target (visual orientation only, no velocity change).
+    /// Ship will smoothly rotate to this angle at pitchRotationSpeed.
+    /// Positive = nose up, Negative = nose down.
+    /// </summary>
+    public void SetPitchAttitude(float pitchDegrees)
+    {
+        _targetPitchDegrees = pitchDegrees;
+        
+        if (debugLog && Time.frameCount % 60 == 0)
+        {
+            FileLogger.Log($"{gameObject.name} pitch target set to {pitchDegrees:F1}° (current: {_currentPitchDegrees:F1}°, velocity unchanged)", "ShipCharacteristics");
+        }
+    }
+    
+    /// <summary>
+    /// Set ship yaw attitude target (visual orientation only, no velocity change).
+    /// Ship will smoothly rotate to this angle at yawRotationSpeed.
+    /// </summary>
+    public void SetYawAttitude(float yawDegrees)
+    {
+        _targetYawDegrees = yawDegrees;
+        
+        if (debugLog && Time.frameCount % 60 == 0)
+        {
+            FileLogger.Log($"{gameObject.name} yaw target set to {yawDegrees:F1}° (current: {_currentYawDegrees:F1}°, velocity unchanged)", "ShipCharacteristics");
+        }
+    }
+    
+    /// <summary>
+    /// Set complete attitude targets (roll, pitch, yaw) in one operation.
+    /// Ship will smoothly rotate to these angles at configured speeds.
+    /// </summary>
+    public void SetAttitude(float rollDegrees, float pitchDegrees, float yawDegrees)
+    {
+        _targetRollDegrees = rollDegrees;
+        _targetPitchDegrees = pitchDegrees;
+        _targetYawDegrees = yawDegrees;
+        
+        if (debugLog && Time.frameCount % 60 == 0)
+        {
+            FileLogger.Log($"{gameObject.name} attitude targets set to Roll:{rollDegrees:F1}° Pitch:{pitchDegrees:F1}° Yaw:{yawDegrees:F1}° (velocity unchanged)", "ShipCharacteristics");
+        }
+    }
+    
+    /// <summary>
+    /// Reset attitude to level flight (zero roll, pitch, yaw).
+    /// </summary>
+    public void ResetAttitude()
+    {
+        SetAttitude(0f, 0f, 0f);
+        
+        if (debugLog)
+        {
+            FileLogger.Log($"{gameObject.name} attitude reset to level flight", "ShipCharacteristics");
+        }
+    }
+    
+    /// <summary>
+    /// Normalize angle to -180° to +180° range.
+    /// </summary>
+    float NormalizeAngle(float angle)
+    {
+        while (angle > 180f) angle -= 360f;
+        while (angle < -180f) angle += 360f;
+        return angle;
     }
 }

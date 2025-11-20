@@ -1544,3 +1544,70 @@ Purpose: Addressed remaining jitter/under-deflection by removing interpolation f
 - Stress-test under large climb/descent rates to confirm unbounded rotation remains intuitive.
 - Consider optional averaging of multiple altitude samples if future pilots request additional smoothing without interpolation.
 
+
+---
+
+## Session 9 (2025-11-20) - Lift Chadburn Controller Implementation
+
+Purpose: Created telegraph-style UI controller for lift device power allocation, mirroring the engine Chadburn design.
+
+### LiftChadburnController.cs Overview
+
+**Purpose**: Telegraph-style rotary controller that allows player to adjust lift device power allocation via draggable handle, providing intuitive altitude control.
+
+**Design Philosophy**:
+- Mirrors ChadburnController UX patterns for consistency
+- Maps handle rotation to lift power percentage
+- Three operational modes: HOVER (center), ASCEND (clockwise), DESCEND (counter-clockwise)
+- Dead zone at center for stable hover
+
+**Key Features**:
+
+1. **Rotation Mapping**:
+   - Center (0) with 5 dead zone = HOVER at minimum power
+   - Clockwise rotation (0 to +maxRotationDegrees) = ASCEND from minimum to maximum power
+   - Counter-clockwise rotation (0 to -maxRotationDegrees) = DESCEND from minimum to zero power
+   - Default maxRotationDegrees = 100 (configurable 10-180)
+
+2. **Power Calculation**:
+   - HOVER mode: Sets minimumPowerPerSecond (perfect hover, no climb/descent)
+   - ASCEND mode: Lerps from minimumPowerPerSecond to MaxLiftPowerPerSecond
+   - DESCEND mode: Lerps from minimumPowerPerSecond to 0 (falling under gravity)
+
+3. **Target Discovery**:
+   - Auto-discovers AntiGravityDevice if not assigned
+   - Falls back to base LiftDevice if AntiGravityDevice not found
+   - Warns if no lift device present in scene
+
+4. **Visual Feedback**:
+   - Handle color gradient from idleColor (white) to fullLiftColor (cyan)
+   - Color blends based on allocated power relative to max power
+   - Rotation follows mouse drag (clockwise = more lift)
+
+5. **Audio Support** (Optional):
+   - handleMoveSound: Plays while dragging handle
+   - idleBellSound: Plays when returning to center/idle position
+
+**Differences from ChadburnController**:
+- Direction: Ahead/Astern (engine) vs Ascend/Descend (lift)
+- Neutral: STOP (engine) vs HOVER at minimum power (lift)
+- Zero Power: No thrust (engine) vs Ship falls under gravity (lift)
+- Target API: Engine.SetKnotsAhead/Astern() vs LiftDevice.SetPowerAllocation()
+
+**Files Created**:
+- Assets/Scripts/LiftChadburnController.cs - New lift telegraph controller
+
+**Current Status**:
+-  Script complete and functional
+-  Auto-discovery of lift device
+-  Power mapping for hover/ascend/descend
+-  Visual and audio feedback
+-  Debug logging support
+-  UI hierarchy setup pending
+-  Integration testing with ship in scene
+
+**Next Steps**:
+- Create UI hierarchy for lift Chadburn (sprites, handle, container)
+- Test with 30-ton ship: verify hover at minimum power, climb at higher power
+- Validate smooth transitions between ascend/hover/descend modes
+- Consider adding lift rate indicator (m/s display) next to controller
