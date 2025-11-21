@@ -148,7 +148,8 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
             
             if (shipChar != null)
             {
-                // Calculate desired yaw change this frame
+                // _shipRotationSpeed is already calculated as a percentage of ship's yawRotationSpeed
+                // in SetWheelRotation(), so we can use it directly
                 float yawChange = _shipRotationSpeed * Time.fixedDeltaTime;
                 
                 // Add to current yaw target (continuous rotation - no normalization)
@@ -272,10 +273,17 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
         }
         else
         {
-            // Outside dead zone - calculate rotation speed
-            // Linear interpolation from dead zone to max rotation
-            float normalizedRotation = Mathf.Abs(effectiveRotation) / maxWheelRotation;
-            _shipRotationSpeed = normalizedRotation * maxRotationSpeed;
+            // Outside dead zone - calculate rotation speed as percentage of ship's max yaw speed
+            // Wheel at maxWheelRotation = 100% of ship's yawRotationSpeed
+            // Wheel at half maxWheelRotation = 50% of ship's yawRotationSpeed
+            float wheelPercent = Mathf.Abs(effectiveRotation) / maxWheelRotation;
+            
+            // Get ship's max yaw rotation speed
+            ShipCharacteristics shipChar = targetShip != null ? targetShip.GetComponent<ShipCharacteristics>() : null;
+            float shipMaxYawSpeed = shipChar != null ? shipChar.yawRotationSpeed : maxRotationSpeed;
+            
+            // Calculate actual turn rate as percentage of ship's max capability
+            _shipRotationSpeed = wheelPercent * shipMaxYawSpeed;
             
             // Apply direction
             if (effectiveRotation > 0f)
