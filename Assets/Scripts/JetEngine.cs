@@ -15,8 +15,8 @@ public class JetEngine : Engine
     [Tooltip("Minimum operating temperature when engine is running (idle heat).")]
     public float minOperatingTemperature = 20f;
     
-    [Tooltip("Heat generation per second at 100% burn.")]
-    public float heatGenerationRate = 10f;
+    [Tooltip("Heat generated PER POWER UNIT PER MINUTE. Example: 1 = 1 degree per minute for each power unit produced.")]
+    public float heatPerPowerUnitPerMinute = 1f;
     
     [Tooltip("Heat dissipation per second (constant rate).")]
     public float heatDissipationRate = 10f;
@@ -31,6 +31,7 @@ public class JetEngine : Engine
     [Header("Heat Status (Read-Only)")]
     [SerializeField] private float _currentTemperature = 0f;
     [SerializeField] private bool _isOverheating = false;
+    private float _lastActualPowerUsage = 0f;
     
     public float CurrentTemperature => _currentTemperature;
     public bool IsOverheating => _isOverheating;
@@ -41,17 +42,20 @@ public class JetEngine : Engine
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} [JetEngine] - MaxTemp: {maxSafeTemperature}, HeatGen: {heatGenerationRate}/s, Dissipation: {heatDissipationRate}/s", "JetEngine");
+            FileLogger.Log($"{gameObject.name} [JetEngine] - MaxTemp: {maxSafeTemperature}, HeatPerPowerPerMin: {heatPerPowerUnitPerMinute}, Dissipation: {heatDissipationRate}/s", "JetEngine");
         }
     }
     
     protected override void FixedUpdate()
     {
-        // Manage heat BEFORE calculating power (heat affects power output)
+        // Use last frame's power usage to update heat before this frame's power calculation
         ManageHeat(Time.fixedDeltaTime);
         
-        // Call base to handle power/thrust/allocation
+        // Handle base power/thrust logic
         base.FixedUpdate();
+        
+        // Cache actual power usage from this frame for next heat update
+        _lastActualPowerUsage = CalculateActualPowerUsage();
     }
     
     /// <summary>
@@ -94,24 +98,10 @@ public class JetEngine : Engine
     /// </summary>
     void ManageHeat(float deltaTime)
     {
-        // Generate heat based on burn rate
-        float burnMultiplier = burnRatePercent / 100f;
-        float heatGenerationPerSecond;
-        
-        if (burnMultiplier <= 1f)
-        {
-            // Linear heat generation at or below 100% BRP
-            heatGenerationPerSecond = heatGenerationRate * burnMultiplier;
-        }
-        else
-        {
-            // 5th power heat generation above 100% BRP
-            // Example: 110% = 1.1^5 = 1.61×, 120% = 1.2^5 = 2.49×, 150% = 1.5^5 = 7.59×
-            float overpowerMultiplier = Mathf.Pow(burnMultiplier, 5f);
-            heatGenerationPerSecond = heatGenerationRate * overpowerMultiplier;
-        }
-        
-        float heatGenerated = heatGenerationPerSecond * deltaTime;
+        // Generate heat based on actual power output (converted from per-minute setting to per-second)
+        float heatPerMinute = Mathf.Max(_lastActualPowerUsage, 0f) * heatPerPowerUnitPerMinute;
+        float heatPerSecond = heatPerMinute / 60f;
+        float heatGenerated = heatPerSecond * deltaTime;
         
         // Constant heat dissipation
         float heatDissipated = heatDissipationRate * deltaTime;
@@ -149,6 +139,18 @@ public class JetEngine : Engine
                 }
             }
         }
+    }
+    
+    float CalculateActualPowerUsage()
+    {
+        float thrustPower = Mathf.Max(0f, _allocatedThrustPower);
+        float liftPower = 0f;
+        if (liftDevice != null)
+        {
+            liftPower = Mathf.Max(0f, liftDevice.allocatedPowerPerSecond);
+        }
+        float totalDemand = thrustPower + liftPower;
+        return Mathf.Min(Mathf.Max(_currentPowerOutput, 0f), totalDemand);
     }
     
     /// <summary>

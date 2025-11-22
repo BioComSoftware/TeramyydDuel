@@ -26,21 +26,12 @@ public abstract class Engine : MonoBehaviour
     public float usageDamagePerSecond = 1f;
     
     [Header("Thrust Configuration")]
-    [Tooltip("Force (Newtons) generated per unit of power allocated to thrust.")]
-    public float forcePerUnitPower = 1000f;
-    
-    [Tooltip("Power units needed per ton of ship weight to accelerate at 1 m/s².")]
-    public float powerPerTonPerMeterPerSecond = 1f;
-    
     [Header("Operational State")]
     [Range(0f, 300f)]
     [Tooltip("Engine burn rate as percentage. 100% = normal, <100% = underburn, >100% = overburn.")]
     public float burnRatePercent = 100f;
     
     [Header("Player Controls")]
-    [Tooltip("Maximum speed the ship can achieve in knots (used by Chadburn/telegraph controls).")]
-    public float maxSpeedKnots = 100f;
-    
     [Tooltip("Desired speed FORWARD (positive Z-axis) in knots. Set to 0 if moving astern.")]
     public float knotsAhead = 0f;
     
@@ -67,8 +58,10 @@ public abstract class Engine : MonoBehaviour
     public bool debugLog = false;
     
     // Constants
-    protected const float KNOTS_TO_MPS = 0.514444f;
-    protected const float MPS_TO_KNOTS = 1.94384f;
+    public const float KNOTS_TO_MPS = 0.514444f;
+    public const float MPS_TO_KNOTS = 1.94384f;
+    public const float POWER_PER_TON_PER_MPS = 1f; // Acceleration capability per ton
+    public const float FORCE_PER_POWER_UNIT = 1000f; // Each power unit translates to 1000N of thrust
     
     // Component references
     protected Health healthComponent;
@@ -118,7 +111,7 @@ public abstract class Engine : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} initialized - MaxPower: {maxPowerPerSecond}/s, ForcePerPower: {forcePerUnitPower}N, Burn: {burnRatePercent}%", "Engine");
+            FileLogger.Log($"{gameObject.name} initialized - MaxPower: {maxPowerPerSecond}/s, ForcePerPower: {FORCE_PER_POWER_UNIT}N, AccelPerTon: {POWER_PER_TON_PER_MPS}, Burn: {burnRatePercent}%", "Engine");
         }
     }
     
@@ -211,7 +204,7 @@ public abstract class Engine : MonoBehaviour
             float requiredForceNewtons = shipMassKg * Mathf.Abs(desiredAcceleration);
             
             // Convert force to power units (always positive - power is directionless)
-            _requestedThrustPower = requiredForceNewtons / forcePerUnitPower;
+            _requestedThrustPower = requiredForceNewtons / FORCE_PER_POWER_UNIT;
         }
         
         // Get lift device power request
@@ -304,7 +297,7 @@ public abstract class Engine : MonoBehaviour
         float shipMassTons = shipCharacteristics.shipWeightTons;
         
         // Base acceleration capability
-        float baseAcceleration = powerPerTonPerMeterPerSecond;
+        float baseAcceleration = POWER_PER_TON_PER_MPS;
         
         // Proportional acceleration based on how far off we are
         float accelerationGain = 2.0f;
@@ -325,7 +318,7 @@ public abstract class Engine : MonoBehaviour
         float currentSpeed = shipRigidbody.linearVelocity.magnitude;
         float dragForce = shipCharacteristics.dragCoefficient * currentSpeed * shipCharacteristics.shipWeightTons * 100f;
         
-        return dragForce / forcePerUnitPower;
+        return dragForce / FORCE_PER_POWER_UNIT;
     }
     
     /// <summary>
@@ -340,7 +333,7 @@ public abstract class Engine : MonoBehaviour
     protected virtual void ApplyThrust(float deltaTime)
     {
         // Convert allocated power to force magnitude
-        _actualForceNewtons = _allocatedThrustPower * forcePerUnitPower;
+        _actualForceNewtons = _allocatedThrustPower * FORCE_PER_POWER_UNIT;
         
         if (_actualForceNewtons > 0.1f && shipCharacteristics != null)
         {

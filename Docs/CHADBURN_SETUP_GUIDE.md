@@ -15,7 +15,7 @@ The Chadburn is a rotating handle control that allows the player to set the ship
 **How it works:**
 - Player drags the handle with mouse
 - Handle rotates around its bottom pivot point
-- Rotation angle determines percentage of `maxSpeedKnots` from engine
+- Rotation angle determines throttle percentage, which is converted to knots using engine power, ship mass, `FORCE_PER_POWER_UNIT`, and `KNOTS_TO_MPS`
 - Automatically calls `Engine.SetKnotsAhead()` or `SetKnotsAstern()`
 - Handle color changes: White (stop), Green (ahead), Red (astern)
 
@@ -144,12 +144,18 @@ Create the handle/pointer image:
 
 **Rotation Settings:**
 - **Max Rotation Degrees**: 100
-  - This is the maximum angle the handle can rotate
-  - 100° clockwise = full ahead, 100° counter-clockwise = full astern
+   - This is the maximum angle the handle can rotate
+   - 100° clockwise = full ahead, 100° counter-clockwise = full astern
 - **Snap Increment**: 0
-  - Set to 0 for smooth rotation
-  - Set to 10 for snapping every 10 degrees (like a real telegraph)
-  - Set to 25 for SLOW/HALF/FULL positions
+   - Set to 0 for smooth rotation
+   - Set to 10 for snapping every 10 degrees (like a real telegraph)
+   - Set to 25 for SLOW/HALF/FULL positions
+
+**Throttle Mapping:**
+- **Throttle Response Seconds**: Default 30
+   - Represents how many seconds of sustained thrust the telegraph assumes when converting percentage to knots
+   - Higher values yield larger commanded speeds for the same power; lower values keep commands nearer to current speed
+   - Uses `Engine.FORCE_PER_POWER_UNIT` and ship mass to remain physically consistent
 
 **Visual Feedback:**
 - **Stop Color**: White (255, 255, 255)
@@ -162,15 +168,6 @@ Create the handle/pointer image:
 
 **Debug:**
 - **Debug Log**: ✓ (check for testing, uncheck for release)
-
-### Step 8: Configure Engine Max Speed
-1. Find your ship's `Engine` component in the scene
-2. In Inspector, locate **Player Controls** section
-3. Set **Max Speed Knots**: 100 (or whatever your ship's top speed should be)
-   - Example: 100 knots = Chadburn at 50° = 50 knots ahead
-   - Example: 200 knots = Chadburn at 50° = 100 knots ahead
-
----
 
 ## PHASE 5: MAKE HANDLE DRAGGABLE
 
@@ -239,7 +236,7 @@ Create the handle/pointer image:
 **Ship doesn't move:**
 - Check Console for error messages
 - Verify `Target Engine` is assigned (or engine exists in scene)
-- Check engine's `maxSpeedKnots` is set to a reasonable value (not 0)
+- Verify `Throttle Response Seconds` matches ship class expectations
 - Verify engine is enabled and has power
 
 **Handle stretches/distorts when rotating:**
@@ -369,7 +366,7 @@ HUD_Canvas
 ## TIPS & BEST PRACTICES
 
 1. **Realistic Snapping**: Use snap increment of 25° for authentic telegraph feel (STOP, SLOW, HALF, FULL)
-2. **Speed Scaling**: Set engine `maxSpeedKnots` based on ship type (small: 50, medium: 100, large: 150)
+2. **Speed Scaling**: Tune `Throttle Response Seconds` to suit ship class (small: 20s, medium: 30s, large: 45s)
 3. **Audio Feedback**: Add bell sound at stop position for immersive feel
 4. **Visual Polish**: Add glow or highlight effect on handle when dragging
 5. **Lerp Movement**: Handle snaps instantly - add lerp in script if you want smooth transitions
