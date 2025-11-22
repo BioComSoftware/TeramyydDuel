@@ -13,26 +13,25 @@ public class EngineTemperatureGauge : MonoBehaviour
     public JetEngine targetEngine;
 
     [Header("Temperature Range (°F)")]
-    [Tooltip("Minimum temperature that maps to pixelAtMinDegrees (usually 0).")]
+    [Tooltip("Minimum temperature mapped to the start of the strip (usually 0).")]
     public float minTemperature = 0f;
 
-    [Tooltip("Maximum temperature that maps to pixelAtMaxDegrees (e.g., 5000).")]
-    public float maxTemperature = 5000f;
-
-    [Header("Strip Pixel Positions")]
-    [Tooltip("Pixel coordinate on the strip for minTemperature (0°F).")] public float pixelAtMinDegrees = 0f;
-    [Tooltip("Pixel coordinate on the strip for maxTemperature (5000°F).")] public float pixelAtMaxDegrees = 815f;
+    [Header("Movement Scaling")]
+    [Tooltip("Degrees represented by a single pixel on the temperature strip.\nExample: 2 => every 2°F moves the strip 1px.")]
+    public float degreesPerPixel = 1f;
 
     [Tooltip("Optional final tweak after calibration.")]
     public float centerOffsetX = 0f;
 
     private RectTransform _stripTransform;
     private Vector2 _baselineAnchoredPosition;
+    private float _imagePixelLength;
 
     private void Awake()
     {
         _stripTransform = GetComponent<RectTransform>();
         _baselineAnchoredPosition = _stripTransform.anchoredPosition;
+        _imagePixelLength = _stripTransform.rect.width <= 0f ? 0f : _stripTransform.rect.width;
 
         if (targetEngine == null)
         {
@@ -48,9 +47,15 @@ public class EngineTemperatureGauge : MonoBehaviour
         }
 
         float currentTemp = targetEngine.CurrentTemperature;
-        float normalized = Mathf.InverseLerp(minTemperature, maxTemperature, currentTemp);
-        float clamped = Mathf.Clamp01(normalized);
-        float pixelPosition = Mathf.Lerp(pixelAtMinDegrees, pixelAtMaxDegrees, clamped);
+        float clampedTemp = Mathf.Max(currentTemp, minTemperature);
+        float degreesAboveMin = clampedTemp - minTemperature;
+
+        float pixelPosition = 0f;
+        if (degreesPerPixel > 0f)
+        {
+            pixelPosition = degreesAboveMin / degreesPerPixel;
+        }
+        pixelPosition = Mathf.Clamp(pixelPosition, 0f, _imagePixelLength);
 
         // Shift relative to the original anchored position so low temps stay near their initial spot.
         float anchoredX = _baselineAnchoredPosition.x - pixelPosition + centerOffsetX;
