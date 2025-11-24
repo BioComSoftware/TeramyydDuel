@@ -201,24 +201,16 @@ public abstract class Engine : MonoBehaviour
         
         if (!_isAccelerating)
         {
-            // At desired speed - only need power to overcome drag
-            _requestedThrustPower = CalculateDragCompensationPower();
+            // At desired speed - only need power to overcome drag at the greater of desired/current speed
+            float sustainSpeedMPS = Mathf.Max(Mathf.Abs(desiredVelocityMPS), Mathf.Abs(currentVelocityMPS));
+            _requestedThrustPower = CalculateDragCompensationPower(sustainSpeedMPS);
         }
         else
         {
             // Need to accelerate/decelerate to reach desired velocity
-            // Calculate required acceleration (can be positive or negative)
-            float desiredAcceleration = CalculateDesiredAcceleration(velocityError);
-            
-            // F = ma (force needed for desired acceleration)
-            float requiredForceNewtons = shipMassKg * Mathf.Abs(desiredAcceleration);
-            
-            // Account for aerodynamic drag opposing current motion
-            float dragForce = CalculateAerodynamicDrag(Mathf.Abs(currentVelocityMPS));
-            float totalForce = requiredForceNewtons + dragForce;
-            
-            // Convert force to power units (always positive - power is directionless)
-            _requestedThrustPower = totalForce / FORCE_PER_POWER_UNIT;
+            // Request maximum available power to accelerate as fast as possible
+            // The physics will naturally limit us to max speed when thrust equals drag
+            _requestedThrustPower = _currentPowerOutput;
         }
         
         // Respect throttle limit (percentage of current power output)
@@ -296,12 +288,17 @@ public abstract class Engine : MonoBehaviour
             }
         }
         
-        if (debugLog && Time.frameCount % 60 == 0)
+        if (debugLog && Time.frameCount % 30 == 0)
         {
-            string movementStr = (knotsAhead > 0f) ? $"AHEAD {knotsAhead}kt" : 
-                                (knotsAstern > 0f) ? $"ASTERN {knotsAstern}kt" : "STOP";
-            float currentSpeedKnots = shipCharacteristics != null ? shipCharacteristics.currentSpeedKnots : 0f;
-            FileLogger.Log($"{gameObject.name} - Power: {_currentPowerOutput:F1}/s, Movement: {movementStr}, CurrentSpeed: {currentSpeedKnots:F1}kt, ThrustPower: {_allocatedThrustPower:F1}/{_requestedThrustPower:F1}, Mode: {priorityMode}", "Engine");
+            string movementStr = (knotsAhead > 0f) ? $"AHEAD {knotsAhead:F1}kt" :
+                                (knotsAstern > 0f) ? $"ASTERN {knotsAstern:F1}kt" : "STOP";
+            float desiredSpeedKnots = desiredVelocityMPS * MPS_TO_KNOTS;
+            float currentSpeedKnots = currentVelocityMPS * MPS_TO_KNOTS;
+            float liftDemand = (liftDevice != null) ? liftDevice.allocatedPowerPerSecond : 0f;
+            string accelState = _isAccelerating ? "ACCEL" : "SUSTAIN";
+            FileLogger.Log(
+                $"{gameObject.name} [{accelState}] Cmd:{movementStr} ({desiredSpeedKnots:F1}kt) Cur:{currentSpeedKnots:F1}kt Err:{velocityError:F2}m/s, Throttle:{_throttlePercent * 100f:F0}%, LiftReq:{liftDemand:F1}/s, Thrust {_allocatedThrustPower:F1}/{_requestedThrustPower:F1}, Mode:{priorityMode}",
+                "Engine");
         }
     }
     
@@ -327,13 +324,30 @@ public abstract class Engine : MonoBehaviour
     }
     
     /// <summary>
-    /// Calculate power needed to maintain speed against drag.
+    /// Calculate power needed to maintain a given speed against drag (aero + Unity damping).
     /// </summary>
-    protected virtual float CalculateDragCompensationPower()
+    /// <param name="sustainSpeedMPS">Speed to sustain in meters per second. If &lt;= 0, uses current speed.</param>
+    protected virtual float CalculateDragCompensationPower(float sustainSpeedMPS = -1f)
     {
-        float currentSpeed = shipRigidbody.linearVelocity.magnitude;
-        float dragForce = CalculateAerodynamicDrag(currentSpeed);
-        return dragForce / FORCE_PER_POWER_UNIT;
+        float effectiveSpeed = sustainSpeedMPS;
+        if (effectiveSpeed <= 0f && shipRigidbody != null)
+        {
+            effectiveSpeed = shipRigidbody.linearVelocity.magnitude;
+        }
+        effectiveSpeed = Mathf.Max(0f, effectiveSpeed);
+        
+        // Aerodynamic drag force (0.5 * rho * Cd * Area * v^2)
+        float aeroDragForce = CalculateAerodynamicDrag(effectiveSpeed);
+        
+        // Unity's linear damping force behaves like F = damping × mass × velocity
+        float linearDampingForce = 0f;
+        if (shipRigidbody != null)
+        {
+            linearDampingForce = shipRigidbody.linearDamping * shipRigidbody.mass * effectiveSpeed;
+        }
+        
+        float totalDragForce = aeroDragForce + linearDampingForce;
+        return totalDragForce / FORCE_PER_POWER_UNIT;
     }
     
     /// <summary>

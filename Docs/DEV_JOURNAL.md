@@ -1,4 +1,56 @@
-## 2025-11-24 — Aerodynamic Drag + ISA Notes
+## 2025-11-24 (Late Session) — Power Allocation Bug Fix
+
+### Acceleration Power Allocation Bug (Two-Part Fix)
+- **Problem**: When Chadburn at 100%, engine would start with full power (200 units) but then drop dramatically (to ~10 units) around 10 knots, causing ship to slow to almost nothing.
+- **Root Cause #1**: `CalculatePowerAllocation()` was calculating requested power based on `velocityError × accelerationGain`. As ship approached target speed, velocity error decreased, causing proportional reduction in requested power. This premature power reduction prevented ship from ever reaching max speed.
+- **Root Cause #2**: `CalculateDragCompensationPower()` only calculated aerodynamic drag force but ignored Unity's linear damping force. When ship switched to drag-compensation mode, it wasn't providing enough power to overcome both resistance forces.
+- **Solution Part 1**: Simplified acceleration logic in `Engine.CalculatePowerAllocation()`:
+  ```csharp
+  if (!_isAccelerating)
+  {
+      // At desired speed - only need power to overcome drag
+      _requestedThrustPower = CalculateDragCompensationPower();
+  }
+  else
+  {
+      // Need to accelerate - request maximum available power
+      _requestedThrustPower = _currentPowerOutput;
+  }
+  ```
+- **Solution Part 2**: Updated `CalculateDragCompensationPower()` to account for both resistance forces and to evaluate drag at the greater of desired vs. current speed:
+  ```csharp
+  float sustainSpeed = Mathf.Max(Mathf.Abs(desiredVelocityMPS), Mathf.Abs(currentVelocityMPS));
+  float aeroDragForce = CalculateAerodynamicDrag(sustainSpeed);
+  float linearDampingForce = shipRigidbody.linearDamping × mass × sustainSpeed;
+  float totalDragForce = aeroDragForce + linearDampingForce;
+  return totalDragForce / FORCE_PER_POWER_UNIT;
+  ```
+- **Result**: Ship now maintains full power during acceleration until reaching equilibrium velocity where thrust = total drag. When at target speed, drag compensation provides correct power to maintain speed against both aerodynamic and Unity damping forces at the intended cruise speed (≈38 kt).
+
+### Expected Behavior
+- **During Acceleration**: Engine requests 100% of available power (`_currentPowerOutput`)
+- **At Max Speed**: Engine switches to drag-compensation mode, requesting only the power needed to overcome drag forces
+- **Physics Limit**: Ship reaches equilibrium when `thrust force = drag force`, naturally capping at computed max speed
+- **No Premature Reduction**: Power stays at 100% until ship reaches within tolerance of target speed
+
+## 2025-11-24 (Mid Session) — Max Speed Calculation with Unity Damping
+
+### Max Speed Calculation
+- **Problem**: Theoretical max speed (computed) didn't match actual achievable speed in-game.
+- **Root Cause**: Calculation only considered aerodynamic drag, ignored Unity's built-in `linearDamping` velocity cap.
+- **Solution**: Updated `ShipCharacteristics.ComputeMaxSpeedKnots()` to solve combined drag equation:
+  - Quadratic term (A): `0.5 × ρ × C_D × S_ref` (aerodynamic drag)
+  - Linear term (B): `linearDamping × mass` (Unity damping force)
+  - Thrust (C): `totalMaxPowerPerSecond × FORCE_PER_POWER_UNIT`
+  - Solves: `Av² + Bv - C = 0` using quadratic formula
+- **Result**: Computed max speed now accurately predicts in-game performance (~38 knots for test ship).
+
+### Technical Details
+- Re-enabled Unity's `linearDamping` (0.1) to let physics engine enforce realistic velocity caps
+- Removed custom `ApplyAerodynamicDragForce()` - Unity's damping plus natural power limits handles resistance
+- Ship reaches max speed when: `thrust = aero_drag + unity_damping_force`
+
+## 2025-11-24 (Early Session) — Aerodynamic Drag + ISA Notes
 
 - Consolidated the ISA air-density solver inside `LiftDevice.CalculateAirDensity(altitudeMeters)` so all altitude-aware systems share the same ρ calculation (sea-level pressure 29.92 inHg, tropospheric lapse rate 0.0065 K/m).
 - `Engine.CalculateAerodynamicDrag` now consumes that shared density plus `ShipCharacteristics.dragCoefficient` (C₍D₎) and `frontalAreaSref` (S₍ref₎) to compute thrust demand using the canonical equation below. Acceleration requests add drag to the F = ma term; steady-state requests use drag-only power.

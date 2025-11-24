@@ -91,17 +91,31 @@ public class JetEngine : Engine
     
     /// <summary>
     /// Manage heat generation and dissipation.
-    /// Heat generation:
-    /// - At ≤100% BRP: Linear (BRP% × heatGenerationRate)
-    /// - At >100% BRP: Exponential via 5th power ((BRP/100)^5 × heatGenerationRate)
+    /// Heat generation scales with actual power utilization (0-1) and burn rate.
+    /// - ≤100% burn: linear response (utilization × burnFraction)
+    /// - >100% burn: exponential amplification to punish overburn ((burnFraction)^5)
     /// Dissipation: Constant rate, cannot go below minOperatingTemperature
     /// </summary>
     void ManageHeat(float deltaTime)
     {
-        // Generate heat based on actual power output (converted from per-minute setting to per-second)
-        float heatPerMinute = Mathf.Max(_lastActualPowerUsage, 0f) * heatPerPowerUnitPerMinute;
-        float heatPerSecond = heatPerMinute / 60f;
-        float heatGenerated = heatPerSecond * deltaTime;
+        float normalizedLoad = (maxPowerPerSecond > 0f)
+            ? Mathf.Clamp01(_lastActualPowerUsage / maxPowerPerSecond)
+            : 0f;
+        float burnFraction = Mathf.Max(burnRatePercent, 0f) / 100f;
+        float heatLoadFactor = normalizedLoad;
+
+        if (burnFraction > 1f)
+        {
+            float overburnMultiplier = Mathf.Pow(burnFraction, 5f);
+            heatLoadFactor *= overburnMultiplier;
+        }
+        else
+        {
+            heatLoadFactor *= burnFraction;
+        }
+
+        float heatPerMinute = heatLoadFactor * heatPerPowerUnitPerMinute;
+        float heatGenerated = (heatPerMinute / 60f) * deltaTime;
         
         // Constant heat dissipation
         float heatDissipated = heatDissipationRate * deltaTime;

@@ -8,8 +8,10 @@ using System;
 /// </summary>
 public static class FileLogger
 {
+    private static readonly object FileLock = new object();
     private static string logFilePath;
     private static bool initialized = false;
+    private static string lastErrorMessage = string.Empty;
 
     /// <summary>
     /// Initialize the logger with a specific log file path.
@@ -20,18 +22,34 @@ public static class FileLogger
         if (initialized)
             return;
 
-        logFilePath = Path.Combine(Application.persistentDataPath, filename);
-        
-        // Clear previous log on initialization
         try
         {
-            File.WriteAllText(logFilePath, $"=== Log started at {DateTime.Now} ===\n");
+            string projectRoot = Application.dataPath;
+            if (!string.IsNullOrEmpty(projectRoot))
+            {
+                projectRoot = Path.GetDirectoryName(projectRoot);
+            }
+            else
+            {
+                projectRoot = Directory.GetCurrentDirectory();
+            }
+
+            string logsDirectory = Path.Combine(projectRoot ?? string.Empty, "Logs");
+            Directory.CreateDirectory(logsDirectory);
+
+            logFilePath = Path.Combine(logsDirectory, filename);
+
+            lock (FileLock)
+            {
+                File.WriteAllText(logFilePath, $"=== Log started at {DateTime.Now} ===\n");
+            }
+
             initialized = true;
-            Debug.Log($"[FileLogger] Logging to: {logFilePath}");
+            lastErrorMessage = string.Empty;
         }
         catch (Exception e)
         {
-            Debug.LogError($"[FileLogger] Failed to initialize log file: {e.Message}");
+            lastErrorMessage = e.Message;
         }
     }
 
@@ -46,15 +64,18 @@ public static class FileLogger
         try
         {
             string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-            string logEntry = string.IsNullOrEmpty(category) 
+            string logEntry = string.IsNullOrEmpty(category)
                 ? $"[{timestamp}] {message}\n"
                 : $"[{timestamp}] [{category}] {message}\n";
-            
-            File.AppendAllText(logFilePath, logEntry);
+
+            lock (FileLock)
+            {
+                File.AppendAllText(logFilePath, logEntry);
+            }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[FileLogger] Failed to write log: {e.Message}");
+            lastErrorMessage = e.Message;
         }
     }
 
@@ -78,11 +99,19 @@ public static class FileLogger
 
         try
         {
-            File.WriteAllText(logFilePath, $"=== Log cleared at {DateTime.Now} ===\n");
+            lock (FileLock)
+            {
+                File.WriteAllText(logFilePath, $"=== Log cleared at {DateTime.Now} ===\n");
+            }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[FileLogger] Failed to clear log: {e.Message}");
+            lastErrorMessage = e.Message;
         }
     }
+
+    /// <summary>
+    /// Retrieve the last error message encountered by the logger (if any).
+    /// </summary>
+    public static string GetLastError() => lastErrorMessage;
 }
