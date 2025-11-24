@@ -12,6 +12,13 @@ using UnityEngine.Events;
 [AddComponentMenu("Teramyyd/Ship Systems/Lift Device (Base)")]
 public abstract class LiftDevice : MonoBehaviour
 {
+    // International Standard Atmosphere constants (troposphere approximation)
+    protected const float SEA_LEVEL_PRESSURE = 101325f; // Pa
+    protected const float SEA_LEVEL_TEMPERATURE = 288.15f; // K
+    protected const float TEMPERATURE_LAPSE_RATE = 0.0065f; // K/m
+    protected const float GAS_CONSTANT_AIR = 287.05f; // J/(kg·K)
+    protected const float STANDARD_GRAVITY = 9.80665f; // m/s²
+
     [Header("Lift Core Specifications")]
     [Tooltip("Minimum power per second required to maintain hover (zero vertical velocity).")]
     public float minimumPowerPerSecond = 10f;
@@ -331,5 +338,18 @@ public abstract class LiftDevice : MonoBehaviour
         }
         
         onLiftFailure?.Invoke();
+    }
+    
+    /// <summary>
+    /// Calculate air density using a simplified ISA model based on altitude (meters).
+    /// </summary>
+    public static float CalculateAirDensity(float altitudeMeters)
+    {
+        float clampedAltitude = Mathf.Clamp(altitudeMeters, 0f, 11000f);
+        float temperature = SEA_LEVEL_TEMPERATURE - TEMPERATURE_LAPSE_RATE * clampedAltitude;
+        temperature = Mathf.Max(150f, temperature);
+        float exponent = STANDARD_GRAVITY / (GAS_CONSTANT_AIR * TEMPERATURE_LAPSE_RATE);
+        float pressure = SEA_LEVEL_PRESSURE * Mathf.Pow(temperature / SEA_LEVEL_TEMPERATURE, exponent);
+        return pressure / (GAS_CONSTANT_AIR * temperature);
     }
 }

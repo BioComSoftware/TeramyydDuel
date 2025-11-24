@@ -1,3 +1,15 @@
+## 2025-11-24 — Aerodynamic Drag + ISA Notes
+
+- Consolidated the ISA air-density solver inside `LiftDevice.CalculateAirDensity(altitudeMeters)` so all altitude-aware systems share the same ρ calculation (sea-level pressure 29.92 inHg, tropospheric lapse rate 0.0065 K/m).
+- `Engine.CalculateAerodynamicDrag` now consumes that shared density plus `ShipCharacteristics.dragCoefficient` (C₍D₎) and `frontalAreaSref` (S₍ref₎) to compute thrust demand using the canonical equation below. Acceleration requests add drag to the F = ma term; steady-state requests use drag-only power.
+- Remember 1 Unity meter = 1 real meter: convert velocity to knots with `MPS_TO_KNOTS` (1 m/s = 1.94384 kt) before comparing to Chadburn targets. Altitude for density uses the ship’s Y position directly.
+- Resume checklist after reboot:
+  1. Confirm each airship prefab has realistic `dragCoefficient C₍D₎` and `Frontal Area S₍ref₎` values in `ShipCharacteristics`.
+  2. Verify lift devices reference the shared density helper (already hooked up) before tuning climb rates.
+  3. Run a play-mode test at low vs high altitude to observe reduced sustaining power thanks to lower ρ.
+
+![Drag equation](Images/drag_equation.svg)
+
 # Teramyyd Game Development Journal
 
 When creating log output, always write the log output to a file so you, the AI, can read it for troubleshooting. 

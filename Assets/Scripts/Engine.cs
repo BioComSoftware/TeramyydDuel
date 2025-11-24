@@ -49,6 +49,7 @@ public abstract class Engine : MonoBehaviour
     [SerializeField] protected float _accelerationMPS2;
     [SerializeField] protected bool _isAccelerating;
     [SerializeField] protected float _damagePerSecond;
+    [SerializeField] protected float _throttlePercent = 1f;
     
     [Header("Events")]
     public FloatEvent onPowerOutputChanged;
@@ -75,6 +76,7 @@ public abstract class Engine : MonoBehaviour
     public float AllocatedThrustPower => _allocatedThrustPower;
     public float ActualForceNewtons => _actualForceNewtons;
     public float CurrentDamagePerSecond => _damagePerSecond;
+    public float CurrentThrottlePercent => _throttlePercent;
     
     public enum PowerPriorityMode
     {
@@ -187,7 +189,15 @@ public abstract class Engine : MonoBehaviour
         
         // Calculate velocity error (how much we need to change)
         float velocityError = desiredVelocityMPS - currentVelocityMPS;
-        _isAccelerating = Mathf.Abs(velocityError) > 0.1f;
+        const float SPEED_TOLERANCE_MPS = 0.2f;
+        float desiredSpeedAbs = Mathf.Abs(desiredVelocityMPS);
+        float currentSpeedAbs = Mathf.Abs(currentVelocityMPS);
+        bool wantsMovement = desiredSpeedAbs > SPEED_TOLERANCE_MPS;
+        bool withinTolerance = wantsMovement
+            ? Mathf.Abs(velocityError) <= SPEED_TOLERANCE_MPS
+            : currentSpeedAbs <= SPEED_TOLERANCE_MPS;
+        
+        _isAccelerating = !withinTolerance;
         
         if (!_isAccelerating)
         {
@@ -203,9 +213,17 @@ public abstract class Engine : MonoBehaviour
             // F = ma (force needed for desired acceleration)
             float requiredForceNewtons = shipMassKg * Mathf.Abs(desiredAcceleration);
             
+            // Account for aerodynamic drag opposing current motion
+            float dragForce = CalculateAerodynamicDrag(Mathf.Abs(currentVelocityMPS));
+            float totalForce = requiredForceNewtons + dragForce;
+            
             // Convert force to power units (always positive - power is directionless)
-            _requestedThrustPower = requiredForceNewtons / FORCE_PER_POWER_UNIT;
+            _requestedThrustPower = totalForce / FORCE_PER_POWER_UNIT;
         }
+        
+        // Respect throttle limit (percentage of current power output)
+        float throttledPowerCap = _currentPowerOutput * Mathf.Clamp01(_throttlePercent);
+        _requestedThrustPower = Mathf.Min(_requestedThrustPower, throttledPowerCap);
         
         // Get lift device power request
         float requestedLiftPower = 0f;
@@ -313,11 +331,8 @@ public abstract class Engine : MonoBehaviour
     /// </summary>
     protected virtual float CalculateDragCompensationPower()
     {
-        // Drag force = drag coefficient * velocity
-        // This is simplified; Unity's Rigidbody.drag handles the actual physics
         float currentSpeed = shipRigidbody.linearVelocity.magnitude;
-        float dragForce = shipCharacteristics.dragCoefficient * currentSpeed * shipCharacteristics.shipWeightTons * 100f;
-        
+        float dragForce = CalculateAerodynamicDrag(currentSpeed);
         return dragForce / FORCE_PER_POWER_UNIT;
     }
     
@@ -493,11 +508,20 @@ public abstract class Engine : MonoBehaviour
     {
         knotsAhead = 0f;
         knotsAstern = 0f;
+        _throttlePercent = 0f;
         
         if (debugLog)
         {
             FileLogger.Log($"{gameObject.name} all stop - engines idle", "Engine");
         }
+    }
+    
+    /// <summary>
+    /// Limit thrust allocation to a percentage of current power output.
+    /// </summary>
+    public virtual void SetThrottlePercent(float throttlePercent)
+    {
+        _throttlePercent = Mathf.Clamp01(throttlePercent);
     }
     
     /// <summary>
@@ -526,5 +550,18 @@ public abstract class Engine : MonoBehaviour
         {
             FileLogger.Log($"{gameObject.name} burn rate set to {burnRatePercent}%", "Engine");
         }
+    }
+    
+    float CalculateAerodynamicDrag(float speedMPS)
+    {
+        if (shipCharacteristics == null)
+        {
+            return 0f;
+        }
+        
+        float rho = LiftDevice.CalculateAirDensity(Mathf.Max(0f, shipCharacteristics.currentAltitude));
+        float cd = Mathf.Max(0f, shipCharacteristics.dragCoefficient);
+        float area = Mathf.Max(0.1f, shipCharacteristics.frontalAreaSref);
+        return 0.5f * rho * cd * area * speedMPS * speedMPS;
     }
 }

@@ -18,9 +18,19 @@ public class ShipCharacteristics : MonoBehaviour
     [Tooltip("Total mass of the ship in metric tons. Affects acceleration and maneuverability.")]
     public float shipWeightTons = 100f;
     
-    [Tooltip("Drag coefficient - resistance to movement (0 = no drag, higher = more resistance).")]
+    [Tooltip("Drag coefficient (C_D) - resistance to movement (0 = no drag, higher = more resistance).")]
+    [InspectorName("Drag coefficient C₍D₎")]
     [Range(0f, 5f)]
     public float dragCoefficient = 0.5f;
+    
+    [Tooltip("Reference frontal area (S_ref) used for drag calculations (square meters).")]
+    [InspectorName("Frontal Area S₍ref₎")]
+    [Range(0.1f, 10000f)]
+    public float frontalAreaSref = 50f;
+    
+    [Tooltip("Maximum sustainable speed for this ship in knots (used by Chadburn telegraph).")]
+    [Range(1f, 500f)]
+    public float maxSpeedKnots = 120f;
     
     [Header("Movement State (Read-Only)")]
     [SerializeField] private float _currentSpeedKnots = 0f;

@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 /// - 1° to 100° clockwise = 1% to 100% ahead (forward)
 /// - 1° to 100° counter-clockwise (359° to 260°) = 1% to 100% astern (reverse)
 /// 
-/// Integrates with Engine power output and ship mass to calculate requested speed.
+/// Integrates with ship max speed and engine power to calculate requested speed.
 /// </summary>
 [AddComponentMenu("Teramyyd/UI/Chadburn Controller")]
 public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -31,11 +31,6 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
     [Tooltip("Snap rotation to increments (0 = smooth, 10 = snap every 10 degrees).")]
     [Range(0f, 45f)]
     public float snapIncrement = 0f;
-    
-    [Header("Throttle Mapping")]
-    [Tooltip("Number of seconds of sustained acceleration used to convert handle percentage into target knots.")]
-    [Range(1f, 120f)]
-    public float throttleResponseSeconds = 30f;
     
     [Header("Visual Feedback")]
     [Tooltip("Color of handle when stopped.")]
@@ -256,10 +251,15 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         _isAhead = _currentRotation > DEAD_ZONE;
         _isAstern = _currentRotation < -DEAD_ZONE;
         
-        // Calculate requested speed in knots
+        // Calculate target knots and throttle limit
+        float throttleFraction = _currentPercentage / 100f;
+        _requestedSpeedKnots = (shipCharacteristics != null)
+            ? shipCharacteristics.maxSpeedKnots * throttleFraction
+            : 0f;
+        
         if (targetEngine != null)
         {
-            _requestedSpeedKnots = CalculateRequestedKnots(_currentPercentage);
+            targetEngine.SetThrottlePercent(throttleFraction);
             
             // Send commands to engine
             if (_isAhead)
@@ -367,18 +367,4 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         SetRotation(angle);
     }
     
-    float CalculateRequestedKnots(float percentage)
-    {
-        if (targetEngine == null || shipCharacteristics == null || percentage <= 0f)
-        {
-            return 0f;
-        }
-        
-        float shipMassKg = Mathf.Max(shipCharacteristics.shipWeightTons * 1000f, 0.001f);
-        float maxForce = targetEngine.maxPowerPerSecond * Engine.FORCE_PER_POWER_UNIT;
-        float maxAcceleration = maxForce / shipMassKg;
-        
-        float desiredSpeedMPS = (percentage / 100f) * maxAcceleration * throttleResponseSeconds;
-        return desiredSpeedMPS * Engine.MPS_TO_KNOTS;
-    }
 }
