@@ -130,7 +130,7 @@ public abstract class LiftDevice : MonoBehaviour
         float deltaTime = Time.fixedDeltaTime;
         
         // Calculate lift parameters
-        CalculateLift();
+        CalculateLift(deltaTime);
         
         // Apply direct altitude control
         ApplyAltitudeControl(deltaTime);
@@ -143,16 +143,17 @@ public abstract class LiftDevice : MonoBehaviour
     /// Hermeneutic core: Calculate vertical velocity based on power allocation and ship weight.
     /// Direct altitude control - no physics forces, just move the ship up/down.
     /// </summary>
-    protected virtual void CalculateLift()
+    protected virtual void CalculateLift(float deltaTime)
     {
         if (shipCharacteristics == null)
             return;
         
         allocatedPowerPerSecond = ClampPowerAllocation(allocatedPowerPerSecond);
+        float resolvedPower = ResolvePowerConsumption(allocatedPowerPerSecond, deltaTime);
         float shipWeightTons = Mathf.Max(0f, shipCharacteristics.shipWeightTons);
         float hoverPower = HoverPowerRequirement;
         float powerPerMeterPerSecond = Mathf.Max(0.0001f, shipWeightTons * POWER_PER_TON_PER_METER_PER_SECOND);
-        _powerConsumption = allocatedPowerPerSecond;
+        _powerConsumption = resolvedPower;
         
         // POWER = 0: Let Unity gravity handle it
         if (_powerConsumption <= 0f)
@@ -218,6 +219,15 @@ public abstract class LiftDevice : MonoBehaviour
         }
         
         onLiftForceChanged?.Invoke(_currentLiftForce);
+    }
+
+    /// <summary>
+    /// Resolve the actual power the lift device can deliver this frame based on requested allocation.
+    /// Derived classes can cap or modify power output (e.g., generator capacity, heat penalties).
+    /// </summary>
+    protected virtual float ResolvePowerConsumption(float requestedPower, float deltaTime)
+    {
+        return requestedPower;
     }
     
     /// <summary>

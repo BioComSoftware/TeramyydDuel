@@ -158,13 +158,7 @@ public class JetEngine : Engine
     float CalculateActualPowerUsage()
     {
         float thrustPower = Mathf.Max(0f, _allocatedThrustPower);
-        float liftPower = 0f;
-        if (liftDevice != null)
-        {
-            liftPower = Mathf.Max(0f, liftDevice.allocatedPowerPerSecond);
-        }
-        float totalDemand = thrustPower + liftPower;
-        return Mathf.Min(Mathf.Max(_currentPowerOutput, 0f), totalDemand);
+        return Mathf.Min(Mathf.Max(_currentPowerOutput, 0f), thrustPower);
     }
     
     /// <summary>

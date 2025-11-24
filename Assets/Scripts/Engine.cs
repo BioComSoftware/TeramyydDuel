@@ -217,15 +217,8 @@ public abstract class Engine : MonoBehaviour
         float throttledPowerCap = _currentPowerOutput * Mathf.Clamp01(_throttlePercent);
         _requestedThrustPower = Mathf.Min(_requestedThrustPower, throttledPowerCap);
         
-        // Get lift device power request
-        float requestedLiftPower = 0f;
-        if (liftDevice != null)
-        {
-            requestedLiftPower = liftDevice.allocatedPowerPerSecond;
-        }
-        
-        // Total power requested
-        float totalRequested = _requestedThrustPower + requestedLiftPower;
+        // Lift devices now generate power independently, so thrust allocation ignores their demand
+        float totalRequested = _requestedThrustPower;
         
         // Allocate based on priority mode
         if (totalRequested <= _currentPowerOutput)
@@ -239,51 +232,9 @@ public abstract class Engine : MonoBehaviour
             switch (priorityMode)
             {
                 case PowerPriorityMode.LiftPriority:
-                    _allocatedThrustPower = Mathf.Max(0f, _currentPowerOutput - requestedLiftPower);
-                    break;
-                
                 case PowerPriorityMode.ThrustPriority:
-                    _allocatedThrustPower = Mathf.Min(_requestedThrustPower, _currentPowerOutput);
-                    if (liftDevice != null)
-                    {
-                        float remainingPower = _currentPowerOutput - _allocatedThrustPower;
-                        liftDevice.allocatedPowerPerSecond = remainingPower;
-                    }
-                    break;
-                
                 case PowerPriorityMode.Balanced:
-                    // Ensure lift gets at least hover power for stability
-                    float minLiftPower = (liftDevice != null) ? liftDevice.HoverPowerPerSecond : 0f;
-                    float guaranteedLiftPower = Mathf.Min(requestedLiftPower, minLiftPower);
-                    
-                    float remainingPowerAfterMinLift = _currentPowerOutput - guaranteedLiftPower;
-                    
-                    if (remainingPowerAfterMinLift > 0f)
-                    {
-                        // Distribute remaining power proportionally
-                        float remainingLiftRequest = requestedLiftPower - guaranteedLiftPower;
-                        float totalRemainingRequest = _requestedThrustPower + remainingLiftRequest;
-                        
-                        if (totalRemainingRequest > 0f)
-                        {
-                            float thrustRatio = _requestedThrustPower / totalRemainingRequest;
-                            _allocatedThrustPower = remainingPowerAfterMinLift * thrustRatio;
-                            
-                            if (liftDevice != null)
-                            {
-                                float allocatedLiftBonus = remainingPowerAfterMinLift * (1f - thrustRatio);
-                                liftDevice.allocatedPowerPerSecond = guaranteedLiftPower + allocatedLiftBonus;
-                            }
-                        }
-                        else
-                        {
-                            _allocatedThrustPower = remainingPowerAfterMinLift;
-                        }
-                    }
-                    else
-                    {
-                        _allocatedThrustPower = 0f;
-                    }
+                    _allocatedThrustPower = Mathf.Min(_requestedThrustPower, _currentPowerOutput);
                     break;
             }
         }

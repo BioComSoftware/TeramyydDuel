@@ -12,6 +12,35 @@ using UnityEngine;
 [AddComponentMenu("Teramyyd/Ship Systems/Anti-Gravity Device")]
 public class AntiGravityDevice : LiftDevice
 {
+    [Header("Power Generation")]
+    [Tooltip("Maximum lift power this device can generate per second (before heat penalties).")]
+    public float maxLiftPowerPerSecond = 500f;
+    
+    [Header("Heat Management")]
+    [Tooltip("Maximum safe operating temperature for the lift field.")]
+    public float maxSafeTemperature = 150f;
+    
+    [Tooltip("Minimum operating temperature maintained while online.")]
+    public float minOperatingTemperature = 25f;
+    
+    [Tooltip("Heat generated per power unit per minute of lift output.")]
+    public float heatPerPowerUnitPerMinute = 1.2f;
+    
+    [Tooltip("Constant heat dissipation per second.")]
+    public float heatDissipationRate = 15f;
+    
+    [Tooltip("Efficiency penalty per degree over the safe temperature (0-0.1 typical).")]
+    [Range(0f, 0.1f)]
+    public float heatEfficiencyPenalty = 0.01f;
+    
+    [Tooltip("Damage per second when overheated (scaled exponentially by excess heat).")]
+    public float overheatDamageRate = 4f;
+    
+    [Header("Heat Status (Read-Only)")]
+    [SerializeField] private float _currentTemperature = 0f;
+    [SerializeField] private bool _isOverheating = false;
+    private float _lastActualPowerUsage = 0f;
+    
     [Header("Anti-Gravity Specifics")]
     [Tooltip("Field efficiency - affects power consumption (1.0 = standard, >1.0 = more efficient).")]
     [Range(0.5f, 2f)]
@@ -41,18 +70,28 @@ public class AntiGravityDevice : LiftDevice
     
     public float FieldStrengthPercent => _fieldStrengthPercent;
     public bool IsFieldOverloaded => _fieldOverload;
+    public float CurrentTemperature => _currentTemperature;
+    public bool IsOverheating => _isOverheating;
     
     protected override void Start()
     {
         base.Start();
+        _currentTemperature = Mathf.Max(minOperatingTemperature, _currentTemperature);
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} [AntiGrav] - Efficiency: {fieldEfficiency}, Stability: {fieldStability}, MaxSafe: {maxSafeFieldStrength}%", "AntiGrav");
+            FileLogger.Log($"{gameObject.name} [AntiGrav] - MaxLift:{maxLiftPowerPerSecond}/s, MaxTemp:{maxSafeTemperature}, Dissipation:{heatDissipationRate}/s", "AntiGrav");
         }
     }
+
+    protected override void FixedUpdate()
+    {
+        ManageHeat(Time.fixedDeltaTime);
+        base.FixedUpdate();
+        _lastActualPowerUsage = Mathf.Max(0f, _powerConsumption);
+    }
     
-    protected override void CalculateLift()
+    protected override void CalculateLift(float deltaTime)
     {
         // Apply field efficiency to effective power
         float effectivePower = allocatedPowerPerSecond * fieldEfficiency;
@@ -60,7 +99,7 @@ public class AntiGravityDevice : LiftDevice
         allocatedPowerPerSecond = effectivePower;
         
         // Calculate base lift
-        base.CalculateLift();
+        base.CalculateLift(deltaTime);
         
         // Restore original power value
         allocatedPowerPerSecond = originalPower;
@@ -95,6 +134,24 @@ public class AntiGravityDevice : LiftDevice
             float currentAltitude = shipCharacteristics != null ? shipCharacteristics.currentAltitude + altitudeCalibration : transform.position.y + altitudeCalibration;
             FileLogger.Log($"{gameObject.name} [AntiGrav] - Altitude: {currentAltitude:F2}m, FieldStrength: {_fieldStrengthPercent:F1}%, Overload: {_fieldOverload}, Stability: {fieldStability}", "AntiGrav");
         }
+    }
+    
+    protected override float ClampPowerAllocation(float requestedPower)
+    {
+        float clamped = base.ClampPowerAllocation(requestedPower);
+        return Mathf.Min(clamped, Mathf.Max(0f, maxLiftPowerPerSecond));
+    }
+    
+    protected override float ResolvePowerConsumption(float requestedPower, float deltaTime)
+    {
+        float clamped = Mathf.Clamp(requestedPower, 0f, Mathf.Max(0f, maxLiftPowerPerSecond));
+        float heatPenalty = 0f;
+        if (_currentTemperature > maxSafeTemperature)
+        {
+            float excessHeat = _currentTemperature - maxSafeTemperature;
+            heatPenalty = Mathf.Clamp01(excessHeat * heatEfficiencyPenalty);
+        }
+        return clamped * (1f - heatPenalty);
     }
     
     public override void SetLiftPowerPercentage(float percentage)
@@ -195,5 +252,35 @@ public class AntiGravityDevice : LiftDevice
         float totalPower = (hoverPower + powerForVelocity) / Mathf.Max(fieldEfficiency, 0.0001f);
         
         return totalPower;
+    }
+
+    void ManageHeat(float deltaTime)
+    {
+        float normalizedLoad = (maxLiftPowerPerSecond > 0f)
+            ? Mathf.Clamp01(_lastActualPowerUsage / maxLiftPowerPerSecond)
+            : 0f;
+        float heatPerMinute = normalizedLoad * heatPerPowerUnitPerMinute;
+        float heatGenerated = (heatPerMinute / 60f) * deltaTime;
+        float heatDissipated = heatDissipationRate * deltaTime;
+        _currentTemperature += heatGenerated - heatDissipated;
+        _currentTemperature = Mathf.Max(minOperatingTemperature, _currentTemperature);
+        _isOverheating = _currentTemperature > maxSafeTemperature;
+        
+        if (_isOverheating && healthComponent != null)
+        {
+            float excessHeat = _currentTemperature - maxSafeTemperature;
+            float percentOver = excessHeat / Mathf.Max(1f, maxSafeTemperature);
+            float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
+            float damageThisFrame = overheatDamageRate * damageMultiplier * deltaTime;
+            int damageToApply = Mathf.FloorToInt(damageThisFrame);
+            if (damageToApply > 0)
+            {
+                healthComponent.TakeDamage(damageToApply);
+                if (debugLog)
+                {
+                    FileLogger.Log($"{gameObject.name} [AntiGrav] overheating - Temp {_currentTemperature:F1}/{maxSafeTemperature}, damage {damageToApply}", "AntiGrav");
+                }
+            }
+        }
     }
 }
