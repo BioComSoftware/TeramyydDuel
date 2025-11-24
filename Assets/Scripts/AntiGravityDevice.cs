@@ -12,7 +12,6 @@ using UnityEngine;
 [AddComponentMenu("Teramyyd/Ship Systems/Anti-Gravity Device")]
 public class AntiGravityDevice : LiftDevice
 {
-    [Header("Power Generation")]
     [Tooltip("Maximum lift power this device can generate per second (before heat penalties).")]
     public float maxLiftPowerPerSecond = 500f;
     

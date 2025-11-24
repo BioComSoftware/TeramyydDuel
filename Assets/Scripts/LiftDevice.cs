@@ -19,17 +19,25 @@ public abstract class LiftDevice : MonoBehaviour
     protected const float GAS_CONSTANT_AIR = 287.05f; // J/(kg·K)
     protected const float STANDARD_GRAVITY = 9.80665f; // m/s²
 
-    [Header("Lift Core Specifications")]
-    [Tooltip("Damage per second when device is active.")]
-    public float usageDamagePerSecond = 0.5f;
-    
-    [Header("Operational State")]
     [Tooltip("Power allocated to this lift device per second.")]
     [Range(0f, 1000f)]
     public float allocatedPowerPerSecond = 0f;
-    
+
+    [Header("Operational State")]
     [Tooltip("Is the lift device currently active?")]
     public bool isActive = true;
+
+    [Header("Descent Control")]
+    [Tooltip("Maximum commanded descent rate (m/s) while maintaining hover power.")]
+    public float maxControlledDescentRate = 10f;
+    
+    [Tooltip("Current descent telegraph percent (0-1). 0 = hover, 1 = max controlled descent.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float controlledDescentPercent = 0f;
+
+    [Header("Lift Core Specifications")]
+    [Tooltip("Damage per second when device is active.")]
+    public float usageDamagePerSecond = 0.5f;
     
     [Header("Status (Read-Only)")]
     [SerializeField] protected float _currentLiftForce;
@@ -44,14 +52,6 @@ public abstract class LiftDevice : MonoBehaviour
     
     [Header("Debug")]
     public bool debugLog = false;
-
-    [Header("Descent Control")]
-    [Tooltip("Maximum commanded descent rate (m/s) while maintaining hover power.")]
-    public float maxControlledDescentRate = 10f;
-    
-    [Tooltip("Current descent telegraph percent (0-1). 0 = hover, 1 = max controlled descent.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float controlledDescentPercent = 0f;
     
     // Component references
     protected const float POWER_PER_TON_PER_METER_PER_SECOND = 9.8f;
