@@ -20,12 +20,6 @@ public abstract class LiftDevice : MonoBehaviour
     protected const float STANDARD_GRAVITY = 9.80665f; // m/s²
 
     [Header("Lift Core Specifications")]
-    [Tooltip("Minimum power per second required to maintain hover (zero vertical velocity).")]
-    public float minimumPowerPerSecond = 10f;
-    
-    [Tooltip("Additional power per ton required to lift 1 meter per second.")]
-    public float powerPerTonPerMeterPerSecond = 1f;
-    
     [Tooltip("Damage per second when device is active.")]
     public float usageDamagePerSecond = 0.5f;
     
@@ -36,10 +30,6 @@ public abstract class LiftDevice : MonoBehaviour
     
     [Tooltip("Is the lift device currently active?")]
     public bool isActive = true;
-    
-    [Header("Control Limits")]
-    [Tooltip("Maximum power per second that telegraph/UI controls can command (100% position).")]
-    public float maxLiftPowerPerSecond = 200f;
     
     [Header("Status (Read-Only)")]
     [SerializeField] protected float _currentLiftForce;
@@ -54,8 +44,21 @@ public abstract class LiftDevice : MonoBehaviour
     
     [Header("Debug")]
     public bool debugLog = false;
+
+    [Header("Descent Control")]
+    [Tooltip("Maximum commanded descent rate (m/s) while maintaining hover power.")]
+    public float maxControlledDescentRate = 10f;
+    
+    [Tooltip("Current descent telegraph percent (0-1). 0 = hover, 1 = max controlled descent.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float controlledDescentPercent = 0f;
     
     // Component references
+    protected const float POWER_PER_TON_PER_METER_PER_SECOND = 9.8f;
+    protected float HoverPowerRequirement => (shipCharacteristics != null)
+        ? Mathf.Max(0f, shipCharacteristics.shipWeightTons) * POWER_PER_TON_PER_METER_PER_SECOND
+        : 0f;
+
     protected Health healthComponent;
     protected ShipCharacteristics shipCharacteristics;
     protected Rigidbody shipRigidbody;
@@ -65,13 +68,14 @@ public abstract class LiftDevice : MonoBehaviour
     public float VerticalVelocityMPS => _verticalVelocityMPS;
     public float PowerConsumption => _powerConsumption;
     public bool IsHovering => _isHovering;
-    public float MaxLiftPowerPerSecond => Mathf.Max(maxLiftPowerPerSecond, minimumPowerPerSecond);
-    public float CurrentLiftAllocationPercent => (MaxLiftPowerPerSecond > 0f) ? (allocatedPowerPerSecond / MaxLiftPowerPerSecond) * 100f : 0f;
+    public float HoverPowerPerSecond => HoverPowerRequirement;
+    public float CurrentLiftAllocationPercent => (HoverPowerPerSecond > 0f)
+        ? (allocatedPowerPerSecond / HoverPowerPerSecond) * 100f
+        : 0f;
     
     protected virtual float ClampPowerAllocation(float requestedPower)
     {
-        float maxAllowed = Mathf.Max(0f, MaxLiftPowerPerSecond);
-        return Mathf.Clamp(requestedPower, 0f, maxAllowed);
+        return Mathf.Max(0f, requestedPower);
     }
     
     protected virtual void Awake()
@@ -97,14 +101,14 @@ public abstract class LiftDevice : MonoBehaviour
     
     protected virtual void Start()
     {
-        // If no power allocated, default to minimum power for hover
+        // If no power allocated, default to hover power
         if (allocatedPowerPerSecond <= 0f && isActive)
         {
-            SetPowerAllocation(minimumPowerPerSecond);
+            SetPowerAllocation(HoverPowerRequirement);
             
             if (debugLog)
             {
-                FileLogger.Log($"{gameObject.name} auto-setting power to minimum ({minimumPowerPerSecond}/s) for hover", "LiftDevice");
+                FileLogger.Log($"{gameObject.name} auto-setting power to hover requirement ({HoverPowerRequirement}/s)", "LiftDevice");
             }
         }
         else
@@ -114,7 +118,7 @@ public abstract class LiftDevice : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} initialized - MinPower: {minimumPowerPerSecond}/s, PowerPerTon: {powerPerTonPerMeterPerSecond}, AllocatedPower: {allocatedPowerPerSecond}/s, Active: {isActive}", "LiftDevice");
+            FileLogger.Log($"{gameObject.name} initialized - HoverPower: {HoverPowerRequirement}/s, PowerPerTon: {POWER_PER_TON_PER_METER_PER_SECOND}, AllocatedPower: {allocatedPowerPerSecond}/s, Active: {isActive}", "LiftDevice");
         }
     }
     
@@ -145,7 +149,9 @@ public abstract class LiftDevice : MonoBehaviour
             return;
         
         allocatedPowerPerSecond = ClampPowerAllocation(allocatedPowerPerSecond);
-        float shipWeightTons = shipCharacteristics.shipWeightTons;
+        float shipWeightTons = Mathf.Max(0f, shipCharacteristics.shipWeightTons);
+        float hoverPower = HoverPowerRequirement;
+        float powerPerMeterPerSecond = Mathf.Max(0.0001f, shipWeightTons * POWER_PER_TON_PER_METER_PER_SECOND);
         _powerConsumption = allocatedPowerPerSecond;
         
         // POWER = 0: Let Unity gravity handle it
@@ -169,7 +175,6 @@ public abstract class LiftDevice : MonoBehaviour
         if (shipRigidbody.useGravity)
         {
             shipRigidbody.useGravity = false;
-            // Zero out any existing velocity from gravity
             Vector3 vel = shipRigidbody.linearVelocity;
             vel.y = 0f;
             shipRigidbody.linearVelocity = vel;
@@ -180,57 +185,36 @@ public abstract class LiftDevice : MonoBehaviour
             }
         }
         
-        // Calculate power ratio relative to minimum (hover power)
-        float powerRatio = _powerConsumption / minimumPowerPerSecond;
+        float previousVelocity = _verticalVelocityMPS;
+        float powerDelta = _powerConsumption - hoverPower;
+        bool hasControlledDescentCommand = controlledDescentPercent > 0f && maxControlledDescentRate > 0f && Mathf.Abs(powerDelta) <= 0.01f * Mathf.Max(1f, hoverPower);
         
-        if (powerRatio >= 1.0f)
+        if (hasControlledDescentCommand)
         {
-            // HOVER or ASCEND
-            // Power beyond minimum goes to climbing
-            float excessPower = _powerConsumption - minimumPowerPerSecond;
-            
-            // Calculate climb velocity: velocity = excessPower / (shipWeightTons * powerPerTonPerMeterPerSecond)
-            // Example: 30 tons, PPTPMPS=1, power=30 → excess=0 → velocity = 0 (hover) ✓
-            // Example: 30 tons, PPTPMPS=1, power=45 → excess=15 → velocity = 15/30 = 0.5 m/s ✓
-            // Example: 30 tons, PPTPMPS=1, power=60 → excess=30 → velocity = 30/30 = 1.0 m/s ✓
-            // Example: 30 tons, PPTPMPS=1, power=120 → excess=90 → velocity = 90/30 = 3.0 m/s ✓
-            float powerPerMeterPerSecond = shipWeightTons * powerPerTonPerMeterPerSecond;
-            
-            if (powerPerMeterPerSecond > 0f)
-            {
-                _verticalVelocityMPS = excessPower / powerPerMeterPerSecond;
-            }
-            else
-            {
-                _verticalVelocityMPS = 0f;
-            }
-            
-            _isHovering = (Mathf.Abs(_verticalVelocityMPS) < 0.01f);
-            _currentLiftForce = _powerConsumption; // Just for display purposes
+            _verticalVelocityMPS = -controlledDescentPercent * maxControlledDescentRate;
+            _isHovering = false;
+        }
+        else if (_powerConsumption >= hoverPower)
+        {
+            float climbVelocity = powerDelta / powerPerMeterPerSecond;
+            _verticalVelocityMPS = climbVelocity;
+            _isHovering = Mathf.Abs(_verticalVelocityMPS) < 0.01f;
         }
         else
         {
-            // DESCEND (controlled fall)
-            // Power < minimum → descend at rate proportional to power deficit
-            // Fall rate = 9.82 m/s (gravity constant)
-            // Descent velocity = fallRate * (1 - powerRatio)
-            // Example: 30 tons, power=15, min=30, ratio=0.5 → descent = 9.82 * 0.5 = 4.91 m/s ✓
-            // Example: 30 tons, power=7.5, min=30, ratio=0.25 → descent = 9.82 * 0.75 = 7.365 m/s ✓
-            // Example: 30 tons, power=0.01, min=30, ratio≈0 → descent = 9.82 * 1.0 ≈ 9.82 m/s ✓
-            
-            const float GRAVITY_FALL_RATE = 9.82f; // m/s
-            float descentRate = GRAVITY_FALL_RATE * (1f - powerRatio);
-            _verticalVelocityMPS = -descentRate; // Negative for descent
+            float powerDeficit = hoverPower - Mathf.Max(_powerConsumption, 0f);
+            float descentAcceleration = (shipWeightTons > 0f) ? powerDeficit / Mathf.Max(shipWeightTons, 0.0001f) : 0f;
+            _verticalVelocityMPS = previousVelocity - descentAcceleration * Time.fixedDeltaTime;
             _isHovering = false;
-            _currentLiftForce = _powerConsumption; // Just for display purposes
         }
         
-        // Calculate damage based on power consumption ratio
-        _damagePerSecond = usageDamagePerSecond * powerRatio;
+        _currentLiftForce = _powerConsumption;
+        float hoverReference = Mathf.Max(hoverPower, 0.0001f);
+        _damagePerSecond = usageDamagePerSecond * Mathf.Clamp01(_powerConsumption / hoverReference);
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"{gameObject.name} - Power: {_powerConsumption:F1}/s, LiftForce: {_currentLiftForce:F1}N, VertVel: {_verticalVelocityMPS:F2}m/s, Hovering: {_isHovering}, Damage: {_damagePerSecond:F2}/s", "LiftDevice");
+            FileLogger.Log($"{gameObject.name} - Power: {_powerConsumption:F1}/s, HoverPower: {hoverPower:F1}/s, LiftForce: {_currentLiftForce:F1}N, VertVel: {_verticalVelocityMPS:F2}m/s, Hovering: {_isHovering}, Damage: {_damagePerSecond:F2}/s", "LiftDevice");
         }
         
         onLiftForceChanged?.Invoke(_currentLiftForce);
@@ -295,13 +279,29 @@ public abstract class LiftDevice : MonoBehaviour
     }
     
     /// <summary>
-    /// Set lift allocation as a percentage of MaxLiftPowerPerSecond.
+    /// Set lift allocation as a percentage of the hover requirement (values over 100% request extra lift).
     /// </summary>
     public virtual void SetLiftPowerPercentage(float percentage)
     {
-        float clampedPercent = Mathf.Clamp(percentage, 0f, 100f);
-        float targetPower = (MaxLiftPowerPerSecond * clampedPercent) / 100f;
+        float clampedPercent = Mathf.Max(0f, percentage);
+        float targetPower = HoverPowerPerSecond * (clampedPercent / 100f);
         SetPowerAllocation(targetPower);
+    }
+    
+    /// <summary>
+    /// Set the commanded controlled descent percentage (0-100% of maxControlledDescentRate).
+    /// </summary>
+    public virtual void SetControlledDescentPercent(float percent)
+    {
+        controlledDescentPercent = Mathf.Clamp01(percent / 100f);
+    }
+
+    /// <summary>
+    /// Set the commanded controlled descent rate as a 0-1 fraction.
+    /// </summary>
+    public virtual void SetControlledDescentFraction(float fraction)
+    {
+        controlledDescentPercent = Mathf.Clamp01(fraction);
     }
     
     /// <summary>

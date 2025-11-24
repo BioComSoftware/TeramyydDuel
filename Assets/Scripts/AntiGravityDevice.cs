@@ -173,11 +173,12 @@ public class AntiGravityDevice : LiftDevice
     /// </summary>
     public float CalculateMinimumHoverPower()
     {
-        if (shipCharacteristics == null)
-            return minimumPowerPerSecond;
-        
+        float hoverPower = HoverPowerPerSecond;
+        if (hoverPower <= 0f)
+            return 0f;
+
         // Account for field efficiency
-        return minimumPowerPerSecond / fieldEfficiency;
+        return hoverPower / Mathf.Max(fieldEfficiency, 0.0001f);
     }
     
     /// <summary>
@@ -189,8 +190,9 @@ public class AntiGravityDevice : LiftDevice
             return 0f;
         
         float shipWeightTons = shipCharacteristics.shipWeightTons;
-        float powerForVelocity = shipWeightTons * powerPerTonPerMeterPerSecond * targetVelocityMPS;
-        float totalPower = (minimumPowerPerSecond + powerForVelocity) / fieldEfficiency;
+        float powerForVelocity = shipWeightTons * POWER_PER_TON_PER_METER_PER_SECOND * targetVelocityMPS;
+        float hoverPower = HoverPowerPerSecond;
+        float totalPower = (hoverPower + powerForVelocity) / Mathf.Max(fieldEfficiency, 0.0001f);
         
         return totalPower;
     }

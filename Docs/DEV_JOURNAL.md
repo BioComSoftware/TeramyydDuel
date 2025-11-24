@@ -1634,9 +1634,9 @@ Purpose: Created telegraph-style UI controller for lift device power allocation,
    - Default maxRotationDegrees = 100 (configurable 10-180)
 
 2. **Power Calculation**:
-   - HOVER mode: Sets minimumPowerPerSecond (perfect hover, no climb/descent)
-   - ASCEND mode: Lerps from minimumPowerPerSecond to MaxLiftPowerPerSecond
-   - DESCEND mode: Lerps from minimumPowerPerSecond to 0 (falling under gravity)
+  - HOVER mode: Commands the lift device's hover draw (9.8 units per ton)
+  - ASCEND mode: Adds power linearly above hover based on a configurable multiple; actual ceiling is whatever power the engines can supply
+  - DESCEND mode: Keeps hover draw constant but feeds a descent fraction to the lift device for controlled drop rates
 
 3. **Target Discovery**:
    - Auto-discovers AntiGravityDevice if not assigned

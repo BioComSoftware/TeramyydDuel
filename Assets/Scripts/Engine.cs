@@ -252,8 +252,8 @@ public abstract class Engine : MonoBehaviour
                     break;
                 
                 case PowerPriorityMode.Balanced:
-                    // Ensure lift gets at least minimum for hover
-                    float minLiftPower = (liftDevice != null) ? liftDevice.minimumPowerPerSecond : 0f;
+                    // Ensure lift gets at least hover power for stability
+                    float minLiftPower = (liftDevice != null) ? liftDevice.HoverPowerPerSecond : 0f;
                     float guaranteedLiftPower = Mathf.Min(requestedLiftPower, minLiftPower);
                     
                     float remainingPowerAfterMinLift = _currentPowerOutput - guaranteedLiftPower;

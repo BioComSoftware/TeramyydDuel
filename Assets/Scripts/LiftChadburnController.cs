@@ -45,9 +45,15 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
     [SerializeField] private float _currentRotation = 0f;
     [SerializeField] private float _currentPercentage = 0f;
     [SerializeField] private float _allocatedPowerPerSecond = 0f;
-    [SerializeField] private float _maxLiftPowerPerSecond = 0f;
     [SerializeField] private bool _isIncreasingLift = false;
     [SerializeField] private bool _isReducingLift = false;
+
+    [Header("Power Mapping")]
+    [Tooltip("How many multiples of hover power a full ASCEND command requests above hover (engine output still limits actual power).")]
+    public float ascendPowerMultiple = 5f;
+    
+    [Tooltip("Fallback hover draw (units/s) if ship weight is unknown.")]
+    public float hoverPowerFallback = 100f;
 
     [Header("Debug")]
     public bool debugLog = false;
@@ -65,7 +71,6 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
     public float CurrentRotation => _currentRotation;
     public float CurrentPercentage => _currentPercentage;
     public float AllocatedPowerPerSecond => _allocatedPowerPerSecond;
-    public float MaxLiftPowerPerSecond => _maxLiftPowerPerSecond;
 
     void Awake()
     {
@@ -111,7 +116,6 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
             FileLogger.Log($"Lift Chadburn controlling {targetLiftDevice.gameObject.name}", "LiftChadburn");
         }
 
-        RefreshMaxLiftCache();
         SetRotation(0f);
     }
 
@@ -203,7 +207,6 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
             _currentPercentage = Mathf.Clamp(magnitude, 0f, maxRotationDegrees);
         }
 
-        RefreshMaxLiftCache();
         ApplyLiftRequest();
         UpdateHandleColor();
         MaybeLogStatus();
@@ -231,11 +234,6 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
         }
     }
 
-    void RefreshMaxLiftCache()
-    {
-        _maxLiftPowerPerSecond = (targetLiftDevice != null) ? targetLiftDevice.MaxLiftPowerPerSecond : 0f;
-    }
-
     void ApplyLiftRequest()
     {
         if (targetLiftDevice == null)
@@ -244,22 +242,31 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
             return;
         }
 
-        float minPower = Mathf.Max(0f, targetLiftDevice.minimumPowerPerSecond);
-        float maxPower = targetLiftDevice.MaxLiftPowerPerSecond;
-        float targetPower = minPower;
+        float hoverPower = Mathf.Max(targetLiftDevice.HoverPowerPerSecond, 0f);
+        float referenceHover = (hoverPower > 0f) ? hoverPower : Mathf.Max(hoverPowerFallback, 0f);
+        float extraLiftRange = referenceHover * Mathf.Max(0f, ascendPowerMultiple);
+        float targetPower = referenceHover;
+        float descentFraction = 0f;
 
         if (_isIncreasingLift)
         {
             float normalized = Mathf.Clamp01(_currentPercentage / Mathf.Max(1f, maxRotationDegrees));
-            targetPower = Mathf.Lerp(minPower, maxPower, normalized);
+            targetPower = referenceHover + (extraLiftRange * normalized);
+            descentFraction = 0f;
         }
         else if (_isReducingLift)
         {
             float normalized = Mathf.Clamp01(_currentPercentage / Mathf.Max(1f, maxRotationDegrees));
-            targetPower = Mathf.Lerp(minPower, 0f, normalized);
+            targetPower = referenceHover;
+            descentFraction = normalized;
+        }
+        else
+        {
+            descentFraction = 0f;
         }
 
         targetLiftDevice.SetPowerAllocation(targetPower);
+        targetLiftDevice.SetControlledDescentFraction(descentFraction);
         _allocatedPowerPerSecond = targetLiftDevice.allocatedPowerPerSecond;
     }
 
@@ -268,8 +275,11 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
         if (handleImage == null)
             return;
 
-        float blend = (_maxLiftPowerPerSecond > 0f)
-            ? Mathf.Clamp01(_allocatedPowerPerSecond / _maxLiftPowerPerSecond)
+        float hoverPower = (targetLiftDevice != null) ? targetLiftDevice.HoverPowerPerSecond : 0f;
+        float referenceHover = (hoverPower > 0f) ? hoverPower : Mathf.Max(hoverPowerFallback, 0f);
+        float maxRequestedPower = referenceHover + referenceHover * Mathf.Max(0f, ascendPowerMultiple);
+        float blend = (maxRequestedPower > 0f)
+            ? Mathf.Clamp01(_allocatedPowerPerSecond / maxRequestedPower)
             : Mathf.Clamp01(_currentPercentage / 100f);
 
         handleImage.color = Color.Lerp(idleColor, fullLiftColor, blend);
@@ -284,8 +294,10 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
         {
             string mode = (!_isIncreasingLift && !_isReducingLift) ? "HOVER" :
                           _isIncreasingLift ? "ASCEND" : "DESCEND";
-            float minPower = (targetLiftDevice != null) ? Mathf.Max(0f, targetLiftDevice.minimumPowerPerSecond) : 0f;
-            FileLogger.Log($"Lift Chadburn [{mode}] {_currentPercentage:F0}% -> {_allocatedPowerPerSecond:F1}/s (min {minPower:F1}/s, max {_maxLiftPowerPerSecond:F1}/s)", "LiftChadburn");
+            float hoverPower = (targetLiftDevice != null) ? Mathf.Max(0f, targetLiftDevice.HoverPowerPerSecond) : 0f;
+            float referenceHover = (hoverPower > 0f) ? hoverPower : Mathf.Max(hoverPowerFallback, 0f);
+            float maxRequestedPower = referenceHover + referenceHover * Mathf.Max(0f, ascendPowerMultiple);
+            FileLogger.Log($"Lift Chadburn [{mode}] {_currentPercentage:F0}% -> {_allocatedPowerPerSecond:F1}/s (hover {hoverPower:F1}/s, req<=~{maxRequestedPower:F1}/s)", "LiftChadburn");
             lastLoggedPercent = _currentPercentage;
         }
     }
