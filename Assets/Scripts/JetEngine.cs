@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// JetEngine: Specialized engine subclass for atmospheric/space jet propulsion.
@@ -18,15 +19,18 @@ public class JetEngine : Engine
     [Tooltip("Heat generated PER POWER UNIT PER MINUTE. Example: 1 = 1 degree per minute for each power unit produced.")]
     public float heatPerPowerUnitPerMinute = 1f;
     
-    [Tooltip("Heat dissipation per second (constant rate).")]
-    public float heatDissipationRate = 10f;
+    [InspectorName("Heat Dissipation Rate per minute")]
+    [Tooltip("Heat dissipation per minute (constant rate).")]
+    [FormerlySerializedAs("heatDissipationRate")]
+    public float heatDissipationRatePerMinute = 10f;
     
     [Tooltip("Power output penalty per degree above safe temperature.")]
     [Range(0f, 0.1f)]
     public float heatEfficiencyPenalty = 0.01f;
     
     [Tooltip("Damage per second when overheated.")]
-    public float overheatDamageRate = 5f;
+    [FormerlySerializedAs("overheatDamageRate")]
+    public float overheatDamageRatePerSecond = 5f;
     
     [Header("Heat Status (Read-Only)")]
     [SerializeField] private float _currentTemperature = 0f;
@@ -42,7 +46,7 @@ public class JetEngine : Engine
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} [JetEngine] - MaxTemp: {maxSafeTemperature}, HeatPerPowerPerMin: {heatPerPowerUnitPerMinute}, Dissipation: {heatDissipationRate}/s", "JetEngine");
+            FileLogger.Log($"{gameObject.name} [JetEngine] - MaxTemp: {maxSafeTemperature}, HeatPerPowerPerMin: {heatPerPowerUnitPerMinute}, Dissipation: {heatDissipationRatePerMinute}/min", "JetEngine");
         }
     }
     
@@ -118,7 +122,7 @@ public class JetEngine : Engine
         float heatGenerated = (heatPerMinute / 60f) * deltaTime;
         
         // Constant heat dissipation
-        float heatDissipated = heatDissipationRate * deltaTime;
+        float heatDissipated = (heatDissipationRatePerMinute / 60f) * deltaTime;
         
         // Update current temperature
         _currentTemperature += heatGenerated - heatDissipated;
@@ -140,7 +144,7 @@ public class JetEngine : Engine
             //          20% over (120°/100°) = 1.2^5 = 2.49× damage
             float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
             
-            float overheatDamage = overheatDamageRate * damageMultiplier * deltaTime;
+            float overheatDamage = overheatDamageRatePerSecond * damageMultiplier * deltaTime;
             int damageToApply = Mathf.FloorToInt(overheatDamage);
             
             if (damageToApply > 0)

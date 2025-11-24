@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// AntiGravityDevice: Specialized lift device using anti-gravity technology.
@@ -25,15 +26,18 @@ public class AntiGravityDevice : LiftDevice
     [Tooltip("Heat generated per power unit per minute of lift output.")]
     public float heatPerPowerUnitPerMinute = 1.2f;
     
-    [Tooltip("Constant heat dissipation per second.")]
-    public float heatDissipationRate = 15f;
+    [InspectorName("Heat Dissipation Rate per minute")]
+    [Tooltip("Constant heat dissipation per minute.")]
+    [FormerlySerializedAs("heatDissipationRate")]
+    public float heatDissipationRatePerMinute = 15f;
     
     [Tooltip("Efficiency penalty per degree over the safe temperature (0-0.1 typical).")]
     [Range(0f, 0.1f)]
     public float heatEfficiencyPenalty = 0.01f;
     
     [Tooltip("Damage per second when overheated (scaled exponentially by excess heat).")]
-    public float overheatDamageRate = 4f;
+    [FormerlySerializedAs("overheatDamageRate")]
+    public float overheatDamageRatePerSecond = 4f;
     
     [Header("Heat Status (Read-Only)")]
     [SerializeField] private float _currentTemperature = 0f;
@@ -79,7 +83,7 @@ public class AntiGravityDevice : LiftDevice
         
         if (debugLog)
         {
-            FileLogger.Log($"{gameObject.name} [AntiGrav] - MaxLift:{maxLiftPowerPerSecond}/s, MaxTemp:{maxSafeTemperature}, Dissipation:{heatDissipationRate}/s", "AntiGrav");
+            FileLogger.Log($"{gameObject.name} [AntiGrav] - MaxLift:{maxLiftPowerPerSecond}/s, MaxTemp:{maxSafeTemperature}, Dissipation:{heatDissipationRatePerMinute}/min", "AntiGrav");
         }
     }
 
@@ -258,7 +262,7 @@ public class AntiGravityDevice : LiftDevice
         float clampedPower = Mathf.Max(0f, _lastActualPowerUsage);
         float heatPerMinute = clampedPower * Mathf.Max(0f, heatPerPowerUnitPerMinute);
         float heatGenerated = (heatPerMinute / 60f) * deltaTime;
-        float heatDissipated = heatDissipationRate * deltaTime;
+        float heatDissipated = (heatDissipationRatePerMinute / 60f) * deltaTime;
         _currentTemperature += heatGenerated - heatDissipated;
         _currentTemperature = Mathf.Max(minOperatingTemperature, _currentTemperature);
         _isOverheating = _currentTemperature > maxSafeTemperature;
@@ -268,7 +272,7 @@ public class AntiGravityDevice : LiftDevice
             float excessHeat = _currentTemperature - maxSafeTemperature;
             float percentOver = excessHeat / Mathf.Max(1f, maxSafeTemperature);
             float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
-            float damageThisFrame = overheatDamageRate * damageMultiplier * deltaTime;
+            float damageThisFrame = overheatDamageRatePerSecond * damageMultiplier * deltaTime;
             int damageToApply = Mathf.FloorToInt(damageThisFrame);
             if (damageToApply > 0)
             {
