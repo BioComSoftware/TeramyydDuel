@@ -255,10 +255,8 @@ public class AntiGravityDevice : LiftDevice
 
     void ManageHeat(float deltaTime)
     {
-        float normalizedLoad = (maxLiftPowerPerSecond > 0f)
-            ? Mathf.Clamp01(_lastActualPowerUsage / maxLiftPowerPerSecond)
-            : 0f;
-        float heatPerMinute = normalizedLoad * heatPerPowerUnitPerMinute;
+        float clampedPower = Mathf.Max(0f, _lastActualPowerUsage);
+        float heatPerMinute = clampedPower * Mathf.Max(0f, heatPerPowerUnitPerMinute);
         float heatGenerated = (heatPerMinute / 60f) * deltaTime;
         float heatDissipated = heatDissipationRate * deltaTime;
         _currentTemperature += heatGenerated - heatDissipated;
