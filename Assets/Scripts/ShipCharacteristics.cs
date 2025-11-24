@@ -27,10 +27,11 @@ public class ShipCharacteristics : MonoBehaviour
     [InspectorName("Frontal Area S₍ref₎")]
     [Range(0.1f, 10000f)]
     public float frontalAreaSref = 50f;
-    
-    [Tooltip("Maximum sustainable speed for this ship in knots (used by Chadburn telegraph).")]
-    [Range(1f, 500f)]
-    public float maxSpeedKnots = 120f;
+
+    [Tooltip("Computed maximum sustainable speed in knots based on thrust vs drag (read-only).")]
+    [InspectorName("Max Speed Knots (computed)")]
+    [SerializeField, ReadOnlyInInspector]
+    private float _maxSpeedKnots = 0f;
     
     [Header("Movement State (Read-Only)")]
     [SerializeField] private float _currentSpeedKnots = 0f;
@@ -106,6 +107,7 @@ public class ShipCharacteristics : MonoBehaviour
     public float horizontalSpeedKnots => _horizontalSpeedKnots; // Alias for airspeed indicator
     public Vector3 Velocity => _velocity;
     public float TotalThrustAvailable => _totalThrustAvailable;
+    public float MaxSpeedKnots => _maxSpeedKnots;
     
     // Attitude properties
     public float currentRollDegrees => _currentRollDegrees;
@@ -139,7 +141,7 @@ public class ShipCharacteristics : MonoBehaviour
         {
             // Ensure gravity is enabled if Rigidbody already exists
             rb.useGravity = true;
-            rb.linearDamping = 0.1f;
+            rb.linearDamping = 0.1f; // Re-enable Unity damping for hidden velocity cap
             
             // DO NOT freeze rotation - we need manual attitude control
             rb.constraints = RigidbodyConstraints.None;
@@ -151,9 +153,13 @@ public class ShipCharacteristics : MonoBehaviour
         // Initialize attitude tracking
         UpdateAttitudeTracking();
         
-        // Find all engines on this ship
+        // Find all engines on this ship and compute theoretical max speed once
         engines.AddRange(GetComponentsInChildren<Engine>());
-        
+    }
+
+    void Start()
+    {
+        ComputeMaxSpeedKnots();
         if (debugLog)
         {
             FileLogger.Log($"{gameObject.name} initialized - Weight: {shipWeightTons}t, Engines: {engines.Count}, Drag: {dragCoefficient}", "ShipCharacteristics");
@@ -164,7 +170,6 @@ public class ShipCharacteristics : MonoBehaviour
     {
         // Update movement tracking
         UpdateMovementTracking();
-        
         // Update attitude tracking
         UpdateAttitudeTracking();
     }
@@ -274,11 +279,64 @@ public class ShipCharacteristics : MonoBehaviour
     {
         engines.Clear();
         engines.AddRange(GetComponentsInChildren<Engine>());
+        ComputeMaxSpeedKnots();
         
         if (debugLog)
         {
             FileLogger.Log($"{gameObject.name} refreshed engine list - found {engines.Count} engines", "ShipCharacteristics");
         }
+    }
+
+    /// <summary>
+    /// Estimate steady-state max speed at sea level assuming thrust balances aero drag
+    /// plus Unity's linear damping (which behaves like an unseen velocity cap).
+    /// </summary>
+    void ComputeMaxSpeedKnots()
+    {
+        if (engines == null || engines.Count == 0)
+        {
+            _maxSpeedKnots = 0f;
+            return;
+        }
+
+        float totalMaxPowerPerSecond = 0f;
+        foreach (var engine in engines)
+        {
+            if (engine != null && engine.isActiveAndEnabled)
+            {
+                totalMaxPowerPerSecond += Mathf.Max(0f, engine.maxPowerPerSecond);
+            }
+        }
+
+        if (totalMaxPowerPerSecond <= 0f)
+        {
+            _maxSpeedKnots = 0f;
+            return;
+        }
+
+        float thrustForce = totalMaxPowerPerSecond * Engine.FORCE_PER_POWER_UNIT;
+        float rhoSeaLevel = LiftDevice.CalculateAirDensity(0f);
+        float cd = Mathf.Max(0.001f, dragCoefficient);
+        float area = Mathf.Max(0.1f, frontalAreaSref);
+        float quadraticCoeff = 0.5f * rhoSeaLevel * cd * area; // A in Av^2 + Bv - C = 0
+        float massKg = Mathf.Max(1f, shipWeightTons * 1000f);
+        float linearDamping = (rb != null) ? Mathf.Max(0f, rb.linearDamping) : 0f;
+        float linearCoeff = linearDamping * massKg; // B term representing Unity damping
+        float maxSpeedMPS;
+
+        if (quadraticCoeff <= 1e-6f)
+        {
+            // No meaningful aero drag: thrust balances only damping
+            maxSpeedMPS = (linearCoeff > 0f)
+                ? thrustForce / linearCoeff
+                : thrustForce / massKg;
+        }
+        else
+        {
+            float discriminant = linearCoeff * linearCoeff + 4f * quadraticCoeff * thrustForce;
+            maxSpeedMPS = (-linearCoeff + Mathf.Sqrt(discriminant)) / (2f * quadraticCoeff);
+        }
+        _maxSpeedKnots = maxSpeedMPS * MPS_TO_KNOTS;
     }
     
     // ========== ATTITUDE CONTROL METHODS ==========

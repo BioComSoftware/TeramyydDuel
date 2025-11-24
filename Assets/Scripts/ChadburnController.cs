@@ -238,40 +238,39 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         {
             // Within dead zone - treat as stop
             effectiveRotation = 0f;
-            _currentPercentage = 0f;
         }
-        else
-        {
-            // Outside dead zone - subtract dead zone from percentage
-            // This keeps 10° = 10%, 20° = 20%, etc.
-            _currentPercentage = Mathf.Abs(effectiveRotation);
-        }
+        
+        float normalizedRotation = (maxRotationDegrees > 0f)
+            ? Mathf.Clamp01(Mathf.Abs(effectiveRotation) / maxRotationDegrees)
+            : 0f;
+        _currentPercentage = normalizedRotation * 100f;
         
         // Determine direction (outside dead zone)
         _isAhead = _currentRotation > DEAD_ZONE;
         _isAstern = _currentRotation < -DEAD_ZONE;
         
         // Calculate target knots and throttle limit
-        float throttleFraction = _currentPercentage / 100f;
+        float throttleFraction = Mathf.Clamp01(_currentPercentage / 100f);
         _requestedSpeedKnots = (shipCharacteristics != null)
-            ? shipCharacteristics.maxSpeedKnots * throttleFraction
+            ? shipCharacteristics.MaxSpeedKnots * throttleFraction
             : 0f;
         
         if (targetEngine != null)
         {
-            targetEngine.SetThrottlePercent(throttleFraction);
-            
             // Send commands to engine
             if (_isAhead)
             {
+                targetEngine.SetThrottlePercent(throttleFraction);
                 targetEngine.SetKnotsAhead(_requestedSpeedKnots);
             }
             else if (_isAstern)
             {
+                targetEngine.SetThrottlePercent(throttleFraction);
                 targetEngine.SetKnotsAstern(_requestedSpeedKnots);
             }
             else
             {
+                targetEngine.SetThrottlePercent(0f);
                 targetEngine.AllStop();
             }
         }

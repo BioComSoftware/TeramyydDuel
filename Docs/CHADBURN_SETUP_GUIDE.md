@@ -15,7 +15,7 @@ The Chadburn is a rotating handle control that allows the player to set the ship
 **How it works:**
 - Player drags the handle with mouse
 - Handle rotates around its bottom pivot point
-- Rotation angle sets a throttle percentage that simultaneously limits thrust power and requests a fraction of `ShipCharacteristics.maxSpeedKnots`
+- Rotation angle sets a throttle percentage that simultaneously limits thrust power and requests a fraction of `ShipCharacteristics.MaxSpeedKnots`
 - Automatically calls `Engine.SetKnotsAhead()` or `SetKnotsAstern()` and caps power via `Engine.SetThrottlePercent()`
 - Handle color changes: White (stop), Green (ahead), Red (astern)
 
@@ -153,10 +153,10 @@ Create the handle/pointer image:
 
 **Speed & Power Mapping:**
 - Handle percentage drives two things simultaneously:
-   - Requested speed = percentage × `ShipCharacteristics.maxSpeedKnots`
+   - Requested speed = percentage × `ShipCharacteristics.MaxSpeedKnots`
    - Available thrust power = percentage × current engine power output
 - Full ahead (100%) orders full ship speed and allows all thrust power; half-ahead (50%) targets half the ship max speed and limits thrust to 50% of available power
-- Requires a `ShipCharacteristics` component on the same ship as the engine so the controller can read `maxSpeedKnots`
+- Requires a `ShipCharacteristics` component on the same ship as the engine so the controller can read `MaxSpeedKnots`
 
 **Visual Feedback:**
 - **Stop Color**: White (255, 255, 255)
@@ -243,7 +243,7 @@ Create the handle/pointer image:
 **Ship doesn't move:**
 - Check Console for error messages
 - Verify `Target Engine` is assigned (or engine exists in scene)
-- Confirm `ShipCharacteristics.maxSpeedKnots` matches the intended top speed
+- Confirm `ShipCharacteristics.MaxSpeedKnots` matches the intended top speed
 - Verify engine is enabled and has power
 
 **Handle stretches/distorts when rotating:**
@@ -373,7 +373,7 @@ HUD_Canvas
 ## TIPS & BEST PRACTICES
 
 1. **Realistic Snapping**: Use snap increment of 25° for authentic telegraph feel (STOP, SLOW, HALF, FULL)
-2. **Speed Scaling**: Adjust `ShipCharacteristics.maxSpeedKnots` per ship class (small: 80kt, medium: 120kt, large: 160kt) to define what 100% ahead means
+2. **Speed Scaling**: Adjust engine `maxPowerPerSecond`, ship `C₍D₎`, or `S₍ref₎` to influence `ShipCharacteristics.MaxSpeedKnots` (auto-calculated from those values)
 3. **Audio Feedback**: Add bell sound at stop position for immersive feel
 4. **Visual Polish**: Add glow or highlight effect on handle when dragging
 5. **Lerp Movement**: Handle snaps instantly - add lerp in script if you want smooth transitions
