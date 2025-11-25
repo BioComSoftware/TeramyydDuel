@@ -9993,18 +9993,15 @@ MonoBehaviour:
   MuzzleBlast: {fileID: 6516914785663785109}
   fireKey: 102
   launchSpeed: 50
+  minimumLaunchSpeed: 1
   spawnOffset: 1
-  angleSpreadDegrees: 5
-  speedJitterPercent: 5
+  angleSpreadDegrees: 0
+  speedJitterPercent: 0
+  disableAccuracyError: 1
   reloadTime: 0
   startReady: 1
   debugLog: 1
-  fireClip: {fileID: 0}
-  fireVolume: 1
-  pitchRange: {x: 2, y: 2}
-  force2DForDebug: 0
-  audioMinDistance: 1
-  audioMaxDistance: 1000
+  fireAudioSource: {fileID: 0}
 --- !u!82 &5702391970838010796
 AudioSource:
   m_ObjectHideFlags: 0

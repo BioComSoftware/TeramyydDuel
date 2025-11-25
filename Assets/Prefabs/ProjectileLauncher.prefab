@@ -51,9 +51,14 @@ MonoBehaviour:
   MuzzleBlast: {fileID: 0}
   fireKey: 102
   launchSpeed: 50
+  minimumLaunchSpeed: 1
   spawnOffset: 1
-  angleSpreadDegrees: 5
-  speedJitterPercent: 5
+  angleSpreadDegrees: 0
+  speedJitterPercent: 0
+  disableAccuracyError: 1
+  reloadTime: 2
+  startReady: 1
+  debugLog: 0
 --- !u!1 &7202491767298042434
 GameObject:
   m_ObjectHideFlags: 0

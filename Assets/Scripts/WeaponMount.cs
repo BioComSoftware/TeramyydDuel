@@ -35,7 +35,9 @@ public class WeaponMount : MonoBehaviour
     public float pitchSpeedDegPerSec = 45f;
 
     [Header("Target Tracking")]
-    [Tooltip("When enabled, the mount will continuously aim toward the current TargetingController target.")]
+    [Tooltip("Disable automatic targeting entirely (aiming + ballistic speed adjustments)." )]
+    public bool disableAutoTargeting = false;
+    [Tooltip("When enabled (and auto targeting is not disabled), the mount will continuously aim toward the current TargetingController target.")]
     public bool autoTrackTarget = true;
     [Tooltip("Reference to the shared TargetingController. Auto-discovered if left empty.")]
     public TargetingController targetingController;
@@ -106,9 +108,14 @@ public class WeaponMount : MonoBehaviour
  
     void Update()
     {
-        if (autoTrackTarget)
+        bool autoTargetingActive = !disableAutoTargeting && autoTrackTarget;
+        if (autoTargetingActive)
         {
             AutoAimTowardsTarget();
+        }
+        else if (currentLauncher != null)
+        {
+            currentLauncher.SetRuntimeLaunchSpeed(currentLauncher.launchSpeed);
         }
 
         // Check if mounted weapon was destroyed externally (e.g., by Health component)
@@ -134,7 +141,7 @@ public class WeaponMount : MonoBehaviour
 
     void AutoAimTowardsTarget()
     {
-        if (!isOccupied || mountedWeapon == null)
+        if (!isOccupied || mountedWeapon == null || pitchBarrel == null)
             return;
 
         if (yawBase == null)
@@ -151,16 +158,19 @@ public class WeaponMount : MonoBehaviour
         if (target == null)
             return;
 
+        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
+        Vector3 origin = muzzle.position;
         Vector3 aimPoint = GetTargetAimPoint(target.transform);
-        Vector3 origin = pitchBarrel != null ? pitchBarrel.position : yawBase.position;
-        Vector3 toTarget = origin - aimPoint; // weapon fires along -forward, so invert vector
-        if (toTarget.sqrMagnitude < 0.01f)
+        Vector3 displacementToTarget = aimPoint - origin;
+        if (displacementToTarget.sqrMagnitude < 0.0001f)
             return;
 
         Transform reference = yawBase.parent != null ? yawBase.parent : yawBase;
-        Vector3 localDir = reference.InverseTransformDirection(toTarget.normalized);
-        if (localDir.sqrMagnitude < 1e-4f)
-            return;
+        if (reference == null)
+            reference = transform;
+
+        Vector3 toTargetForAiming = origin - aimPoint; // align muzzle (-forward) with this
+        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
 
         float desiredYaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
         Vector3 dirAfterYaw = Quaternion.Euler(0f, -desiredYaw, 0f) * localDir;
@@ -175,6 +185,12 @@ public class WeaponMount : MonoBehaviour
         _yaw = Mathf.MoveTowards(_yaw, desiredYaw, yawStep);
         _pitch = Mathf.MoveTowards(_pitch, desiredPitch, pitchStep);
         ApplyRotations();
+
+        if (currentLauncher != null)
+        {
+            float adjustedSpeed = ComputeLaunchSpeedForDisplacement(displacementToTarget);
+            currentLauncher.SetRuntimeLaunchSpeed(adjustedSpeed);
+        }
     }
 
     Vector3 GetTargetAimPoint(Transform targetTransform)
@@ -188,6 +204,72 @@ public class WeaponMount : MonoBehaviour
             return rend.bounds.center;
 
         return targetTransform.position;
+    }
+
+    float ComputeLaunchSpeedForDisplacement(Vector3 displacement)
+    {
+        if (currentLauncher == null)
+            return 0f;
+
+        float minSpeed = Mathf.Max(0.1f, currentLauncher.minimumLaunchSpeed);
+        float maxSpeed = Mathf.Max(minSpeed, currentLauncher.launchSpeed);
+        Vector3 gravity = Physics.gravity;
+        float gMagnitude = gravity.magnitude;
+        if (gMagnitude < 0.0001f)
+            return maxSpeed;
+
+        Vector3 up = -gravity / gMagnitude;
+        float verticalOffset = Vector3.Dot(displacement, up);
+        Vector3 horizontal = displacement - verticalOffset * up;
+        float horizontalDistance = horizontal.magnitude;
+
+        Transform muzzleBasis = pitchBarrel != null ? pitchBarrel : yawBase;
+        if (muzzleBasis == null)
+            return maxSpeed;
+
+        Vector3 muzzleDir = -muzzleBasis.forward;
+        if (muzzleDir.sqrMagnitude < 1e-6f)
+            return maxSpeed;
+        muzzleDir.Normalize();
+
+        float sinTheta = Mathf.Clamp(Vector3.Dot(muzzleDir, up), -1f, 1f);
+        float cosThetaSq = Mathf.Max(0f, 1f - sinTheta * sinTheta);
+        float cosTheta = Mathf.Sqrt(cosThetaSq);
+
+        const float epsilon = 1e-3f;
+        float desiredSpeed = maxSpeed;
+
+        if (horizontalDistance < epsilon)
+        {
+            if (verticalOffset > 0f)
+                desiredSpeed = Mathf.Sqrt(2f * gMagnitude * verticalOffset);
+            else
+                desiredSpeed = minSpeed;
+        }
+        else if (cosTheta < epsilon)
+        {
+            desiredSpeed = maxSpeed;
+        }
+        else
+        {
+            float tanTheta = sinTheta / Mathf.Max(epsilon, cosTheta);
+            float denominator = horizontalDistance * tanTheta - verticalOffset;
+            if (denominator <= 0f)
+            {
+                desiredSpeed = minSpeed;
+            }
+            else
+            {
+                float numerator = gMagnitude * horizontalDistance * horizontalDistance;
+                float speedSq = numerator / (2f * cosThetaSq * denominator);
+                if (speedSq <= 0f)
+                    desiredSpeed = minSpeed;
+                else
+                    desiredSpeed = Mathf.Sqrt(speedSq);
+            }
+        }
+
+        return Mathf.Clamp(desiredSpeed, minSpeed, maxSpeed);
     }
 
     // Mount a new weapon (ProjectileLauncher prefab recommended)

@@ -14,7 +14,10 @@ public class ProjectileLauncher : MonoBehaviour
     public KeyCode fireKey = KeyCode.F;
 
     [Header("Projectile Settings")]
-    public float launchSpeed = 50f;       // Speed of the projectile
+    [Tooltip("Maximum launch speed. Runtime systems may lower the actual muzzle speed, but it will never exceed this value.")]
+    public float launchSpeed = 50f;
+    [Tooltip("Minimum practical launch speed when auto-adjusting.")]
+    public float minimumLaunchSpeed = 5f;
     public float spawnOffset = 1f;        // Distance in front of the barrel
 
     [Header("Accuracy (runtime adjustable)")]
@@ -22,6 +25,8 @@ public class ProjectileLauncher : MonoBehaviour
     public float angleSpreadDegrees = 5f;
     [Tooltip("Random speed variance as a percentage of launchSpeed (e.g., 5 means +/-5%). Lower = more consistent speed.")]
     public float speedJitterPercent = 5f;
+    [Tooltip("Disable all accuracy error so projectiles leave exactly along the barrel axis at the computed speed.")]
+    public bool disableAccuracyError = false;
     
     [Header("Reload Settings")]
     [Tooltip("Time in seconds before weapon can fire again after firing")]
@@ -36,6 +41,7 @@ public class ProjectileLauncher : MonoBehaviour
     
     // Runtime state
     private float _nextFireTime = 0f;
+    private float _runtimeLaunchSpeed;
     
     /// <summary>
     /// Check if this weapon is ready to fire (not reloading).
@@ -60,6 +66,17 @@ public class ProjectileLauncher : MonoBehaviour
         if (!startReady)
         {
             _nextFireTime = Time.time + reloadTime;
+        }
+
+        _runtimeLaunchSpeed = Mathf.Clamp(launchSpeed, minimumLaunchSpeed, launchSpeed);
+    }
+
+    void OnValidate()
+    {
+        minimumLaunchSpeed = Mathf.Clamp(minimumLaunchSpeed, 0.1f, Mathf.Max(0.1f, launchSpeed));
+        if (!Application.isPlaying)
+        {
+            _runtimeLaunchSpeed = Mathf.Clamp(launchSpeed, minimumLaunchSpeed, launchSpeed);
         }
     }
     
@@ -109,7 +126,7 @@ public class ProjectileLauncher : MonoBehaviour
         Vector3 launchDirection = spawnPoint.up.normalized;
 
         // Apply angular spread (cone around the base direction)
-        float spread = Mathf.Max(0f, angleSpreadDegrees);
+        float spread = disableAccuracyError ? 0f : Mathf.Max(0f, angleSpreadDegrees);
         if (spread > 0f)
         {
             // Build an orthonormal basis around the axis
@@ -126,8 +143,10 @@ public class ProjectileLauncher : MonoBehaviour
         }
 
         // Apply speed jitter (percent of launchSpeed)
-        float jitter = Mathf.Max(0f, speedJitterPercent) * 0.01f;
+        float jitter = disableAccuracyError ? 0f : Mathf.Max(0f, speedJitterPercent) * 0.01f;
         float speedMul = (jitter > 0f) ? Random.Range(1f - jitter, 1f + jitter) : 1f;
+        float baseSpeed = Mathf.Clamp(_runtimeLaunchSpeed, minimumLaunchSpeed, launchSpeed);
+        float finalSpeed = Mathf.Clamp(baseSpeed * speedMul, minimumLaunchSpeed, launchSpeed);
 
         // Spawn slightly in front of the barrel so we don't spawn inside its collider
         Vector3 spawnPos = spawnPoint.position + launchDirection * spawnOffset;
@@ -141,8 +160,7 @@ public class ProjectileLauncher : MonoBehaviour
         if (rb != null)
         {
             // Prefer Rigidbody.linearVelocity (newer Unity); fall back to velocity via reflection to avoid obsolete warnings
-            Vector3 initialVelocity = launchDirection * (launchSpeed * speedMul);
-            // Prefer linearVelocity when available; otherwise set velocity directly
+            Vector3 initialVelocity = launchDirection * finalSpeed;
             var rbType = typeof(Rigidbody);
             var linVelProp = rbType.GetProperty("linearVelocity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
             if (linVelProp != null && linVelProp.CanWrite)
@@ -170,6 +188,17 @@ public class ProjectileLauncher : MonoBehaviour
         // Set reload time
         _nextFireTime = Time.time + reloadTime;
         
-        Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={(launchSpeed * speedMul):F1}, spread={angleSpreadDegrees:F1}");
+        Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={finalSpeed:F1}, spread={angleSpreadDegrees:F1}");
     }
+
+    /// <summary>
+    /// Adjusts the runtime muzzle speed while clamping to [minimumLaunchSpeed, launchSpeed].
+    /// </summary>
+    public void SetRuntimeLaunchSpeed(float desiredSpeed)
+    {
+        float min = Mathf.Max(0.1f, minimumLaunchSpeed);
+        _runtimeLaunchSpeed = Mathf.Clamp(desiredSpeed, min, launchSpeed);
+    }
+
+    public float GetRuntimeLaunchSpeed() => _runtimeLaunchSpeed;
 }
