@@ -1,3 +1,45 @@
+## 2025-11-25 — Targeting Input + HUD Highlight
+
+### Feature Overview
+- Added click-to-target workflow using a dedicated input controller plus a HUD overlay that draws a red targeting reticle around any selected `Health` object.
+- Introduced log-to-file diagnostics so debug runs never rely on the Unity Console; targeting issues can be diagnosed directly from `%AppData%/LocalLow/DefaultCompany/Teramyyd game/TargetingController.log`.
+- Iterated on modifier-key handling to support both “hold T + click” and “no modifier” modes, including laptop touchpad edge cases.
+
+### TargetingController.cs (Assets/Scripts/Targeting)
+- New component that listens for the configured modifier key (default `T`) plus left click to raycast from the targeting camera.
+- Ignores anything under the player ship (`ShipCharacteristics`) and only selects colliders whose hierarchy contains `Health`.
+- Exposes `CurrentTarget` and `TargetingCamera` so HUD/UI systems can react to selection changes.
+- Debug logging now writes to `Application.persistentDataPath/TargetingController.log`. Each run truncates the file and appends timestamped events (modifier pressed/released, raycast misses, player-ship rejects, successful acquisitions). File name is configurable in the inspector.
+- Handles `KeyCode.None` to disable the modifier requirement entirely, and internally tracks modifier state via `GetKeyDown/GetKeyUp` so clicks can occur a frame after the key press (helps trackpads that suppress simultaneous key+tap inputs).
+
+### TargetHighlightOverlay.cs (Assets/Scripts/Targeting)
+- New HUD helper that takes `CurrentTarget`, projects its renderer/collider bounds into screen space, and positions a UI `RectTransform` (usually an Image with a red sprite/box) over the target.
+- Accepts optional references for world camera, UI camera, and highlight graphic; defaults to the targeting controller’s camera and the attached Image if unset.
+- Adds padding/min-size controls plus an option to hide when the target is off-screen/behind the camera.
+- Keeps the GameObject active at all times so its `LateUpdate` runs even while the graphic is hidden; only the Image/Graphic is toggled for visibility.
+
+### Setup Notes (Today’s Testing)
+1. Hierarchy: `HUD_Canvas` (Screen Space – Overlay or Camera) → `TargetingOverlay` (UI Image with red sprite) + `TargetHighlightOverlay` component.
+2. Inspector wiring:
+   - `Targeting Controller`: drag the GameObject that owns `TargetingController` (e.g., Ship root or PlayerController).
+   - `Highlight Rect`: the `RectTransform` of `TargetingOverlay` (auto-populates if left blank).
+   - `Canvas`: `HUD_Canvas`; assign `Ui Camera` only when using Screen Space – Camera.
+   - Leave `World Camera Override` empty to reuse the controller’s targeting camera.
+3. Ensure the target object (e.g., Sphere under `Target` parent) has at least one enabled collider and a `Health` somewhere in its parents; layer must be included in `targetingLayers` (default `Everything`).
+
+### Debug + UX Findings
+- With `debugLog` checked, the log captures whether the modifier key was pressed, whether a click occurred without the modifier, and whether the raycast hit a valid Health component.
+- Laptop touchpads often suppress left clicks while letter keys are held (“Palm Check”). External mice or non-text modifiers (`LeftAlt`, `F9`, etc.) bypass this OS-level behavior; alternatively, set `Targeting Modifier Key = None` or disable palm rejection in Windows touchpad settings.
+- Verified behavior matrix:
+  - Modifier = `T`, mouse click → works provided OS sends the click (external mouse or touchpad palm rejection disabled).
+  - Modifier = `T`, touchpad with palm rejection → Unity never receives the click; log shows modifier pressed but no raycast. Recommendation noted above.
+  - Modifier = `None` → every click selects targets, used for testing and accessibility fallback.
+
+### Follow-Up Ideas
+- Add UI feedback when the modifier is held (e.g., tint reticle) so players know targeting mode is active.
+- Surface log-path guidance inside an in-game debug overlay for quicker access.
+- Consider optional “require modifier” toggle so designers don’t have to switch between `T` and `None` in the key dropdown.
+
 ## 2025-11-24 (Late Session) — Power Allocation Bug Fix
 
 ### Acceleration Power Allocation Bug (Two-Part Fix)

@@ -34,6 +34,16 @@ public class WeaponMount : MonoBehaviour
     public float yawSpeedDegPerSec = 60f;
     public float pitchSpeedDegPerSec = 45f;
 
+    [Header("Target Tracking")]
+    [Tooltip("When enabled, the mount will continuously aim toward the current TargetingController target.")]
+    public bool autoTrackTarget = true;
+    [Tooltip("Reference to the shared TargetingController. Auto-discovered if left empty.")]
+    public TargetingController targetingController;
+    [Tooltip("Maximum yaw slew speed while auto-tracking (deg/sec).")]
+    public float autoAimYawSpeedDegPerSec = 120f;
+    [Tooltip("Maximum pitch slew speed while auto-tracking (deg/sec).")]
+    public float autoAimPitchSpeedDegPerSec = 90f;
+
     [Header("Testing (optional)")]
     [Tooltip("If set with autoPopulateOnStart, this weapon prefab is mounted at Start for quick testing")] public GameObject autoPopulatePrefab;
     public bool autoPopulateOnStart = false;
@@ -96,6 +106,11 @@ public class WeaponMount : MonoBehaviour
  
     void Update()
     {
+        if (autoTrackTarget)
+        {
+            AutoAimTowardsTarget();
+        }
+
         // Check if mounted weapon was destroyed externally (e.g., by Health component)
         if (isOccupied && mountedWeapon == null)
         {
@@ -115,6 +130,64 @@ public class WeaponMount : MonoBehaviour
         // Pitch up/down: i / k
         if (Input.GetKey(KeyCode.I)) ApplyPitchDelta((invertPitchDirection ? -1f : 1f) * pitchSpeedDegPerSec * dt);
         if (Input.GetKey(KeyCode.K)) ApplyPitchDelta((invertPitchDirection ? 1f : -1f) * pitchSpeedDegPerSec * dt);
+    }
+
+    void AutoAimTowardsTarget()
+    {
+        if (!isOccupied || mountedWeapon == null)
+            return;
+
+        if (yawBase == null)
+            return;
+
+        if (targetingController == null)
+        {
+            targetingController = FindObjectOfType<TargetingController>();
+            if (targetingController == null)
+                return;
+        }
+
+        Health target = targetingController.CurrentTarget;
+        if (target == null)
+            return;
+
+        Vector3 aimPoint = GetTargetAimPoint(target.transform);
+        Vector3 origin = pitchBarrel != null ? pitchBarrel.position : yawBase.position;
+        Vector3 toTarget = origin - aimPoint; // weapon fires along -forward, so invert vector
+        if (toTarget.sqrMagnitude < 0.01f)
+            return;
+
+        Transform reference = yawBase.parent != null ? yawBase.parent : yawBase;
+        Vector3 localDir = reference.InverseTransformDirection(toTarget.normalized);
+        if (localDir.sqrMagnitude < 1e-4f)
+            return;
+
+        float desiredYaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+        Vector3 dirAfterYaw = Quaternion.Euler(0f, -desiredYaw, 0f) * localDir;
+        float desiredPitch = -Mathf.Atan2(dirAfterYaw.y, dirAfterYaw.z) * Mathf.Rad2Deg;
+
+        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+        desiredYaw = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
+        desiredPitch = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+
+        float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
+        float pitchStep = autoAimPitchSpeedDegPerSec * Time.deltaTime;
+        _yaw = Mathf.MoveTowards(_yaw, desiredYaw, yawStep);
+        _pitch = Mathf.MoveTowards(_pitch, desiredPitch, pitchStep);
+        ApplyRotations();
+    }
+
+    Vector3 GetTargetAimPoint(Transform targetTransform)
+    {
+        Collider col = targetTransform.GetComponentInChildren<Collider>();
+        if (col != null)
+            return col.bounds.center;
+
+        Renderer rend = targetTransform.GetComponentInChildren<Renderer>();
+        if (rend != null)
+            return rend.bounds.center;
+
+        return targetTransform.position;
     }
 
     // Mount a new weapon (ProjectileLauncher prefab recommended)
