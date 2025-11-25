@@ -26,7 +26,7 @@ public class JetEngine : Engine
     
     [Tooltip("Power output penalty per degree above safe temperature.")]
     [Range(0f, 0.1f)]
-    public float heatEfficiencyPenalty = 0.01f;
+    public float heatEfficiencyPenalty = 0.01f; 
     
     [Tooltip("Damage per second when overheated.")]
     [FormerlySerializedAs("overheatDamageRate")]
