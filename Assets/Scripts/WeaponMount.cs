@@ -59,6 +59,12 @@ public class WeaponMount : MonoBehaviour
 
     float _yaw;   // signed degrees (left - / right +)
     float _pitch; // signed degrees (up + / down -)
+    float _aimYawTarget;
+    float _aimPitchTarget;
+    float _aimLaunchSpeed;
+    bool _hasAimSolution;
+    bool _wasAutoTargetingActive;
+    int _lastSolverVersion = -1;
 
     void Reset()
     {
@@ -78,6 +84,7 @@ public class WeaponMount : MonoBehaviour
             MountWeapon(autoPopulatePrefab);
         }
         ApplyRotations();
+        SyncAimTargetsToCurrentPose();
         
         if (debugLog)
         {
@@ -109,13 +116,31 @@ public class WeaponMount : MonoBehaviour
     void Update()
     {
         bool autoTargetingActive = !disableAutoTargeting && autoTrackTarget;
+        if (autoTargetingActive && !_wasAutoTargetingActive)
+        {
+            _hasAimSolution = false;
+            _lastSolverVersion = -1;
+        }
+        else if (!autoTargetingActive && _wasAutoTargetingActive)
+        {
+            SyncAimTargetsToCurrentPose();
+        }
+
         if (autoTargetingActive)
         {
             AutoAimTowardsTarget();
         }
-        else if (currentLauncher != null)
+        else
         {
-            currentLauncher.SetRuntimeLaunchSpeed(currentLauncher.launchSpeed);
+            if (currentLauncher != null)
+            {
+                currentLauncher.SetRuntimeLaunchSpeed(currentLauncher.launchSpeed);
+            }
+
+            if (debugKeypadControl)
+            {
+                HandleDebugKeypadInput();
+            }
         }
 
         // Check if mounted weapon was destroyed externally (e.g., by Health component)
@@ -128,23 +153,13 @@ public class WeaponMount : MonoBehaviour
             currentLauncher = null;
             isOccupied = false;
         }
-        
-        if (!debugKeypadControl) return;
-        float dt = Time.deltaTime;
-        // Yaw left/right: j / l
-        if (Input.GetKey(KeyCode.J)) ApplyYawDelta((invertYawDirection ? 1f : -1f) * yawSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.L)) ApplyYawDelta((invertYawDirection ? -1f : 1f) * yawSpeedDegPerSec * dt);
-        // Pitch up/down: i / k
-        if (Input.GetKey(KeyCode.I)) ApplyPitchDelta((invertPitchDirection ? -1f : 1f) * pitchSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.K)) ApplyPitchDelta((invertPitchDirection ? 1f : -1f) * pitchSpeedDegPerSec * dt);
+
+        _wasAutoTargetingActive = autoTargetingActive;
     }
 
     void AutoAimTowardsTarget()
     {
         if (!isOccupied || mountedWeapon == null || pitchBarrel == null)
-            return;
-
-        if (yawBase == null)
             return;
 
         if (targetingController == null)
@@ -158,38 +173,23 @@ public class WeaponMount : MonoBehaviour
         if (target == null)
             return;
 
-        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
-        Vector3 origin = muzzle.position;
-        Vector3 aimPoint = GetTargetAimPoint(target.transform);
-        Vector3 displacementToTarget = aimPoint - origin;
-        if (displacementToTarget.sqrMagnitude < 0.0001f)
+        if (ShouldRecomputeSolution())
+        {
+            ComputeBallisticSolution(target.transform);
+        }
+
+        if (!_hasAimSolution)
             return;
-
-        Transform reference = yawBase.parent != null ? yawBase.parent : yawBase;
-        if (reference == null)
-            reference = transform;
-
-        Vector3 toTargetForAiming = origin - aimPoint; // align muzzle (-forward) with this
-        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
-
-        float desiredYaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-        Vector3 dirAfterYaw = Quaternion.Euler(0f, -desiredYaw, 0f) * localDir;
-        float desiredPitch = -Mathf.Atan2(dirAfterYaw.y, dirAfterYaw.z) * Mathf.Rad2Deg;
-
-        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
-        desiredYaw = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
-        desiredPitch = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
 
         float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
         float pitchStep = autoAimPitchSpeedDegPerSec * Time.deltaTime;
-        _yaw = Mathf.MoveTowards(_yaw, desiredYaw, yawStep);
-        _pitch = Mathf.MoveTowards(_pitch, desiredPitch, pitchStep);
+        _yaw = Mathf.MoveTowards(_yaw, _aimYawTarget, yawStep);
+        _pitch = Mathf.MoveTowards(_pitch, _aimPitchTarget, pitchStep);
         ApplyRotations();
 
         if (currentLauncher != null)
         {
-            float adjustedSpeed = ComputeLaunchSpeedForDisplacement(displacementToTarget);
-            currentLauncher.SetRuntimeLaunchSpeed(adjustedSpeed);
+            currentLauncher.SetRuntimeLaunchSpeed(_aimLaunchSpeed);
         }
     }
 
@@ -206,70 +206,104 @@ public class WeaponMount : MonoBehaviour
         return targetTransform.position;
     }
 
-    float ComputeLaunchSpeedForDisplacement(Vector3 displacement)
+    bool ShouldRecomputeSolution()
     {
+        if (targetingController == null)
+            return !_hasAimSolution;
+
+        int version = targetingController.SolverVersion;
+        if (!_hasAimSolution || version != _lastSolverVersion)
+        {
+            _lastSolverVersion = version;
+            return true;
+        }
+
+        return false;
+    }
+
+    void ComputeBallisticSolution(Transform targetTransform)
+    {
+        _hasAimSolution = false;
+
+        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
+        if (muzzle == null)
+            return;
+
+        Vector3 origin = muzzle.position;
+        Vector3 aimPoint = GetTargetAimPoint(targetTransform);
+        Vector3 displacement = aimPoint - origin;
+        if (displacement.sqrMagnitude < 0.0001f)
+            return;
+
+        Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
+        Vector3 localDisplacement = reference.InverseTransformDirection(displacement);
+
+        float horizontalDistance = Mathf.Sqrt(localDisplacement.x * localDisplacement.x + localDisplacement.z * localDisplacement.z);
+        float verticalOffset = localDisplacement.y;
+
+        Vector3 toTargetForAiming = origin - aimPoint;
+        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
+        float desiredYaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+        _aimYawTarget = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
+
         if (currentLauncher == null)
-            return 0f;
+            return;
 
-        float minSpeed = Mathf.Max(0.1f, currentLauncher.minimumLaunchSpeed);
-        float maxSpeed = Mathf.Max(minSpeed, currentLauncher.launchSpeed);
-        Vector3 gravity = Physics.gravity;
-        float gMagnitude = gravity.magnitude;
-        if (gMagnitude < 0.0001f)
-            return maxSpeed;
+        float gravityMag = Physics.gravity.magnitude;
+        if (gravityMag < 0.0001f)
+            gravityMag = 9.81f;
 
-        Vector3 up = -gravity / gMagnitude;
-        float verticalOffset = Vector3.Dot(displacement, up);
-        Vector3 horizontal = displacement - verticalOffset * up;
-        float horizontalDistance = horizontal.magnitude;
+        float thetaMaxRad = Mathf.Deg2Rad * Mathf.Clamp(Mathf.Abs(pitchUpDeg), 1f, 85f);
+        float drag = currentLauncher.ProjectileDrag;
+        float damping = currentLauncher.ProjectileLinearDamping;
+        float maxSpeed = currentLauncher.launchSpeed;
 
-        Transform muzzleBasis = pitchBarrel != null ? pitchBarrel : yawBase;
-        if (muzzleBasis == null)
-            return maxSpeed;
+        float launchSpeed;
+        float launchAngleRad;
+        bool solved = BallisticsSolver.SolveWithUnityDrag(
+            horizontalDistance,
+            verticalOffset,
+            gravityMag,
+            maxSpeed,
+            thetaMaxRad,
+            drag,
+            damping,
+            out launchSpeed,
+            out launchAngleRad);
 
-        Vector3 muzzleDir = -muzzleBasis.forward;
-        if (muzzleDir.sqrMagnitude < 1e-6f)
-            return maxSpeed;
-        muzzleDir.Normalize();
-
-        float sinTheta = Mathf.Clamp(Vector3.Dot(muzzleDir, up), -1f, 1f);
-        float cosThetaSq = Mathf.Max(0f, 1f - sinTheta * sinTheta);
-        float cosTheta = Mathf.Sqrt(cosThetaSq);
-
-        const float epsilon = 1e-3f;
-        float desiredSpeed = maxSpeed;
-
-        if (horizontalDistance < epsilon)
+        if (solved)
         {
-            if (verticalOffset > 0f)
-                desiredSpeed = Mathf.Sqrt(2f * gMagnitude * verticalOffset);
-            else
-                desiredSpeed = minSpeed;
-        }
-        else if (cosTheta < epsilon)
-        {
-            desiredSpeed = maxSpeed;
-        }
-        else
-        {
-            float tanTheta = sinTheta / Mathf.Max(epsilon, cosTheta);
-            float denominator = horizontalDistance * tanTheta - verticalOffset;
-            if (denominator <= 0f)
-            {
-                desiredSpeed = minSpeed;
-            }
-            else
-            {
-                float numerator = gMagnitude * horizontalDistance * horizontalDistance;
-                float speedSq = numerator / (2f * cosThetaSq * denominator);
-                if (speedSq <= 0f)
-                    desiredSpeed = minSpeed;
-                else
-                    desiredSpeed = Mathf.Sqrt(speedSq);
-            }
+            float pitchDeg = Mathf.Rad2Deg * launchAngleRad;
+            _aimPitchTarget = Mathf.Clamp(pitchDeg, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+            _aimLaunchSpeed = Mathf.Clamp(launchSpeed, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
+            _hasAimSolution = true;
+            return;
         }
 
-        return Mathf.Clamp(desiredSpeed, minSpeed, maxSpeed);
+        Vector3 dirAfterYaw = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localDir;
+        float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, dirAfterYaw.z) * Mathf.Rad2Deg;
+        fallbackPitch = Mathf.Clamp(fallbackPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+        _aimPitchTarget = fallbackPitch;
+        _aimLaunchSpeed = currentLauncher.launchSpeed;
+        _hasAimSolution = true;
+    }
+
+    void SyncAimTargetsToCurrentPose()
+    {
+        _aimYawTarget = _yaw;
+        _aimPitchTarget = _pitch;
+        _aimLaunchSpeed = currentLauncher != null ? currentLauncher.launchSpeed : 0f;
+        _hasAimSolution = false;
+    }
+
+    void HandleDebugKeypadInput()
+    {
+        float dt = Time.deltaTime;
+        if (Input.GetKey(KeyCode.J)) ApplyYawDelta((invertYawDirection ? 1f : -1f) * yawSpeedDegPerSec * dt);
+        if (Input.GetKey(KeyCode.L)) ApplyYawDelta((invertYawDirection ? -1f : 1f) * yawSpeedDegPerSec * dt);
+        if (Input.GetKey(KeyCode.I)) ApplyPitchDelta((invertPitchDirection ? -1f : 1f) * pitchSpeedDegPerSec * dt);
+        if (Input.GetKey(KeyCode.K)) ApplyPitchDelta((invertPitchDirection ? 1f : -1f) * pitchSpeedDegPerSec * dt);
     }
 
     // Mount a new weapon (ProjectileLauncher prefab recommended)
@@ -307,6 +341,7 @@ public class WeaponMount : MonoBehaviour
         weaponHealth = mountedWeapon.GetComponentInChildren<Health>();
         isOccupied = true;
         if (debugLog) Debug.Log($"[WeaponMount] {mountId}: Mount complete, isOccupied={isOccupied}, health={weaponHealth}");
+        SyncAimTargetsToCurrentPose();
         return true;
     }
 

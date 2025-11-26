@@ -33,6 +33,19 @@ public class TargetingController : MonoBehaviour
     [Tooltip("Invoked whenever a new valid target is acquired.")]
     public HealthEvent onTargetAcquired;
 
+    public enum FiringSolutionRate
+    {
+        EveryFixedUpdate = 1,        // ~50 Hz
+        Every2ndFixedUpdate = 2,     // ~25 Hz
+        Every5thFixedUpdate = 5,     // ~10 Hz
+        Every10thFixedUpdate = 10,   // ~5 Hz
+        Every20thFixedUpdate = 20    // ~2.5 Hz
+    }
+
+    [Header("Firing Solution Update")]
+    [Tooltip("Controls how often dependent systems recompute firing solutions. Values are multiples of FixedUpdate (~50 Hz)." )]
+    public FiringSolutionRate firingSolutionRate = FiringSolutionRate.EveryFixedUpdate;
+
     [Header("Debug")]
     public bool debugLog = false;
     [Tooltip("Name of the log file (stored in Application.persistentDataPath) used when debug logging is enabled.")]
@@ -40,11 +53,14 @@ public class TargetingController : MonoBehaviour
 
     private Health _currentTarget;
     private string _debugLogPath;
+    private int _fixedUpdateAccumulator;
+    private int _solverVersion;
     private bool _modifierActive;
     private bool _lastModifierSample;
 
     public Health CurrentTarget => _currentTarget;
     public Camera TargetingCamera => targetingCamera;
+    public int SolverVersion => _solverVersion;
 
     void Awake()
     {
@@ -116,6 +132,17 @@ public class TargetingController : MonoBehaviour
         }
 
         AcquireTarget(health);
+    }
+
+    void FixedUpdate()
+    {
+        int interval = Mathf.Max(1, (int)firingSolutionRate);
+        _fixedUpdateAccumulator++;
+        if (_fixedUpdateAccumulator >= interval)
+        {
+            _fixedUpdateAccumulator = 0;
+            _solverVersion++;
+        }
     }
 
     void UpdateModifierState(bool modifierRequired)

@@ -28,6 +28,12 @@ public class ProjectileLauncher : MonoBehaviour
     [Tooltip("Disable all accuracy error so projectiles leave exactly along the barrel axis at the computed speed.")]
     public bool disableAccuracyError = false;
     
+    [Header("Projectile Physics (optional overrides)")]
+    [Tooltip("Override for Rigidbody.drag used in ballistic calculations. Leave negative to auto-read from the projectile prefab.")]
+    public float projectileDragOverride = -1f;
+    [Tooltip("Override for Rigidbody.linearDamping (Unity 6+) used in ballistic calculations. Leave negative to auto-read from the projectile prefab.")]
+    public float projectileLinearDampingOverride = -1f;
+
     [Header("Reload Settings")]
     [Tooltip("Time in seconds before weapon can fire again after firing")]
     public float reloadTime = 2f;
@@ -42,6 +48,8 @@ public class ProjectileLauncher : MonoBehaviour
     // Runtime state
     private float _nextFireTime = 0f;
     private float _runtimeLaunchSpeed;
+    private float _cachedProjectileDrag;
+    private float _cachedProjectileLinearDamping;
     
     /// <summary>
     /// Check if this weapon is ready to fire (not reloading).
@@ -60,6 +68,11 @@ public class ProjectileLauncher : MonoBehaviour
         return remaining > 0f ? remaining : 0f;
     }
     
+    void Awake()
+    {
+        CacheProjectilePhysicsSpecs();
+    }
+
     void Start()
     {
         // If weapon doesn't start ready, set initial reload time
@@ -78,6 +91,7 @@ public class ProjectileLauncher : MonoBehaviour
         {
             _runtimeLaunchSpeed = Mathf.Clamp(launchSpeed, minimumLaunchSpeed, launchSpeed);
         }
+        CacheProjectilePhysicsSpecs();
     }
     
     void Update()
@@ -201,4 +215,60 @@ public class ProjectileLauncher : MonoBehaviour
     }
 
     public float GetRuntimeLaunchSpeed() => _runtimeLaunchSpeed;
+
+    public float ProjectileDrag => _cachedProjectileDrag;
+    public float ProjectileLinearDamping => _cachedProjectileLinearDamping;
+
+    void CacheProjectilePhysicsSpecs()
+    {
+        if (projectileDragOverride >= 0f)
+        {
+            _cachedProjectileDrag = projectileDragOverride;
+        }
+        if (projectileLinearDampingOverride >= 0f)
+        {
+            _cachedProjectileLinearDamping = projectileLinearDampingOverride;
+        }
+
+        if (projectilePrefab == null)
+        {
+            if (projectileDragOverride < 0f) _cachedProjectileDrag = 0f;
+            if (projectileLinearDampingOverride < 0f) _cachedProjectileLinearDamping = 0f;
+            return;
+        }
+
+        if (projectileDragOverride < 0f || projectileLinearDampingOverride < 0f)
+        {
+            if (projectilePrefab.TryGetComponent<Rigidbody>(out var rb))
+            {
+                if (projectileDragOverride < 0f)
+                {
+                    _cachedProjectileDrag = rb.linearDamping;
+                }
+
+                if (projectileLinearDampingOverride < 0f)
+                {
+                    _cachedProjectileLinearDamping = ReadLinearDamping(rb);
+                }
+            }
+            else
+            {
+                if (projectileDragOverride < 0f) _cachedProjectileDrag = 0f;
+                if (projectileLinearDampingOverride < 0f) _cachedProjectileLinearDamping = 0f;
+            }
+        }
+    }
+
+    float ReadLinearDamping(Rigidbody rb)
+    {
+        var property = typeof(Rigidbody).GetProperty("linearDamping", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        if (property != null && property.CanRead)
+        {
+            object value = property.GetValue(rb, null);
+            if (value is float f)
+                return f;
+        }
+
+        return rb.linearDamping; // fallback for older Unity versions
+    }
 }
