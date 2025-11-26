@@ -53,7 +53,7 @@ public class TargetingController : MonoBehaviour
 
     private Health _currentTarget;
     private string _debugLogPath;
-    private int _fixedUpdateAccumulator;
+    private int _fixedUpdateAccumulator; 
     private int _solverVersion;
     private bool _modifierActive;
     private bool _lastModifierSample;
