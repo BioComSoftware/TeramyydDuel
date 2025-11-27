@@ -9995,10 +9995,12 @@ MonoBehaviour:
   launchSpeed: 50
   minimumLaunchSpeed: 1
   spawnOffset: 1
-  angleSpreadDegrees: 0
-  speedJitterPercent: 0
-  disableAccuracyError: 1
-  reloadTime: 0
+  angleSpreadDegrees: 5
+  speedJitterPercent: 5
+  disableAccuracyError: 0
+  projectileDragOverride: -1
+  projectileLinearDampingOverride: -1
+  reloadTime: 10
   startReady: 1
   debugLog: 1
   fireAudioSource: {fileID: 0}

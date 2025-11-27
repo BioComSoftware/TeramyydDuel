@@ -50,6 +50,11 @@ public class ProjectileLauncher : MonoBehaviour
     private float _runtimeLaunchSpeed;
     private float _cachedProjectileDrag;
     private float _cachedProjectileLinearDamping;
+
+    /// <summary>
+    /// True when the launcher has finished reloading and can fire again.
+    /// </summary>
+    public bool IsReady => IsReadyToFire();
     
     /// <summary>
     /// Check if this weapon is ready to fire (not reloading).

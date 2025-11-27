@@ -60,6 +60,8 @@ public class ShipHUDDisplay : MonoBehaviour
         {
             binding.iconImage.sprite = targetSprite;
         }
+
+        UpdateReadyIndicator(binding, launcher);
     }
 
     Sprite GetSpriteForWeaponType(string weaponType)
@@ -78,6 +80,40 @@ public class ShipHUDDisplay : MonoBehaviour
         }
 
         return null;
+    }
+
+    void UpdateReadyIndicator(MountIconBinding binding, ProjectileLauncher launcher)
+    {
+        if (!binding.manageReadyIndicator || binding.readyIndicatorImage == null)
+            return;
+
+        if (launcher == null)
+        {
+            if (binding.hideReadyIndicatorWhenNoWeapon)
+            {
+                if (binding.readyIndicatorImage.gameObject.activeSelf)
+                    binding.readyIndicatorImage.gameObject.SetActive(false);
+            }
+            else
+            {
+                if (!binding.readyIndicatorImage.gameObject.activeSelf)
+                    binding.readyIndicatorImage.gameObject.SetActive(true);
+
+                if (binding.notReadySprite != null)
+                    binding.readyIndicatorImage.sprite = binding.notReadySprite;
+            }
+            return;
+        }
+
+        if (!binding.readyIndicatorImage.gameObject.activeSelf)
+            binding.readyIndicatorImage.gameObject.SetActive(true);
+
+        bool isReady = launcher.IsReady;
+        Sprite desired = isReady ? binding.readySprite : binding.notReadySprite;
+        if (desired != null && binding.readyIndicatorImage.sprite != desired)
+        {
+            binding.readyIndicatorImage.sprite = desired;
+        }
     }
 }
 
@@ -99,4 +135,15 @@ public class MountIconBinding
 
     [Tooltip("Sprite used when the mount is empty or no mapping exists.")]
     public Sprite emptySprite;
+
+    [Header("Ready Indicator")]
+    public bool manageReadyIndicator = false;
+    [Tooltip("Image (e.g., GreenStoplight) that represents ready state for this mount.")]
+    public Image readyIndicatorImage;
+    [Tooltip("Sprite shown when the mounted weapon is ready (e.g., green light).")]
+    public Sprite readySprite;
+    [Tooltip("Sprite shown while the weapon is not ready/reloading (e.g., red light).")]
+    public Sprite notReadySprite;
+    [Tooltip("Hide the ready indicator entirely when no weapon is mounted.")]
+    public bool hideReadyIndicatorWhenNoWeapon = true;
 }
