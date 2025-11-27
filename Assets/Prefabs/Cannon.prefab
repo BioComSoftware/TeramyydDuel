@@ -9997,10 +9997,10 @@ MonoBehaviour:
   spawnOffset: 1
   angleSpreadDegrees: 5
   speedJitterPercent: 5
-  disableAccuracyError: 0
+  disableAccuracyError: 1
   projectileDragOverride: -1
   projectileLinearDampingOverride: -1
-  reloadTime: 10
+  reloadTime: 0
   startReady: 1
   debugLog: 1
   fireAudioSource: {fileID: 0}
