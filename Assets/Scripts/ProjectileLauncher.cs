@@ -129,6 +129,24 @@ public class ProjectileLauncher : MonoBehaviour
         _owningMount = mount;
     }
 
+    /// <summary>
+    /// Allows external callers (e.g., HUD buttons) to issue a fire command while honoring target lock rules.
+    /// </summary>
+    public void TriggerFireCommand()
+    {
+        if (!IsFireCommandAllowed())
+        {
+            if (debugLog)
+            {
+                string reason = _owningMount == null ? "fire blocked (no mount)" : "fire blocked (target lock invalid)";
+                Debug.Log($"[ProjectileLauncher] {reason}.");
+            }
+            return;
+        }
+
+        FireProjectile();
+    }
+
     bool IsFireCommandAllowed()
     {
         if (!requireValidMountTargetLock)

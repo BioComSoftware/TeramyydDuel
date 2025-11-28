@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 /// <summary>
@@ -34,6 +35,7 @@ public class ShipHUDDisplay : MonoBehaviour
             if (binding == null || binding.iconImage == null || binding.weaponMount == null)
                 continue;
 
+            SetupFireButton(binding);
             UpdateBinding(binding);
         }
     }
@@ -93,6 +95,7 @@ public class ShipHUDDisplay : MonoBehaviour
 
         UpdateTargetNotAcquiredIndicator(binding);
         UpdateHealthBar(binding, launcher);
+        UpdateFireButtonState(binding);
     }
 
     void UpdateTargetNotAcquiredIndicator(MountIconBinding binding)
@@ -222,6 +225,84 @@ public class ShipHUDDisplay : MonoBehaviour
 
         binding.cachedHealthPercent = percent;
         ApplyHealthBarWidths(binding, percent);
+    }
+
+    void SetupFireButton(MountIconBinding binding)
+    {
+        if (binding == null)
+            return;
+
+        if (binding.fireButton == null)
+        {
+            CleanupFireButton(binding);
+            return;
+        }
+
+        if (binding.cachedFireButton != null && binding.cachedFireButton != binding.fireButton)
+        {
+            CleanupFireButton(binding);
+        }
+
+        if (binding.weaponMount == null)
+        {
+            binding.fireButton.interactable = false;
+            CleanupFireButton(binding);
+            return;
+        }
+
+        if (binding.cachedFireHandler == null)
+        {
+            binding.cachedFireHandler = () => FireSingleMount(binding.weaponMount);
+            binding.cachedFireButton = binding.fireButton;
+            binding.cachedFireButton.onClick.AddListener(binding.cachedFireHandler);
+        }
+    }
+
+    void CleanupFireButton(MountIconBinding binding)
+    {
+        if (binding == null)
+            return;
+
+        if (binding.cachedFireButton != null && binding.cachedFireHandler != null)
+        {
+            binding.cachedFireButton.onClick.RemoveListener(binding.cachedFireHandler);
+        } 
+
+        binding.cachedFireButton = null;
+        binding.cachedFireHandler = null;
+    }
+
+    void UpdateFireButtonState(MountIconBinding binding)
+    {
+        if (binding == null || binding.fireButton == null)
+            return;
+
+        bool interactable = false;
+        WeaponMount mount = binding.weaponMount;
+        if (mount != null)
+        {
+            ProjectileLauncher launcher = mount.currentLauncher;
+            if (launcher != null)
+            {
+                interactable = launcher.IsReady && mount.CanFireAtCurrentTarget;
+            }
+        }
+
+        if (binding.fireButton.interactable != interactable)
+        {
+            binding.fireButton.interactable = interactable;
+        }
+    }
+
+    void FireSingleMount(WeaponMount mount)
+    {
+        if (mount == null || mount.currentLauncher == null)
+            return;
+
+        if (!mount.CanFireAtCurrentTarget)
+            return;
+
+        mount.currentLauncher.TriggerFireCommand();
     }
 
     void EnsureHealthBarRuntime(MountIconBinding binding)
@@ -375,4 +456,12 @@ public class MountIconBinding
     internal Image healthBarRedFill;
     [NonSerialized]
     internal float cachedHealthPercent = -1f;
+    [NonSerialized]
+    internal UnityAction cachedFireHandler;
+    [NonSerialized]
+    internal Button cachedFireButton;
+
+    [Header("Fire Button")]
+    [Tooltip("When assigned, this button fires only the associated weapon mount when clicked.")]
+    public Button fireButton;
 }
