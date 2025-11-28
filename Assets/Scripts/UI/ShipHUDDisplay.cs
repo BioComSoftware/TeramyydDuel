@@ -62,6 +62,41 @@ public class ShipHUDDisplay : MonoBehaviour
         }
 
         UpdateReadyIndicator(binding, launcher);
+        UpdateTargetNotAcquiredIndicator(binding);
+    }
+
+    void UpdateTargetNotAcquiredIndicator(MountIconBinding binding)
+    {
+        if (!binding.manageTargetNotAcquiredIndicator || binding.targetNotAcquiredImage == null)
+            return;
+
+        bool desiredActive = binding.cachedTargetNotAcquiredVisible;
+        GameObject indicatorObject = binding.targetNotAcquiredImage.gameObject;
+        if (indicatorObject.activeSelf != desiredActive)
+        {
+            indicatorObject.SetActive(desiredActive);
+        }
+    }
+
+    public void SetTargetNotAcquiredVisible(WeaponMount mount, bool visible)
+    {
+        if (mount == null || mountIcons == null)
+            return;
+
+        foreach (var binding in mountIcons)
+        {
+            if (binding == null || binding.weaponMount != mount)
+                continue;
+
+            binding.cachedTargetNotAcquiredVisible = visible;
+            UpdateTargetNotAcquiredIndicator(binding);
+            return;
+        }
+
+        if (debugLog)
+        {
+            Debug.LogWarning($"[ShipHUDDisplay] No MountIconBinding found for weapon mount '{mount.name}' while setting TargetNotAcquired visibility.");
+        }
     }
 
     Sprite GetSpriteForWeaponType(string weaponType)
@@ -146,4 +181,13 @@ public class MountIconBinding
     public Sprite notReadySprite;
     [Tooltip("Hide the ready indicator entirely when no weapon is mounted.")]
     public bool hideReadyIndicatorWhenNoWeapon = true;
+
+    [Header("Target Acquisition Indicator")]
+    [Tooltip("When enabled, the target-not-acquired sprite will be toggled by ShipHUDDisplay.")]
+    public bool manageTargetNotAcquiredIndicator = false;
+    [Tooltip("Sprite or Image that represents the TargetNotAcquired indicator for this mount.")]
+    public Image targetNotAcquiredImage;
+
+    [NonSerialized]
+    internal bool cachedTargetNotAcquiredVisible = true;
 }
