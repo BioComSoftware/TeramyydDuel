@@ -44,12 +44,17 @@ public class ProjectileLauncher : MonoBehaviour
     [Header("Debug")]
     [Tooltip("Enable debug logging")]
     public bool debugLog = false;
+
+    [Header("Mount Integration")]
+    [Tooltip("When true, this launcher ignores fire input unless its owning WeaponMount has a valid target lock (sensor overlap + firing solution).")]
+    public bool requireValidMountTargetLock = true;
     
     // Runtime state
     private float _nextFireTime = 0f;
     private float _runtimeLaunchSpeed;
     private float _cachedProjectileDrag;
     private float _cachedProjectileLinearDamping;
+    private WeaponMount _owningMount;
 
     /// <summary>
     /// True when the launcher has finished reloading and can fire again.
@@ -103,8 +108,36 @@ public class ProjectileLauncher : MonoBehaviour
     {
         if (Input.GetKeyDown(fireKey))
         {
+            if (!IsFireCommandAllowed())
+            {
+                if (debugLog)
+                {
+                    string reason = _owningMount == null
+                        ? "blocked (no owning mount)"
+                        : "blocked (target lock invalid)";
+                    Debug.Log($"[ProjectileLauncher] Fire command {reason}.");
+                }
+                return;
+            }
+
             FireProjectile();
         }
+    }
+
+    public void BindOwningMount(WeaponMount mount)
+    {
+        _owningMount = mount;
+    }
+
+    bool IsFireCommandAllowed()
+    {
+        if (!requireValidMountTargetLock)
+            return true;
+
+        if (_owningMount == null)
+            return true;
+
+        return _owningMount.CanFireAtCurrentTarget;
     }
 
     protected virtual void FireProjectile()

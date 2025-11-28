@@ -86,6 +86,7 @@ public class WeaponMount : MonoBehaviour
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
+    public bool CanFireAtCurrentTarget => HasSelectedTarget && _targetColliderInsideSensor && _hasBallisticInterceptSolution;
 
     void Reset()
     {
@@ -422,6 +423,10 @@ public class WeaponMount : MonoBehaviour
         mountedWeapon.transform.localScale = Vector3.one;
 
         currentLauncher = mountedWeapon.GetComponent<ProjectileLauncher>();
+        if (currentLauncher != null)
+        {
+            currentLauncher.BindOwningMount(this);
+        }
         if (enableDebugLogging) LogDebug($"Mounting {weaponPrefab.name} → created {mountedWeapon.name}, launcher={currentLauncher}");
         TryResolveTargetAcquisitionCollider();
         
@@ -460,6 +465,10 @@ public class WeaponMount : MonoBehaviour
         GameObject weapon = mountedWeapon;
         mountedWeapon = null;
         weaponHealth = null;
+        if (currentLauncher != null)
+        {
+            currentLauncher.BindOwningMount(null);
+        }
         currentLauncher = null;
         isOccupied = false;
 
