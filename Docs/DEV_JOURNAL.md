@@ -1,3 +1,24 @@
+## 2025-11-28 — Weapon Mount Workflow + Fire Controls
+
+### Highlights
+- Two-mount flow works end-to-end: both bow and aft cannons share the same `WeaponMount.TryFire()` path whether input comes from the `F` key, the HUD “FIRE” buttons, or the Fire-at-Will toggle.
+- Authored `Docs/Add Weapon Mounts Instructions.md` so designers can place mounts + HUD bindings without guesswork (clean sockets, HUD bindings, Fire-at-Will wiring).
+- Fire-at-Will recovered after hierarchy changes via runtime mount trimming, root overrides, and new debug logging that writes to `game_debug.log`.
+
+### Code Changes
+- **WeaponMount.cs**: added `TryFire()` helper, sensor logging polish, and ensured auto-populated cannons align to mount forward regardless of socket rotation. Mount now caches health + launcher references for HUD queries.
+- **ProjectileLauncher.cs**: keyboard handler defers to its owning mount’s `TryFire()` so every path honors sensor/solution state; still supports standalone launchers when no mount exists.
+- **ShipHUDDisplay.cs**: button wiring caches the mount reference at registration time, preventing per-mount FIRE buttons from dereferencing the wrong `WeaponMount`. Added health bar/runtime helpers and target indicator logging.
+- **FireAtWillController.cs**: trims null entries, auto-populates from either a specified root or the entire scene, and exposes `enableDebugLogging` so we can trace mount discovery + Update skips. Update now re-checks the cache whenever active to tolerate runtime prefab swaps.
+
+### Testing / Debug Notes
+- Verified both mounts fire correctly after moving them under clean sockets (reset Scale, rotate only the socket to aim aft). Any distortion indicates a stray non-uniform scale in the chain.
+- When Fire-at-Will appears idle, enable debug logging on both the controller and affected WeaponMounts, click the toggle, and inspect `Logs/game_debug.log` for mount counts and `TryFire` gating reasons.
+
+### Follow-Ups
+- Need a one-time audit to ensure every ship prefab uses the socket pattern (zeroed Weapon_mount with yaw/pitch children) so designers cannot accidentally inherit skewed transforms.
+- Consider exposing a ScriptableObject list of ship mounts so FireAtWillController can pre-seed the array in edit mode (no runtime discovery needed).
+
 ## 2025-11-25 — Targeting Input + HUD Highlight
 
 ### Feature Overview
