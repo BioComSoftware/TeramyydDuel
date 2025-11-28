@@ -71,7 +71,9 @@ public class ShipHUDDisplay : MonoBehaviour
             WeaponMount mount = binding.weaponMount;
             if (mount != null && mount.HasSelectedTarget)
             {
-                indicatorVisible = !mount.HasTargetInsideAcquisitionCollider;
+                bool insideSensor = mount.HasTargetInsideAcquisitionCollider;
+                bool hasFiringSolution = mount.HasValidFiringSolution;
+                indicatorVisible = !(insideSensor && hasFiringSolution);
             }
 
             binding.cachedTargetNotAcquiredVisible = indicatorVisible;
@@ -81,7 +83,8 @@ public class ShipHUDDisplay : MonoBehaviour
                 string mountName = mount != null ? mount.mountId : "(null mount)";
                 bool hasTarget = mount != null && mount.HasSelectedTarget;
                 bool insideSensor = mount != null && mount.HasTargetInsideAcquisitionCollider;
-                LogDebug($"TargetNotAcquired → {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, InsideSensor={insideSensor})");
+                bool hasSolution = mount != null && mount.HasValidFiringSolution;
+                LogDebug($"TargetNotAcquired → {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, InsideSensor={insideSensor}, HasSolution={hasSolution})");
             }
         }
 

@@ -74,6 +74,7 @@ public class WeaponMount : MonoBehaviour
     float _aimPitchTarget;
     float _aimLaunchSpeed;
     bool _hasAimSolution;
+    bool _hasBallisticInterceptSolution;
     bool _wasAutoTargetingActive;
     int _lastSolverVersion = -1;
     bool _targetColliderInsideSensor;
@@ -84,6 +85,7 @@ public class WeaponMount : MonoBehaviour
 
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
+    public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
 
     void Reset()
     {
@@ -188,12 +190,18 @@ public class WeaponMount : MonoBehaviour
         {
             targetingController = FindObjectOfType<TargetingController>();
             if (targetingController == null)
+            {
+                _hasBallisticInterceptSolution = false;
                 return;
+            }
         }
 
         Health target = targetingController.CurrentTarget;
         if (target == null)
+        {
+            _hasBallisticInterceptSolution = false;
             return;
+        }
 
         if (ShouldRecomputeSolution())
         {
@@ -317,6 +325,7 @@ public class WeaponMount : MonoBehaviour
     void ComputeBallisticSolution(Transform targetTransform)
     {
         _hasAimSolution = false;
+        _hasBallisticInterceptSolution = false;
 
         Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
         if (muzzle == null)
@@ -371,6 +380,7 @@ public class WeaponMount : MonoBehaviour
             _aimPitchTarget = Mathf.Clamp(pitchDeg, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
             _aimLaunchSpeed = Mathf.Clamp(launchSpeed, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
             _hasAimSolution = true;
+            _hasBallisticInterceptSolution = true;
             return;
         }
 
@@ -380,6 +390,7 @@ public class WeaponMount : MonoBehaviour
         _aimPitchTarget = fallbackPitch;
         _aimLaunchSpeed = currentLauncher.launchSpeed;
         _hasAimSolution = true;
+        _hasBallisticInterceptSolution = false;
     }
 
     void SyncAimTargetsToCurrentPose()
@@ -388,6 +399,7 @@ public class WeaponMount : MonoBehaviour
         _aimPitchTarget = _pitch;
         _aimLaunchSpeed = currentLauncher != null ? currentLauncher.launchSpeed : 0f;
         _hasAimSolution = false;
+        _hasBallisticInterceptSolution = false;
     }
 
     void HandleDebugKeypadInput()
