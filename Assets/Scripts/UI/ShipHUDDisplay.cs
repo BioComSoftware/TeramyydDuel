@@ -252,7 +252,8 @@ public class ShipHUDDisplay : MonoBehaviour
 
         if (binding.cachedFireHandler == null)
         {
-            binding.cachedFireHandler = () => FireSingleMount(binding.weaponMount);
+            WeaponMount mountRef = binding.weaponMount;
+            binding.cachedFireHandler = () => FireSingleMount(mountRef);
             binding.cachedFireButton = binding.fireButton;
             binding.cachedFireButton.onClick.AddListener(binding.cachedFireHandler);
         }
