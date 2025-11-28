@@ -10023,9 +10023,10 @@ MonoBehaviour:
   disableAccuracyError: 1
   projectileDragOverride: -1
   projectileLinearDampingOverride: -1
-  reloadTime: 0
+  reloadTime: 5
   startReady: 1
   debugLog: 1
+  requireValidMountTargetLock: 1
   fireAudioSource: {fileID: 0}
 --- !u!82 &5702391970838010796
 AudioSource:
