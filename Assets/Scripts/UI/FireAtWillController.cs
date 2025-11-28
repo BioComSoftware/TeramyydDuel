@@ -33,6 +33,13 @@ public class FireAtWillController : MonoBehaviour
     [Tooltip("When enabled, automatically populate weaponMounts from children of this object.")]
     public bool autoPopulateMountsFromChildren = true;
 
+    [Tooltip("Optional override for the hierarchy root used when auto-populating mounts. Defaults to this component's transform.")]
+    public Transform autoPopulateRootOverride;
+
+    [Header("Debug")]
+    [Tooltip("Writes detailed Fire-at-Will state changes to Logs/game_debug.log when enabled.")]
+    public bool enableDebugLogging = false;
+
     public bool IsActive => _isActive;
 
     bool _isActive;
@@ -43,12 +50,9 @@ public class FireAtWillController : MonoBehaviour
         _isActive = startActive;
         ApplyVisual();
 
-        if ((weaponMounts == null || weaponMounts.Length == 0) && autoPopulateMountsFromChildren)
-        {
-            weaponMounts = GetComponentsInChildren<WeaponMount>(includeInactive: true);
-        }
+        TrimNullMounts();
+        TryAutoPopulateMounts();
     }
-
     void OnEnable()
     {
         RegisterHandler();
@@ -65,8 +69,13 @@ public class FireAtWillController : MonoBehaviour
         if (!_isActive)
             return;
 
+        EnsureMountCache();
+
         if (weaponMounts == null || weaponMounts.Length == 0)
+        {
+            LogDebug("Update skipped: no weapon mounts registered.");
             return;
+        }
 
         foreach (var mount in weaponMounts)
         {
@@ -75,6 +84,96 @@ public class FireAtWillController : MonoBehaviour
 
             mount.TryFire();
         }
+    }
+
+    void TrimNullMounts()
+    {
+        if (weaponMounts == null || weaponMounts.Length == 0)
+            return;
+
+        int validCount = 0;
+        for (int i = 0; i < weaponMounts.Length; i++)
+        {
+            if (weaponMounts[i] != null)
+            {
+                validCount++;
+            }
+        }
+
+        if (validCount == weaponMounts.Length)
+            return;
+
+        if (validCount == 0)
+        {
+            weaponMounts = System.Array.Empty<WeaponMount>();
+            return;
+        }
+
+        var trimmed = new WeaponMount[validCount];
+        int index = 0;
+        for (int i = 0; i < weaponMounts.Length; i++)
+        {
+            if (weaponMounts[i] == null)
+                continue;
+
+            trimmed[index++] = weaponMounts[i];
+        }
+
+        weaponMounts = trimmed;
+    }
+
+    void TryAutoPopulateMounts()
+    {
+        if (!autoPopulateMountsFromChildren)
+            return;
+
+        Transform root = autoPopulateRootOverride != null ? autoPopulateRootOverride : transform;
+        WeaponMount[] found = root != null ? root.GetComponentsInChildren<WeaponMount>(includeInactive: true) : null;
+
+        if (found != null && found.Length > 0)
+        {
+            weaponMounts = found;
+            LogDebug($"Auto-populated {weaponMounts.Length} mount(s) from root '{root.name}'.");
+            return;
+        }
+
+        WeaponMount[] global = FindAllWeaponMounts();
+        weaponMounts = global ?? System.Array.Empty<WeaponMount>();
+        LogDebug($"Auto-populate fallback located {weaponMounts.Length} mount(s) globally.");
+    }
+
+    void EnsureMountCache()
+    {
+        TrimNullMounts();
+
+        if (weaponMounts != null && weaponMounts.Length > 0)
+            return;
+
+        TryAutoPopulateMounts();
+    }
+
+    WeaponMount[] FindAllWeaponMounts()
+    {
+        WeaponMount[] mounts = null;
+        try
+        {
+            mounts = FindObjectsOfType<WeaponMount>(includeInactive: true);
+        }
+        catch
+        {
+            mounts = Resources.FindObjectsOfTypeAll<WeaponMount>();
+        }
+        return mounts;
+    }
+
+    void LogDebug(string message)
+    {
+        if (!enableDebugLogging)
+            return;
+
+        string formatted = $"[FireAtWill] {message}";
+        Debug.Log(formatted, this);
+        FileLogger.Log(formatted, "FireAtWill");
     }
 
     void RegisterHandler()
