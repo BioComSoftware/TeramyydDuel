@@ -260,8 +260,29 @@ public class WeaponMount : MonoBehaviour
             return;
         }
 
-        bool inside = targetCollider.bounds.Intersects(targetAcquisitionCollider.bounds);
-        string reason = inside ? "Sensor overlap confirmed" : "Colliders do not intersect";
+        bool inside = false;
+        string reason;
+
+        if (Physics.ComputePenetration(
+                targetAcquisitionCollider,
+                targetAcquisitionCollider.transform.position,
+                targetAcquisitionCollider.transform.rotation,
+                targetCollider,
+                targetCollider.transform.position,
+                targetCollider.transform.rotation,
+                out Vector3 direction,
+                out float penetrationDistance))
+        {
+            inside = true;
+            reason = $"Sensor penetration confirmed (depth={penetrationDistance:F3}m)";
+        }
+        else
+        {
+            float separation = EstimateColliderSeparation(targetAcquisitionCollider, targetCollider);
+            reason = separation < float.MaxValue
+                ? $"No penetration (surface separation ≈ {separation:F3}m)"
+                : "Unable to compute precise separation";
+        }
         FinalizeAcquisitionState(inside, target, targetCollider, reason);
     }
 
@@ -491,6 +512,16 @@ public class WeaponMount : MonoBehaviour
         string formatted = $"[WeaponMount:{mountId}] {message}";
         Debug.Log(formatted, this);
         FileLogger.Log(formatted, "WeaponMount");
+    }
+
+    float EstimateColliderSeparation(Collider sensor, Collider target)
+    {
+        if (sensor == null || target == null)
+            return float.MaxValue;
+
+        Vector3 sensorPoint = sensor.ClosestPoint(target.bounds.center);
+        Vector3 targetPoint = target.ClosestPoint(sensorPoint);
+        return Vector3.Distance(sensorPoint, targetPoint);
     }
 
     void TryResolveTargetAcquisitionCollider()
