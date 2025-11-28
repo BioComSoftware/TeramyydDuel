@@ -9,6 +9,9 @@ using UnityEngine.UI;
 [AddComponentMenu("Teramyyd/UI/Ship HUD Display (Manual)")]
 public class ShipHUDDisplay : MonoBehaviour
 {
+    static Sprite s_SolidSprite;
+    static Texture2D s_SolidTexture;
+
     [Header("Weapon Type → Sprite Mappings")]
     [Tooltip("Map weapon type strings (e.g., 'cannon') to HUD sprites.")]
     public WeaponSpriteMapping[] weaponSpriteMappings;
@@ -89,6 +92,7 @@ public class ShipHUDDisplay : MonoBehaviour
         }
 
         UpdateTargetNotAcquiredIndicator(binding);
+        UpdateHealthBar(binding, launcher);
     }
 
     void UpdateTargetNotAcquiredIndicator(MountIconBinding binding)
@@ -186,6 +190,129 @@ public class ShipHUDDisplay : MonoBehaviour
         Debug.Log(formatted, this);
         FileLogger.Log(formatted, "ShipHUD");
     }
+
+    void UpdateHealthBar(MountIconBinding binding, ProjectileLauncher launcher)
+    {
+        if (!binding.manageHealthBar || binding.healthBarContainer == null)
+            return;
+
+        EnsureHealthBarRuntime(binding);
+
+        bool hasWeapon = launcher != null && binding.weaponMount != null;
+        Health weaponHealth = hasWeapon ? binding.weaponMount.MountedWeaponHealth : null;
+
+        if (weaponHealth == null)
+        {
+            if (binding.healthBarContainer.gameObject.activeSelf)
+            {
+                binding.healthBarContainer.gameObject.SetActive(false);
+            }
+            binding.cachedHealthPercent = -1f;
+            return;
+        }
+
+        if (!binding.healthBarContainer.gameObject.activeSelf)
+        {
+            binding.healthBarContainer.gameObject.SetActive(true);
+        }
+
+        float percent = weaponHealth.maxHealth > 0 ? Mathf.Clamp01((float)weaponHealth.currentHealth / weaponHealth.maxHealth) : 0f;
+        if (Mathf.Approximately(percent, binding.cachedHealthPercent))
+            return;
+
+        binding.cachedHealthPercent = percent;
+        ApplyHealthBarWidths(binding, percent);
+    }
+
+    void EnsureHealthBarRuntime(MountIconBinding binding)
+    {
+        if (binding.healthBarContainer == null)
+            return;
+
+        if (binding.healthBarBackground == null)
+        {
+            Image background = binding.healthBarContainer.GetComponent<Image>();
+            if (background == null)
+            {
+                background = binding.healthBarContainer.gameObject.AddComponent<Image>();
+            }
+            background.sprite = GetSolidSprite();
+            background.type = Image.Type.Simple;
+            background.color = binding.healthBarBackgroundColor;
+            binding.healthBarBackground = background;
+        }
+
+        if (binding.healthBarGreenFill == null)
+        {
+            binding.healthBarGreenFill = CreateHealthFillImage(binding.healthBarContainer, "HealthFill_Green", binding.healthBarHealthyColor, leftAnchored: true);
+        }
+
+        if (binding.healthBarRedFill == null)
+        {
+            binding.healthBarRedFill = CreateHealthFillImage(binding.healthBarContainer, "HealthFill_Red", binding.healthBarDamagedColor, leftAnchored: false);
+        }
+    }
+
+    Image CreateHealthFillImage(RectTransform parent, string name, Color tint, bool leftAnchored)
+    {
+        GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(parent, false);
+        Image img = go.GetComponent<Image>();
+        img.sprite = GetSolidSprite();
+        img.type = Image.Type.Simple;
+        img.color = tint;
+
+        RectTransform rect = img.rectTransform;
+        rect.anchorMin = leftAnchored ? new Vector2(0f, 0f) : new Vector2(1f, 0f);
+        rect.anchorMax = leftAnchored ? new Vector2(0f, 1f) : new Vector2(1f, 1f);
+        rect.pivot = leftAnchored ? new Vector2(0f, 0.5f) : new Vector2(1f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.localScale = Vector3.one;
+        rect.sizeDelta = new Vector2(0f, parent.rect.height);
+
+        return img;
+    }
+
+    void ApplyHealthBarWidths(MountIconBinding binding, float percent)
+    {
+        float totalWidth = binding.healthBarContainer.rect.width;
+        if (totalWidth <= 0f)
+        {
+            totalWidth = binding.healthBarContainer.sizeDelta.x;
+        }
+        totalWidth = Mathf.Max(totalWidth, 1f);
+
+        float greenWidth = totalWidth * percent;
+        float redWidth = totalWidth - greenWidth;
+
+        SetRectWidth(binding.healthBarGreenFill.rectTransform, greenWidth);
+        SetRectWidth(binding.healthBarRedFill.rectTransform, redWidth);
+
+        binding.healthBarGreenFill.enabled = greenWidth > 0.01f;
+        binding.healthBarRedFill.enabled = redWidth > 0.01f;
+    }
+
+    void SetRectWidth(RectTransform rect, float width)
+    {
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Max(0f, width));
+    }
+
+    Sprite GetSolidSprite()
+    {
+        if (s_SolidSprite != null)
+            return s_SolidSprite;
+
+        s_SolidTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+        {
+            name = "ShipHUDDisplay_SolidTex",
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        s_SolidTexture.SetPixel(0, 0, Color.white);
+        s_SolidTexture.Apply();
+        s_SolidSprite = Sprite.Create(s_SolidTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
+        s_SolidSprite.name = "ShipHUDDisplay_SolidSprite";
+        return s_SolidSprite;
+    }
 }
 
 [Serializable]
@@ -223,7 +350,29 @@ public class MountIconBinding
     public bool manageTargetNotAcquiredIndicator = false;
     [Tooltip("Sprite or Image that represents the TargetNotAcquired indicator for this mount.")]
     public Image targetNotAcquiredImage;
+    
+    [Header("Health Bar")]
+    [Tooltip("Draws a horizontal green/red health bar inside the assigned placeholder while a weapon is mounted.")]
+    public bool manageHealthBar = false;
+    [Tooltip("Placeholder RectTransform (e.g., an empty Image) that defines the position/size of the health bar.")]
+    public RectTransform healthBarContainer;
+    [Tooltip("Color used for the healthy (left) portion of the bar.")]
+    public Color healthBarHealthyColor = new Color(0.1f, 0.9f, 0.15f);
+    [Tooltip("Color used for the damaged (right) portion of the bar.")]
+    public Color healthBarDamagedColor = new Color(0.95f, 0.1f, 0.1f);
+    [Tooltip("Background color behind the health bar fills.")]
+    public Color healthBarBackgroundColor = new Color(0f, 0f, 0f, 0.5f);
+    [Tooltip("Color used when no health data is available (e.g., no weapon mounted).")]
+    public Color healthBarDisabledColor = new Color(0.2f, 0.2f, 0.2f, 0.4f);
 
     [NonSerialized]
     internal bool cachedTargetNotAcquiredVisible = true;
+    [NonSerialized]
+    internal Image healthBarBackground;
+    [NonSerialized]
+    internal Image healthBarGreenFill;
+    [NonSerialized]
+    internal Image healthBarRedFill;
+    [NonSerialized]
+    internal float cachedHealthPercent = -1f;
 }

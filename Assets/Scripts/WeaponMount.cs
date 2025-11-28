@@ -87,6 +87,7 @@ public class WeaponMount : MonoBehaviour
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
     public bool CanFireAtCurrentTarget => HasSelectedTarget && _targetColliderInsideSensor && _hasBallisticInterceptSolution;
+    public Health MountedWeaponHealth => weaponHealth;
 
     void Reset()
     {
