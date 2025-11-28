@@ -17,8 +17,9 @@ public class ShipHUDDisplay : MonoBehaviour
     [Tooltip("Manual bindings between in-world WeaponMounts and their HUD icons (e.g., ShipOutline/Bow_weapon_mount).")]
     public MountIconBinding[] mountIcons;
 
-    [Header("Debug")]
-    public bool debugLog;
+    [Header("Debug Logging")]
+    [Tooltip("Writes HUD binding state changes to Logs/game_debug.log when enabled.")]
+    public bool enableDebugLogging;
 
     void LateUpdate()
     {
@@ -49,10 +50,10 @@ public class ShipHUDDisplay : MonoBehaviour
                 targetSprite = mapped;
             }
 
-                if (debugLog)
+                if (enableDebugLogging)
                 {
                     string spriteName = mapped != null ? mapped.name : "(none)";
-                    Debug.Log($"[ShipHUDDisplay] {binding.weaponMount.name} mounts {weaponType}, sprite={spriteName}");
+                    LogDebug($"{binding.weaponMount.name} mounts {weaponType}, sprite={spriteName}");
                 }
         }
 
@@ -62,6 +63,28 @@ public class ShipHUDDisplay : MonoBehaviour
         }
 
         UpdateReadyIndicator(binding, launcher);
+
+        bool previousIndicator = binding.cachedTargetNotAcquiredVisible;
+        if (binding.manageTargetNotAcquiredIndicator)
+        {
+            bool indicatorVisible = true; // default to visible when we lack data
+            WeaponMount mount = binding.weaponMount;
+            if (mount != null && mount.HasSelectedTarget)
+            {
+                indicatorVisible = !mount.HasTargetInsideAcquisitionCollider;
+            }
+
+            binding.cachedTargetNotAcquiredVisible = indicatorVisible;
+
+            if (enableDebugLogging && previousIndicator != indicatorVisible)
+            {
+                string mountName = mount != null ? mount.mountId : "(null mount)";
+                bool hasTarget = mount != null && mount.HasSelectedTarget;
+                bool insideSensor = mount != null && mount.HasTargetInsideAcquisitionCollider;
+                LogDebug($"TargetNotAcquired → {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, InsideSensor={insideSensor})");
+            }
+        }
+
         UpdateTargetNotAcquiredIndicator(binding);
     }
 
@@ -93,9 +116,9 @@ public class ShipHUDDisplay : MonoBehaviour
             return;
         }
 
-        if (debugLog)
+        if (enableDebugLogging)
         {
-            Debug.LogWarning($"[ShipHUDDisplay] No MountIconBinding found for weapon mount '{mount.name}' while setting TargetNotAcquired visibility.");
+            LogDebug($"No MountIconBinding found for weapon mount '{mount.name}' while setting TargetNotAcquired visibility.");
         }
     }
 
@@ -149,6 +172,16 @@ public class ShipHUDDisplay : MonoBehaviour
         {
             binding.readyIndicatorImage.sprite = desired;
         }
+    }
+
+    void LogDebug(string message)
+    {
+        if (!enableDebugLogging)
+            return;
+
+        string formatted = $"[ShipHUDDisplay] {message}";
+        Debug.Log(formatted, this);
+        FileLogger.Log(formatted, "ShipHUD");
     }
 }
 

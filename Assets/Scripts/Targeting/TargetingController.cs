@@ -1,4 +1,3 @@
-using System.IO;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -46,25 +45,24 @@ public class TargetingController : MonoBehaviour
     [Tooltip("Controls how often dependent systems recompute firing solutions. Values are multiples of FixedUpdate (~50 Hz)." )]
     public FiringSolutionRate firingSolutionRate = FiringSolutionRate.EveryFixedUpdate;
 
-    [Header("Debug")]
-    public bool debugLog = false;
-    [Tooltip("Name of the log file (stored in Application.persistentDataPath) used when debug logging is enabled.")]
-    public string debugLogFileName = "TargetingController.log";
+    [Header("Debug Logging")]
+    [Tooltip("Writes targeting clicks + modifier state changes to Logs/game_debug.log when enabled.")]
+    public bool enableDebugLogging = false;
 
     private Health _currentTarget;
-    private string _debugLogPath;
     private int _fixedUpdateAccumulator; 
     private int _solverVersion;
     private bool _modifierActive;
     private bool _lastModifierSample;
+    private Collider _currentTargetCollider;
 
     public Health CurrentTarget => _currentTarget;
+    public Collider CurrentTargetCollider => _currentTargetCollider;
     public Camera TargetingCamera => targetingCamera;
     public int SolverVersion => _solverVersion;
 
     void Awake()
     {
-        InitializeDebugLog();
         EnsureLayerMask();
         _modifierActive = targetingModifierKey == KeyCode.None;
         _lastModifierSample = false;
@@ -131,7 +129,7 @@ public class TargetingController : MonoBehaviour
             return;
         }
 
-        AcquireTarget(health);
+        AcquireTarget(health, hit.collider);
     }
 
     void FixedUpdate()
@@ -170,7 +168,7 @@ public class TargetingController : MonoBehaviour
 
     void TrackModifierState(bool isPressed)
     {
-        if (!debugLog)
+        if (!enableDebugLogging)
             return;
 
         if (isPressed != _lastModifierSample)
@@ -180,12 +178,13 @@ public class TargetingController : MonoBehaviour
         }
     }
 
-    void AcquireTarget(Health health)
+    void AcquireTarget(Health health, Collider hitCollider)
     {
-        if (_currentTarget == health)
+        if (_currentTarget == health && _currentTargetCollider == hitCollider)
             return;
 
         _currentTarget = health;
+        _currentTargetCollider = hitCollider;
         onTargetAcquired?.Invoke(_currentTarget);
         LogDebug($"Target acquired: {_currentTarget.name}");
     }
@@ -217,45 +216,13 @@ public class TargetingController : MonoBehaviour
         return mask;
     }
 
-    void InitializeDebugLog()
-    {
-        if (string.IsNullOrWhiteSpace(debugLogFileName))
-        {
-            debugLogFileName = "TargetingController.log";
-        }
-
-        string directory = Application.persistentDataPath;
-        _debugLogPath = Path.Combine(directory, debugLogFileName);
-
-        try
-        {
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            File.WriteAllText(_debugLogPath, $"TargetingController log started at {System.DateTime.Now:u}\n");
-        }
-        catch (IOException ex)
-        {
-            Debug.LogWarning($"[TargetingController] Failed to initialize debug log: {ex.Message}");
-        }
-    }
-
     void LogDebug(string message)
     {
-        if (!debugLog || string.IsNullOrEmpty(_debugLogPath))
+        if (!enableDebugLogging)
             return;
 
-        string line = $"[{System.DateTime.Now:u}] {message}\n";
-
-        try
-        {
-            File.AppendAllText(_debugLogPath, line);
-        }
-        catch (IOException ex)
-        {
-            Debug.LogWarning($"[TargetingController] Failed to write debug log: {ex.Message}");
-        }
+        string formatted = $"[TargetingController] {message}";
+        Debug.Log(formatted, this);
+        FileLogger.Log(formatted, "TargetingController");
     }
 }
