@@ -296,13 +296,10 @@ public class ShipHUDDisplay : MonoBehaviour
 
     void FireSingleMount(WeaponMount mount)
     {
-        if (mount == null || mount.currentLauncher == null)
+        if (mount == null)
             return;
 
-        if (!mount.CanFireAtCurrentTarget)
-            return;
-
-        mount.currentLauncher.TriggerFireCommand();
+        mount.TryFire();
     }
 
     void EnsureHealthBarRuntime(MountIconBinding binding)

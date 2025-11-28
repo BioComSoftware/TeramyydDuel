@@ -108,6 +108,12 @@ public class ProjectileLauncher : MonoBehaviour
     {
         if (Input.GetKeyDown(fireKey))
         {
+            if (_owningMount != null)
+            {
+                _owningMount.TryFire();
+                return;
+            }
+
             if (!IsFireCommandAllowed())
             {
                 if (debugLog)

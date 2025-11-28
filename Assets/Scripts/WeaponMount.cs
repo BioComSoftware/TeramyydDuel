@@ -89,6 +89,24 @@ public class WeaponMount : MonoBehaviour
     public bool CanFireAtCurrentTarget => HasSelectedTarget && _targetColliderInsideSensor && _hasBallisticInterceptSolution;
     public Health MountedWeaponHealth => weaponHealth;
 
+    /// <summary>
+    /// Attempt to fire the currently mounted weapon. Returns true if a fire command was issued.
+    /// </summary>
+    public bool TryFire()
+    {
+        if (currentLauncher == null)
+            return false;
+
+        if (!currentLauncher.IsReady)
+            return false;
+
+        if (!CanFireAtCurrentTarget)
+            return false;
+
+        currentLauncher.TriggerFireCommand();
+        return true;
+    }
+
     void Reset()
     {
         if (yawBase == null) yawBase = transform;
