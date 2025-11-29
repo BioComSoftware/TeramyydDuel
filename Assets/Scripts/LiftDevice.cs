@@ -52,6 +52,14 @@ public abstract class LiftDevice : MonoBehaviour
     
     [Header("Debug")]
     public bool debugLog = false;
+
+    [Header("Crew Requirements")]
+    [Tooltip("Crew station that operates this lift device. Auto-located or created at runtime if empty.")]
+    public CrewStation crewStation;
+    public bool autoCreateCrewStation = true;
+    public CrewRole defaultCrewRole = CrewRole.LiftEngineering;
+    [Range(1, 4)] public int defaultCrewRequired = 1;
+    [Range(1, 4)] public int defaultCrewMax = 2;
     
     // Component references
     protected const float POWER_PER_TON_PER_METER_PER_SECOND = 9.8f;
@@ -82,6 +90,7 @@ public abstract class LiftDevice : MonoBehaviour
     {
         healthComponent = GetComponent<Health>();
         shipCharacteristics = GetComponentInParent<ShipCharacteristics>();
+        EnsureCrewStation();
         
         if (healthComponent == null)
         {
@@ -126,6 +135,14 @@ public abstract class LiftDevice : MonoBehaviour
     {
         if (!isActive || shipCharacteristics == null || shipRigidbody == null)
             return;
+
+        if (!HasOperationalCrew())
+        {
+            _currentLiftForce = 0f;
+            _verticalVelocityMPS = 0f;
+            _powerConsumption = 0f;
+            return;
+        }
         
         float deltaTime = Time.fixedDeltaTime;
         
@@ -358,5 +375,37 @@ public abstract class LiftDevice : MonoBehaviour
         float exponent = STANDARD_GRAVITY / (GAS_CONSTANT_AIR * TEMPERATURE_LAPSE_RATE);
         float pressure = SEA_LEVEL_PRESSURE * Mathf.Pow(temperature / SEA_LEVEL_TEMPERATURE, exponent);
         return pressure / (GAS_CONSTANT_AIR * temperature);
+    }
+
+    protected virtual void EnsureCrewStation()
+    {
+        if (crewStation == null)
+        {
+            crewStation = GetComponent<CrewStation>();
+        }
+
+        if (crewStation == null && autoCreateCrewStation)
+        {
+            crewStation = gameObject.AddComponent<CrewStation>();
+            crewStation.displayName = gameObject.name + " Lift Crew";
+            crewStation.requiredRole = defaultCrewRole;
+            crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
+            crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
+            crewStation.allowGeneralists = true;
+            crewStation.enforceRequirements = true;
+        }
+
+        if (crewStation != null && string.IsNullOrEmpty(crewStation.stationId))
+        {
+            crewStation.stationId = gameObject.name + "_LiftCrew";
+        }
+    }
+
+    protected bool HasOperationalCrew()
+    {
+        if (!CrewManager.HasInstance)
+            return true;
+
+        return CrewManager.Instance.MeetsRequirement(crewStation);
     }
 }

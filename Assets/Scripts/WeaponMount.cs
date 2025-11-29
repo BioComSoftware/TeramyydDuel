@@ -58,6 +58,16 @@ public class WeaponMount : MonoBehaviour
     [Tooltip("If set with autoPopulateOnStart, this weapon prefab is mounted at Start for quick testing")] public GameObject autoPopulatePrefab;
     public bool autoPopulateOnStart = false;
 
+    [Header("Crew Requirements")]
+    [Tooltip("Crew station that operates this mount. Auto-located on the same GameObject if left empty.")]
+    public CrewStation crewStation;
+    [Tooltip("Creates a transient CrewStation at runtime when none is configured so the mount can participate in the crew system before dedicated mount points exist.")]
+    public bool autoCreateCrewStation = true;
+    [Tooltip("Role specialization expected when a runtime station needs to be created automatically.")]
+    public CrewRole defaultCrewRole = CrewRole.Gunnery;
+    [Range(1, 4)] public int defaultCrewRequired = 1;
+    [Range(1, 4)] public int defaultCrewMax = 2;
+
     [Header("Debug Logging")]
     [Tooltip("Writes verbose mount + targeting diagnostics to Logs/game_debug.log when enabled.")]
     public bool enableDebugLogging = false;
@@ -82,6 +92,7 @@ public class WeaponMount : MonoBehaviour
     Health _lastLoggedTarget;
     Collider _lastLoggedTargetCollider;
     Collider _lastLoggedSensorCollider;
+    bool _loggedCrewWarning;
 
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
@@ -94,6 +105,12 @@ public class WeaponMount : MonoBehaviour
     /// </summary>
     public bool TryFire()
     {
+        if (!HasOperationalCrew())
+        {
+            LogDebug("TryFire blocked - no crew assigned to this mount.");
+            return false;
+        }
+
         if (currentLauncher == null)
             return false;
 
@@ -120,9 +137,16 @@ public class WeaponMount : MonoBehaviour
         EnsureMountId();
     }
 
+    void Awake()
+    {
+        EnsureMountId();
+        EnsureCrewStation();
+    }
+
     void Start()
     {
         EnsureMountId();
+        EnsureCrewStation();
         if (autoPopulateOnStart && autoPopulatePrefab != null && !isOccupied)
         {
             MountWeapon(autoPopulatePrefab);
@@ -161,6 +185,21 @@ public class WeaponMount : MonoBehaviour
     void Update()
     {
         EnsureMountId();
+        EnsureCrewStation();
+
+        if (!HasOperationalCrew())
+        {
+            _hasBallisticInterceptSolution = false;
+            _targetColliderInsideSensor = false;
+            if (enableDebugLogging && !_loggedCrewWarning)
+            {
+                LogDebug($"{mountId}: awaiting crew assignment before operating.");
+                _loggedCrewWarning = true;
+            }
+            return;
+        }
+        _loggedCrewWarning = false;
+
         bool autoTargetingActive = !disableAutoTargeting && autoTrackTarget;
         if (autoTargetingActive && !_wasAutoTargetingActive)
         {
@@ -208,6 +247,9 @@ public class WeaponMount : MonoBehaviour
     void AutoAimTowardsTarget()
     {
         if (!isOccupied || mountedWeapon == null || pitchBarrel == null)
+            return;
+
+        if (!HasOperationalCrew())
             return;
 
         if (targetingController == null)
@@ -330,6 +372,38 @@ public class WeaponMount : MonoBehaviour
             return rend.bounds.center;
 
         return targetTransform.position;
+    }
+
+    void EnsureCrewStation()
+    {
+        if (crewStation == null)
+        {
+            crewStation = GetComponent<CrewStation>();
+        }
+
+        if (crewStation == null && autoCreateCrewStation)
+        {
+            crewStation = gameObject.AddComponent<CrewStation>();
+            crewStation.displayName = string.IsNullOrEmpty(mountId) ? name + " Crew" : mountId + " Crew";
+            crewStation.requiredRole = defaultCrewRole;
+            crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
+            crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
+            crewStation.allowGeneralists = true;
+            crewStation.enforceRequirements = true;
+        }
+
+        if (crewStation != null && string.IsNullOrEmpty(crewStation.stationId))
+        {
+            crewStation.stationId = string.IsNullOrEmpty(mountId) ? $"station_{name}" : mountId + "_Crew";
+        }
+    }
+
+    bool HasOperationalCrew()
+    {
+        if (!CrewManager.HasInstance)
+            return true;
+
+        return CrewManager.Instance.MeetsRequirement(crewStation);
     }
     void ComputeBallisticSolution(Transform targetTransform)
     {

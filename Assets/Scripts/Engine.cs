@@ -54,6 +54,14 @@ public abstract class Engine : MonoBehaviour
     
     [Header("Debug")]
     public bool debugLog = false;
+
+    [Header("Crew Requirements")]
+    [Tooltip("Crew station responsible for operating this engine. Auto-located or created at runtime if empty.")]
+    public CrewStation crewStation;
+    public bool autoCreateCrewStation = true;
+    public CrewRole defaultCrewRole = CrewRole.DriveEngineering;
+    [Range(1, 4)] public int defaultCrewRequired = 1;
+    [Range(1, 4)] public int defaultCrewMax = 2;
     
     // Constants
     public const float KNOTS_TO_MPS = 0.514444f;
@@ -87,6 +95,7 @@ public abstract class Engine : MonoBehaviour
         healthComponent = GetComponent<Health>();
         shipCharacteristics = GetComponentInParent<ShipCharacteristics>();
         liftDevice = GetComponentInParent<LiftDevice>();
+        EnsureCrewStation();
         
         if (shipCharacteristics != null)
         {
@@ -119,6 +128,14 @@ public abstract class Engine : MonoBehaviour
         if (shipCharacteristics == null || shipRigidbody == null)
             return;
         
+        if (!HasOperationalCrew())
+        {
+            _currentPowerOutput = 0f;
+            _requestedThrustPower = 0f;
+            _allocatedThrustPower = 0f;
+            return;
+        }
+
         float deltaTime = Time.fixedDeltaTime;
         
         // Calculate total power output from engine
@@ -511,6 +528,38 @@ public abstract class Engine : MonoBehaviour
         }
     }
     
+    protected virtual void EnsureCrewStation()
+    {
+        if (crewStation == null)
+        {
+            crewStation = GetComponent<CrewStation>();
+        }
+
+        if (crewStation == null && autoCreateCrewStation)
+        {
+            crewStation = gameObject.AddComponent<CrewStation>();
+            crewStation.displayName = gameObject.name + " Engine Crew";
+            crewStation.requiredRole = defaultCrewRole;
+            crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
+            crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
+            crewStation.allowGeneralists = true;
+            crewStation.enforceRequirements = true;
+        }
+
+        if (crewStation != null && string.IsNullOrEmpty(crewStation.stationId))
+        {
+            crewStation.stationId = gameObject.name + "_EngineCrew";
+        }
+    }
+
+    protected bool HasOperationalCrew()
+    {
+        if (!CrewManager.HasInstance)
+            return true;
+
+        return CrewManager.Instance.MeetsRequirement(crewStation);
+    }
+
     float CalculateAerodynamicDrag(float speedMPS)
     {
         if (shipCharacteristics == null)

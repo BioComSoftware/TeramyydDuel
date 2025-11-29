@@ -1,3 +1,30 @@
+# 2025-11-29 — Fractional Health + Crew Infrastructure
+
+### Highlights
+- Health/damage has been fully converted to floats so every system (projectiles, wear, HUD, persistence) can track fractional damage like 0.05 per shot without rounding away durability. JSON snapshots still store float precision; display/UI code rounds to user-friendly values.
+- Established the first pass of the crew system: reusable `CrewMember` + `CrewStation` components, a global `CrewManager`, and `CrewPersistenceManager` that writes/loads crew roster + assignments to `Assets/Resources/CrewPersistence.json`.
+- Weapon mounts, engines, and lift devices now check for assigned crew before operating, so future crew UIs just need to move people between stations to enable/disable subsystems.
+
+### Code Changes
+- **Health.cs + dependents**
+  - `currentHealth`, `maxHealth`, `TakeDamage/Heal/SetHealth` now use `float`. All damage sources (`Projectile`, `CannonBall`, `SimpleShrapnel`, `CannonSelfDamage`, `LiftDevice`, `Engine`, `JetEngine`, `AntiGravityDevice`, etc.) pass floats, and HUD listeners (`ShipComponent`, `HUDController`, `ShipHUDDisplay`) subscribe to the float UnityEvent.
+  - Persistence (`WeaponPersistenceManager`) clamps/serializes floats, rounding to two decimals when saving so files stay readable.
+- **Crew system (new)**
+  - `Assets/Scripts/Crew/` now contains `CrewRole`, `CrewMember`, `CrewStation`, and `CrewManager`. Stations declare required specialization + min/max crew; crew auto-registers, keeps Health attached, and remembers pending assignment IDs for later binding.
+  - `Assets/Scripts/Systems/CrewPersistenceManager.cs` saves crew stats/health/assignment IDs on a timer (same pattern as weapon persistence) and restores them at boot. Initial resource lives at `Assets/Resources/CrewPersistence.json`.
+  - Weapon mounts, `Engine`, and `LiftDevice` gained crew requirement fields. They auto-create a `CrewStation` if the designer hasn’t authored one yet, and all runtime logic early-outs when the assigned station lacks minimum crew.
+
+### Workflow Notes
+- To author a crew member: drop `CrewMember` on a character/icon prefab, set ratings (1-10), assign a `Health`, and optionally set `initialStationId` so they spawn at the correct station. The manager will generate a GUID if `crewId` is blank.
+- To author a station (either standalone or attached to a subsystem): add `CrewStation`, give it a unique `stationId`, choose required role + headcount. Systems with `autoCreateCrewStation` true will do this automatically, but designers should eventually create explicit mount-point GameObjects and uncheck the auto-create flag.
+- Crew persistence is independent from weapon persistence; both managers live under `DontDestroyOnLoad`. Delete the JSON file to reset the roster between tests.
+- For float health displays, format values (`{value:F1}` or percentages) before presenting to players. The raw numbers in JSON (e.g., 14.6999998) are expected due to IEEE-754 precision; the runtime clamps/rounds when saving.
+
+### Next Steps
+1. Build the HUD crew roster (show `CrewManager.GetUnassignedCrew()`), allow dragging crew onto mount/engine/lift stations, and show station requirements.
+2. Link crew ratings to gameplay: e.g., map Gunnery to `ProjectileLauncher.angleSpreadDegrees`, Drive Engineering to engine damage mitigation, Lift Engineering to lift wear.
+3. Add failure/death handling (crew health zero) plus redundancy logic for stations that allow backup crew.
+
 # 2025-11-29 — Ship HUD Autopop Refresh
 
 ### Highlights
