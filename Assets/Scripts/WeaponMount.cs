@@ -339,22 +339,39 @@ public class WeaponMount : MonoBehaviour
             return;
 
         Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
-        Vector3 localDisplacement = reference.InverseTransformDirection(displacement);
 
-        float horizontalDistance = Mathf.Sqrt(localDisplacement.x * localDisplacement.x + localDisplacement.z * localDisplacement.z);
-        float verticalOffset = localDisplacement.y;
+        Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
+        Vector3 worldUp = -gravityVector.normalized; // up is opposite gravity
+        float verticalOffset = Vector3.Dot(displacement, worldUp);
+        Vector3 planar = displacement - verticalOffset * worldUp;
+        float horizontalDistance = planar.magnitude;
+        Vector3 planarDir;
+        if (horizontalDistance > 0.0005f)
+        {
+            planarDir = planar / horizontalDistance;
+        }
+        else
+        {
+            Vector3 projectedForward = Vector3.ProjectOnPlane(reference.forward, worldUp);
+            if (projectedForward.sqrMagnitude < 1e-6f)
+            {
+                projectedForward = Vector3.ProjectOnPlane(reference.up, worldUp);
+            }
+            planarDir = projectedForward.sqrMagnitude > 1e-6f ? projectedForward.normalized : reference.forward.normalized;
+        }
 
         Vector3 toTargetForAiming = aimPoint - origin;
         Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
 
-        // Prefab realignment points the cannon down local +Z; treat that as forward for yaw math.
-        float forwardComponent = localDir.z;
-        float desiredYaw = Mathf.Atan2(localDir.x, forwardComponent) * Mathf.Rad2Deg;
+        float desiredYawLOS = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
         float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
-        _aimYawTarget = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
+        float clampedYawLOS = Mathf.Clamp(desiredYawLOS, -halfYaw, halfYaw);
 
         if (currentLauncher == null)
+        {
+            _aimYawTarget = clampedYawLOS;
             return;
+        }
 
         float gravityMag = Physics.gravity.magnitude;
         if (gravityMag < 0.0001f)
@@ -380,8 +397,31 @@ public class WeaponMount : MonoBehaviour
 
         if (solved)
         {
-            float pitchDeg = Mathf.Rad2Deg * launchAngleRad;
-            float desiredPitch = -pitchDeg; // Unity's +X rotates downward, so invert to pitch upward
+            Vector3 worldAimDir;
+            if (horizontalDistance > 0.0005f)
+            {
+                float cos = Mathf.Cos(launchAngleRad);
+                float sin = Mathf.Sin(launchAngleRad);
+                worldAimDir = (planarDir * cos + worldUp * sin).normalized;
+            }
+            else
+            {
+                if (Mathf.Abs(verticalOffset) < 0.0005f)
+                {
+                    worldAimDir = planarDir;
+                }
+                else
+                {
+                    worldAimDir = verticalOffset >= 0f ? worldUp : -worldUp;
+                }
+            }
+
+            Vector3 localAimDir = reference.InverseTransformDirection(worldAimDir);
+            float desiredYaw = Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg;
+            _aimYawTarget = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
+
+            Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localAimDir;
+            float desiredPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
             _aimPitchTarget = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
             _aimLaunchSpeed = Mathf.Clamp(launchSpeed, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
             _hasAimSolution = true;
@@ -389,6 +429,7 @@ public class WeaponMount : MonoBehaviour
             return;
         }
 
+        _aimYawTarget = clampedYawLOS;
         Vector3 dirAfterYaw = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localDir;
         float forwardAfterYaw = dirAfterYaw.z;
         float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, forwardAfterYaw) * Mathf.Rad2Deg;
