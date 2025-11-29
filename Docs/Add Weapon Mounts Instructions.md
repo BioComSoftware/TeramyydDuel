@@ -5,21 +5,32 @@ These notes walk a non-Unity user through adding a brand-new weapon mount to the
 
 ---
 
+## Autopop Workflow Cheatsheet
+- **Ship-side hierarchy:** Every mount lives under `Ship/<X>_weapon_mount/Weapon_mount`. `<X>` identifies the location (Bow, Aft, Port, etc.). The blank parent `<X>_weapon_mount` is only a locator; `Weapon_mount` carries the `WeaponMount` component.
+- **HUD-side hierarchy:** HUD icons live under `HUD/ShipRepresentation/ShipOutline/<X>_weapon_mount`. This GameObject name must match the ship-side blank `<X>_weapon_mount` exactly (case-sensitive). Place all HUD-only children (ReadyIndicators, Healthbar, FIRE button, etc.) under this node.
+- **Duplication-friendly:** You can safely duplicate either hierarchy (ship or HUD) as long as you immediately rename the duplicate to the new `<X>_weapon_mount`. The scripts rescan and rebind whenever the GameObject activates, so no manual drag-dropping is required after duplication.
+- **Autopop references:** `ShipHUDMountDisplay` now auto-fills weapon mounts, icon images, ready indicators, target indicators, health bars, and FIRE buttons whenever their canonical child names are present. Even with autopop, the following sections describe each reference so you can customize or override them when needed.
+- **When does it refresh?** The component refreshes during Reset, OnValidate, Awake, and OnEnable (play mode). Entering Play Mode or duplicating a node instantly re-syncs every reference.
+
+Keep those rules in mind while following the step-by-step guides below.
+
+---
+
 ## Part 1 · Build the Physical Weapon Mount
 
-### 1. Create a clean socket under the ship
+### 1. Create (or duplicate) the `<X>_weapon_mount` locator
 1. In the Hierarchy, expand `Ship` (the playable airship prefab in the scene).
-2. Right-click `Ship` → **Create Empty**. Name it after the area you are working on (for example `Bow_mount_socket` or `Aft_mount_socket`).
-3. With the new socket selected, press **Reset** on the Transform component so Position = (0,0,0), Rotation = (0,0,0), Scale = (1,1,1).
-4. Move the socket (with the Move tool) to the deck location where you want the weapon base to sit. Rotate the socket only if you want the entire mount to face a different compass direction. Keep Scale at (1,1,1). This socket keeps the mount out of any skewed/scaled geometry while letting you position it anywhere.
+2. **Preferred:** duplicate an existing `<X>_weapon_mount` GameObject (e.g., duplicate `Bow_weapon_mount` and rename the duplicate to `Aft_weapon_mount`). Duplicating preserves all children, including `Weapon_mount`, sensors, and helper pivots.
+3. **From scratch:** Right-click `Ship` → **Create Empty**, name it `<X>_weapon_mount` (for example `Port_weapon_mount`). Reset its Transform so Position/Rotation = 0 and Scale = 1.
+4. Move/rotate the blank `<X>_weapon_mount` object to the exact deck location/orientation for the new weapon. Only this locator should receive placement edits.
 
-### 2. Add or duplicate the WeaponMount object
-- **Duplicate route:** Select an existing mount such as `Ship/Bow_weapon_mount/Weapon_mount`, press **Ctrl+D**, drag the duplicate under the new socket, then rename it (e.g., `Aft_weapon_mount`).
-- **From scratch:**
-  1. Inside the socket, create an empty GameObject named `Weapon_mount`.
-  2. Create two children: `YawBase` and under it `PitchBarrel`. Reset both to default transforms.
-  3. Select `Weapon_mount` and add the `WeaponMount` component.
-  4. Drag `YawBase` into the `Yaw Base` field and `PitchBarrel` into the `Pitch Barrel` field of the component.
+### 2. Ensure the `Weapon_mount` child exists
+- If you duplicated an existing mount, you should already have `Ship/<X>_weapon_mount/Weapon_mount` with the correct children—skip to the next section.
+- Building from scratch:
+   1. Create an empty child under the blank `<X>_weapon_mount` and name it `Weapon_mount` (lowercase, underscore).
+   2. Create two grandchildren: `YawBase` and, under it, `PitchBarrel`. Reset both transforms.
+   3. Add the `WeaponMount` component to `Weapon_mount`.
+   4. Drag `YawBase` → `Yaw Base` field and `PitchBarrel` → `Pitch Barrel` field in the inspector.
 
 ### 3. Configure WeaponMount
 1. Give it a unique `mountId` (example: `Bow_weapon_mount`). This id is what HUD bindings reference.
@@ -39,39 +50,70 @@ These notes walk a non-Unity user through adding a brand-new weapon mount to the
    - The spawn point (`Cannon/SpawnPoint`) has its blue Z axis pointing sideways and its green Y axis pointing down the barrel (this is normal; the mount maps +Y to world forward automatically).
 3. Aim at a target and press **F**. The cannon should track the target using the mount pivots. If it turns backwards, reset the pivot rotations and rotate only the socket GameObject.
 
+#### WeaponMount reference glossary
+- **Yaw Base / Pitch Barrel:** Required pivot references. They define the axes the mount rotates around; keep them orthogonal and unscaled.
+- **mountId / mountType:** Text identifiers consumed by logging and HUD sprite mapping. `mountId` is typically the same as `<X>_weapon_mount`.
+- **targetingController:** Optional manual override. Leave empty to let the mount auto-discover the global `TargetingController` at runtime.
+- **targetAcquisitionCollider / autoAssignTargetAcquisitionCollider / targetAcquisitionColliderNameHint:** Sensor collider that determines when a target is “inside” the firing cone. Leave the reference empty and keep `autoAssignTargetAcquisitionCollider` enabled so the mount searches the mounted weapon for a trigger named by the hint.
+- **autoPopulatePrefab / autoPopulateOnStart:** When set, the mount spawns a weapon automatically on Start for testing. Clear these fields in production if weapons are equipped via gameplay logic.
+- **launcher axis + inversion toggles:** Advanced overrides when authoring non-standard launchers. Defaults assume the prefab fires along +Y.
+- **debug settings:** `enableDebugLogging` prints to both the Console and `Logs/game_debug.log`, invaluable when troubleshooting targeting/firing flow.
+
 ### 5. Clean parenting recap
 ```
 Ship
-└── Bow_mount_socket (positioned/rotated as needed)
-    └── Weapon_mount (contains WeaponMount component)
-        └── YawBase
-            └── PitchBarrel
-                └── Cannon prefab (spawned at runtime)
+└── <X>_weapon_mount  (position/rotation adjusted for placement, scale 1)
+   └── Weapon_mount  (holds WeaponMount component; leave at default transform)
+      └── YawBase
+         └── PitchBarrel
+            └── Cannon prefab (spawned at runtime)
 ```
-Keep every Transform in that chain at Scale (1,1,1). Only the socket’s Position/Rotation should be edited for placement.
+Everything below `<X>_weapon_mount` must stay at Scale (1,1,1) with zeroed rotations. Rotate/move only the blank `<X>_weapon_mount` locator when positioning a new cannon bay.
 
 ---
 
 ## Part 2 · Register the Mount with the HUD
 
 ### 1. Prepare the HUD artwork
-1. Open the HUD Canvas (usually `HUD/ShipRepresentation`). Inside you should see the ship outline sprite.
-2. Add or duplicate an icon Image where you want the mount marker. Name it the same as the mount (e.g., `Bow_weapon_mount_icon`).
-3. (Optional) Add child Images for status lights, target-not-acquired indicators, health bar placeholders, and a Button labeled “FIRE”. These are purely UI elements.
+1. Open the HUD Canvas (usually `HUD/ShipRepresentation`). Expand `ShipRepresentation/ShipOutline`—this is where every HUD mount icon lives.
+2. Duplicate an existing mount icon folder (for example `ShipOutline/Bow_weapon_mount`) and rename the duplicate so it matches the new ship-side locator exactly (e.g., `Aft_weapon_mount`). Name parity is mandatory; the autopop system compares `GameObject.name` when binding.
+3. Inside the icon folder you will find the Image, ReadyIndicators, TargetNotAquired (typo intentional, matches prefab), Healthbar, and FIRE button sub-objects. Feel free to tweak visuals, but keep the canonical child names if you want auto-assignment to work without manual wiring.
 
-### 2. Configure ShipHUDDisplay
-1. Select the GameObject that hosts `ShipHUDDisplay` (commonly `HUD/ShipRepresentation/Ship HUD Display`).
-2. In the inspector, expand the `Mount Icons` array and add a new element.
-3. For the new `MountIconBinding` fill the fields:
-   - **Weapon Mount:** drag the `Weapon_mount` instance from the Ship hierarchy.
-   - **Icon Image:** drag the HUD Image that represents this mount on the outline.
-   - **Empty Sprite:** assign the “blank” or grey icon to show when nothing is mounted.
-4. Optional sub-features (only hook what you are using):
-   - **Ready Indicator:** check `Manage Ready Indicator`, assign the little light Image plus `Ready` (green) and `Not Ready` (red) sprites. Leave `Hide Ready Indicator When No Weapon` checked so the light disappears for empty mounts.
-   - **Target Acquisition Indicator:** check `Manage Target Not Acquired Indicator` and drag the warning sprite Image. ShipHUDDisplay will toggle it whenever the mount lacks a firing solution.
-   - **Health Bar:** check `Manage Health Bar`, assign the `RectTransform` placeholder. Colors can stay default or be customized.
-   - **Fire Button:** drag the HUD “FIRE” button. Ensure the button has a `Button` component and the canvas has an `EventSystem`. No manual OnClick wiring is required; ShipHUDDisplay adds/removes listeners automatically.
-5. Repeat for every mount on the ship.
+### 2. Configure ShipHUDDisplay + per-icon components
+1. Each icon GameObject (`ShipRepresentation/ShipOutline/<X>_weapon_mount`) must have a `ShipHUDMountDisplay` component. Prefabs already contain one; duplicates inherit it.
+2. You rarely need to drag references anymore. The component auto-fills everything on Reset, OnValidate, Awake, and OnEnable by matching child names:
+    - `weaponMount` ← `Ship/<X>_weapon_mount/Weapon_mount`
+    - `iconImage` ← the Image component on the same GameObject
+    - `emptySprite` ← default icon at `Assets/UI/Icons/Mount.png`
+    - `readyIndicatorImage`, `readySprite`, `notReadySprite` ← children `ReadyIndicators/GreenStoplight` + `ReadyIndicators/RedStoplight`
+    - `targetNotAcquiredImage` ← child `TargetNotAquired`
+    - `healthBarContainer` ← child `Healthbar`
+    - `fireButton` ← child `FIRE`
+3. Even though these fields auto-populate, you can override any of them manually. The component will keep your overrides as long as the reference still points to a child belonging to the same mount. If you intentionally clear a field, duplicated icons will refill it the next time they’re enabled.
+4. Repeat for every mount icon (bow, aft, starboard, etc.). Duplicating an icon plus renaming it is the fastest way to add a new HUD entry.
+5. Select the object hosting `ShipHUDDisplay`. Keep `Auto Populate Mount Displays` enabled unless you have a niche reason to curate the list yourself; the script compares the cached array to the live hierarchy each frame and refreshes it when the counts differ, so newly duplicated icons appear automatically.
+
+#### ShipHUDMountDisplay reference glossary
+- **weaponMount:** Runtime link to `Ship/<X>_weapon_mount/Weapon_mount`. The script verifies the parent name matches the HUD icon before reusing the reference.
+- **iconImage:** The Image that renders the mount icon sprite.
+- **emptySprite:** Sprite used when no weapon is installed or the mapping fails. Defaults to `Assets/UI/Icons/Mount.png`.
+- **Ready Indicator block:**
+   - `manageReadyIndicator` (default on)
+   - `readyIndicatorImage` (auto-uses `ReadyIndicators/GreenStoplight`)
+   - `readySprite` (green) and `notReadySprite` (red)
+   - `hideReadyIndicatorWhenNoWeapon` toggles visibility when a mount is empty.
+- **Target Acquisition block:**
+   - `manageTargetNotAcquiredIndicator` (forced on until an image exists)
+   - `targetNotAcquiredImage` (auto from `TargetNotAquired` child)
+   - The script toggles this image based on sensor overlap + firing solution.
+- **Health Bar block:**
+   - `manageHealthBar` (default on when no container assigned)
+   - `healthBarContainer` (auto from `Healthbar` child)
+   - Color fields define healthy/damaged/disabled gradients; you may tweak them per mount.
+- **Fire Button block:**
+   - `fireButton` (auto from `FIRE` child). The script wires up `onClick` to call `WeaponMount.TryFire()` and cleans up listeners automatically.
+
+If you delete any canonical child, the corresponding reference simply stays null and the optional UI feature disables itself. Restore the child (or assign a new object) to re-enable that portion of the HUD.
 
 ### 3. Hook the Fire-at-Will Toggle
 1. Locate the UI button that should toggle Fire-at-Will (for example `HUD/ShipRepresentation/Buttons/FireAtWillButton`). Make sure it has both a `Button` component and an `Image`.
@@ -92,22 +134,24 @@ Keep every Transform in that chain at Scale (1,1,1). Only the socket’s Positio
 2. Click each HUD “FIRE” button; they should light up only when the cannon is ready and has a target lock.
 3. Toggle Fire-at-Will; both cannons should fire continuously whenever they gain a solution. If nothing happens, enable debug logs on both `FireAtWillController` and the affected `WeaponMount` components, reproduce the issue, and inspect `Logs/game_debug.log` for guidance.
 
-### 5. Recap of references to fill in
-| Component | Field | Drag This |
-|-----------|-------|-----------|
-| WeaponMount | `Yaw Base` | The child pivot that should yaw around local Y |
-| WeaponMount | `Pitch Barrel` | The child pivot that should pitch around local X |
-| WeaponMount | `autoPopulatePrefab` | `Assets/Prefabs/Cannon` (optional but recommended) |
-| ShipHUDDisplay | `Mount Icons[x].weaponMount` | The in-scene `Weapon_mount` object |
-| ShipHUDDisplay | `Mount Icons[x].iconImage` | The HUD Image for that mount |
-| ShipHUDDisplay | `Mount Icons[x].fireButton` | (Optional) HUD Button labeled FIRE |
-| ShipHUDDisplay | `Mount Icons[x].targetNotAcquiredImage` | (Optional) warning sprite |
-| ShipHUDDisplay | `Mount Icons[x].healthBarContainer` | (Optional) RectTransform placeholder |
-| FireAtWillController | `fireAtWillButton` | HUD toggle button |
-| FireAtWillController | `fireAtWillImage` | (Optional) same button Image |
-| FireAtWillController | `autoPopulateRootOverride` | Ship root transform |
+### 5. Reference recap + autopop status
+| Component | Field | Default Source | Autopop Notes |
+|-----------|-------|---------------|---------------|
+| WeaponMount | `Yaw Base` | Child `YawBase` | Manual; required once when creating a mount from scratch. |
+| WeaponMount | `Pitch Barrel` | Child `PitchBarrel` | Manual; required once. |
+| WeaponMount | `autoPopulatePrefab` | `Assets/Prefabs/Cannon` | Optional; keeps runtime testing convenient. |
+| ShipHUDMountDisplay | `weaponMount` | `Ship/<X>_weapon_mount/Weapon_mount` | Auto every Reset/OnEnable using the icon’s name. |
+| ShipHUDMountDisplay | `iconImage` | Image on same GO | Auto via `GetComponent<Image>()`. |
+| ShipHUDMountDisplay | `emptySprite` | `Assets/UI/Icons/Mount.png` | Auto via editor-time AssetDatabase lookup; override to customize per mount. |
+| ShipHUDMountDisplay | Ready indicator fields | `ReadyIndicators/GreenStoplight`, `/RedStoplight` | Auto; ensures green is default sprite and hides redundant red object. |
+| ShipHUDMountDisplay | `targetNotAcquiredImage` | Child `TargetNotAquired` | Auto; component forces management on until an image exists. |
+| ShipHUDMountDisplay | `healthBarContainer` | Child `Healthbar` | Auto; also enables `manageHealthBar` when missing. |
+| ShipHUDMountDisplay | `fireButton` | Child `FIRE` | Auto; listeners wired/unwired automatically. |
+| FireAtWillController | `fireAtWillButton` | HUD toggle button | Manual (drag once). |
+| FireAtWillController | `fireAtWillImage` | Same button Image | Optional (leave empty to reuse button target graphic). |
+| FireAtWillController | `autoPopulateRootOverride` | `Ship` transform | Manual but recommended so controller finds every mount. |
 
-Follow these wiring tables meticulously—missing references are the #1 reason cannons fail to appear on the HUD or refuse to auto-fire.
+Follow this chart meticulously—most HUD references now self-heal, but understanding where each value originates lets you customize confidently.
 
 ---
 

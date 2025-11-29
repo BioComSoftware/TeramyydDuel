@@ -1,14 +1,37 @@
+# 2025-11-29 — Ship HUD Autopop Refresh
+
+### Highlights
+- Ship HUD authoring now follows a strict naming contract (`Ship/<X>_weapon_mount/Weapon_mount` ↔ `HUD/ShipRepresentation/ShipOutline/<X>_weapon_mount`) and the runtime automatically rebinds every reference when icons duplicate or get enabled.
+- All per-icon UI affordances (ready lights, target acquisition overlay, health bar, FIRE button) configure themselves based solely on canonical child names, eliminating hand wiring when designers duplicate mounts.
+- Documentation updated to teach the new workflow, emphasize duplication as the core path, and enumerate every reference (even autopopulated ones) for future customization.
+
+### Code Changes
+- **ShipHUDMountDisplay.cs**
+  - Added `AutoAssignAllReferences()` and now call it from `Reset`, `OnValidate`, `Awake`, and `OnEnable` so duplicated HUD icons rebind when entering Play Mode or when a prefab activates.
+  - `AutoAssignWeaponMount()` now verifies the cached mount still belongs to the HUD node’s `<X>_weapon_mount` parent before reusing it; if not, it re-resolves the `Ship/<X>_weapon_mount/Weapon_mount` path.
+  - Icon child lookups now scan descendants so artists can keep helper GameObjects; ready indicator defaults to the green stoplight sprite, hides the redundant red sprite object, and target indicators/health bars/fire buttons all auto-fill if their canonical children exist.
+- **ShipHUDDisplay.cs**
+  - Auto-populated `mountDisplays` rescan the hierarchy whenever the discovered list changes, so new `ShipHUDMountDisplay` components begin updating immediately without reassigning arrays in the inspector.
+
+### Documentation
+- **Docs/Add Weapon Mounts Instructions.md** now opens with an autopop workflow cheat sheet, clarifies the exact ship + HUD hierarchies, and repeatedly stresses that duplicating `<X>_weapon_mount` nodes is the intended workflow.
+- Added glossaries for both `WeaponMount` and `ShipHUDMountDisplay` fields (including autopop behaviors), refreshed the reference table with “Default Source” + “Autopop Notes”, and documented where `ShipRepresentation/ShipOutline/<X>_weapon_mount` lives for HUD authors.
+
+### QA / Notes
+- Verified Bow and duplicated Aft mounts both fire, update ready lights, hide target indicators, and wire FIRE buttons without touch-up after duplication.
+- Target indicator + health bar defaults now stay enabled automatically unless the developer explicitly replaces the child objects.
+
 ## 2025-11-28 — Weapon Mount Workflow + Fire Controls
 
 ### Highlights
 - Two-mount flow works end-to-end: both bow and aft cannons share the same `WeaponMount.TryFire()` path whether input comes from the `F` key, the HUD “FIRE” buttons, or the Fire-at-Will toggle.
-- Authored `Docs/Add Weapon Mounts Instructions.md` so designers can place mounts + HUD bindings without guesswork (clean sockets, HUD bindings, Fire-at-Will wiring).
+- Authored `Docs/Add Weapon Mounts Instructions.md` so designers can place mounts + HUD bindings without guesswork (clean sockets, per-icon `ShipHUDMountDisplay` components, Fire-at-Will wiring).
 - Fire-at-Will recovered after hierarchy changes via runtime mount trimming, root overrides, and new debug logging that writes to `game_debug.log`.
 
 ### Code Changes
 - **WeaponMount.cs**: added `TryFire()` helper, sensor logging polish, and ensured auto-populated cannons align to mount forward regardless of socket rotation. Mount now caches health + launcher references for HUD queries.
 - **ProjectileLauncher.cs**: keyboard handler defers to its owning mount’s `TryFire()` so every path honors sensor/solution state; still supports standalone launchers when no mount exists.
-- **ShipHUDDisplay.cs**: button wiring caches the mount reference at registration time, preventing per-mount FIRE buttons from dereferencing the wrong `WeaponMount`. Added health bar/runtime helpers and target indicator logging.
+- **ShipHUDDisplay.cs + ShipHUDMountDisplay.cs**: moved per-mount HUD references into a dedicated component living on each icon. Display script now auto-discovers these components, keeping inspector work localized and eliminating the brittle serialized array.
 - **FireAtWillController.cs**: trims null entries, auto-populates from either a specified root or the entire scene, and exposes `enableDebugLogging` so we can trace mount discovery + Update skips. Update now re-checks the cache whenever active to tolerate runtime prefab swaps.
 
 ### Testing / Debug Notes

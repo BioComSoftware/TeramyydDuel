@@ -18,8 +18,12 @@ public class ShipHUDDisplay : MonoBehaviour
     public WeaponSpriteMapping[] weaponSpriteMappings;
 
     [Header("Icon Bindings")]
-    [Tooltip("Manual bindings between in-world WeaponMounts and their HUD icons (e.g., ShipOutline/Bow_weapon_mount).")]
-    public MountIconBinding[] mountIcons;
+    [Tooltip("All ShipHUDMountDisplay components (auto-populated from mountDisplayRoot when empty).")]
+    public ShipHUDMountDisplay[] mountDisplays;
+    [Tooltip("If true, ShipHUDDisplay will search mountDisplayRoot (or itself) for ShipHUDMountDisplay components when mountDisplays is empty.")]
+    public bool autoPopulateMountDisplays = true;
+    [Tooltip("Optional override for where ShipHUDDisplay should search for ShipHUDMountDisplay components.")]
+    public Transform mountDisplayRoot;
 
     [Header("Debug Logging")]
     [Tooltip("Writes HUD binding state changes to Logs/game_debug.log when enabled.")]
@@ -27,10 +31,11 @@ public class ShipHUDDisplay : MonoBehaviour
 
     void LateUpdate()
     {
-        if (mountIcons == null || mountIcons.Length == 0)
+        EnsureMountDisplayCache();
+        if (mountDisplays == null || mountDisplays.Length == 0)
             return;
 
-        foreach (var binding in mountIcons)
+        foreach (var binding in mountDisplays)
         {
             if (binding == null || binding.iconImage == null || binding.weaponMount == null)
                 continue;
@@ -40,7 +45,78 @@ public class ShipHUDDisplay : MonoBehaviour
         }
     }
 
-    void UpdateBinding(MountIconBinding binding)
+    void EnsureMountDisplayCache()
+    {
+        TrimNullMountDisplays();
+
+        if (!autoPopulateMountDisplays)
+            return;
+
+        Transform root = mountDisplayRoot != null ? mountDisplayRoot : transform;
+        if (root == null)
+            return;
+
+        ShipHUDMountDisplay[] discovered = root.GetComponentsInChildren<ShipHUDMountDisplay>(includeInactive: true);
+        if (!MountDisplayListsMatch(mountDisplays, discovered))
+        {
+            mountDisplays = discovered;
+        }
+    }
+
+    void TrimNullMountDisplays()
+    {
+        if (mountDisplays == null || mountDisplays.Length == 0)
+            return;
+
+        int valid = 0;
+        for (int i = 0; i < mountDisplays.Length; i++)
+        {
+            if (mountDisplays[i] != null)
+            {
+                valid++;
+            }
+        }
+
+        if (valid == mountDisplays.Length)
+            return;
+
+        if (valid == 0)
+        {
+            mountDisplays = Array.Empty<ShipHUDMountDisplay>();
+            return;
+        }
+
+        var trimmed = new ShipHUDMountDisplay[valid];
+        int index = 0;
+        for (int i = 0; i < mountDisplays.Length; i++)
+        {
+            if (mountDisplays[i] == null)
+                continue;
+
+            trimmed[index++] = mountDisplays[i];
+        }
+
+        mountDisplays = trimmed;
+    }
+
+    bool MountDisplayListsMatch(ShipHUDMountDisplay[] current, ShipHUDMountDisplay[] discovered)
+    {
+        if (current == null || current.Length == 0)
+            return discovered == null || discovered.Length == 0;
+
+        if (discovered == null || discovered.Length != current.Length)
+            return false;
+
+        for (int i = 0; i < current.Length; i++)
+        {
+            if (current[i] != discovered[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    void UpdateBinding(ShipHUDMountDisplay binding)
     {
         Sprite targetSprite = binding.emptySprite;
         ProjectileLauncher launcher = binding.weaponMount.currentLauncher;
@@ -98,7 +174,7 @@ public class ShipHUDDisplay : MonoBehaviour
         UpdateFireButtonState(binding);
     }
 
-    void UpdateTargetNotAcquiredIndicator(MountIconBinding binding)
+    void UpdateTargetNotAcquiredIndicator(ShipHUDMountDisplay binding)
     {
         if (!binding.manageTargetNotAcquiredIndicator || binding.targetNotAcquiredImage == null)
             return;
@@ -113,10 +189,12 @@ public class ShipHUDDisplay : MonoBehaviour
 
     public void SetTargetNotAcquiredVisible(WeaponMount mount, bool visible)
     {
-        if (mount == null || mountIcons == null)
+        EnsureMountDisplayCache();
+
+        if (mount == null || mountDisplays == null)
             return;
 
-        foreach (var binding in mountIcons)
+        foreach (var binding in mountDisplays)
         {
             if (binding == null || binding.weaponMount != mount)
                 continue;
@@ -128,7 +206,7 @@ public class ShipHUDDisplay : MonoBehaviour
 
         if (enableDebugLogging)
         {
-            LogDebug($"No MountIconBinding found for weapon mount '{mount.name}' while setting TargetNotAcquired visibility.");
+            LogDebug($"No ShipHUDMountDisplay found for weapon mount '{mount.name}' while setting TargetNotAcquired visibility.");
         }
     }
 
@@ -150,7 +228,7 @@ public class ShipHUDDisplay : MonoBehaviour
         return null;
     }
 
-    void UpdateReadyIndicator(MountIconBinding binding, ProjectileLauncher launcher)
+    void UpdateReadyIndicator(ShipHUDMountDisplay binding, ProjectileLauncher launcher)
     {
         if (!binding.manageReadyIndicator || binding.readyIndicatorImage == null)
             return;
@@ -194,7 +272,7 @@ public class ShipHUDDisplay : MonoBehaviour
         FileLogger.Log(formatted, "ShipHUD");
     }
 
-    void UpdateHealthBar(MountIconBinding binding, ProjectileLauncher launcher)
+    void UpdateHealthBar(ShipHUDMountDisplay binding, ProjectileLauncher launcher)
     {
         if (!binding.manageHealthBar || binding.healthBarContainer == null)
             return;
@@ -227,7 +305,7 @@ public class ShipHUDDisplay : MonoBehaviour
         ApplyHealthBarWidths(binding, percent);
     }
 
-    void SetupFireButton(MountIconBinding binding)
+    void SetupFireButton(ShipHUDMountDisplay binding)
     {
         if (binding == null)
             return;
@@ -259,7 +337,7 @@ public class ShipHUDDisplay : MonoBehaviour
         }
     }
 
-    void CleanupFireButton(MountIconBinding binding)
+    void CleanupFireButton(ShipHUDMountDisplay binding)
     {
         if (binding == null)
             return;
@@ -273,7 +351,7 @@ public class ShipHUDDisplay : MonoBehaviour
         binding.cachedFireHandler = null;
     }
 
-    void UpdateFireButtonState(MountIconBinding binding)
+    void UpdateFireButtonState(ShipHUDMountDisplay binding)
     {
         if (binding == null || binding.fireButton == null)
             return;
@@ -303,7 +381,7 @@ public class ShipHUDDisplay : MonoBehaviour
         mount.TryFire();
     }
 
-    void EnsureHealthBarRuntime(MountIconBinding binding)
+    void EnsureHealthBarRuntime(ShipHUDMountDisplay binding)
     {
         if (binding.healthBarContainer == null)
             return;
@@ -352,7 +430,7 @@ public class ShipHUDDisplay : MonoBehaviour
         return img;
     }
 
-    void ApplyHealthBarWidths(MountIconBinding binding, float percent)
+    void ApplyHealthBarWidths(ShipHUDMountDisplay binding, float percent)
     {
         float totalWidth = binding.healthBarContainer.rect.width;
         if (totalWidth <= 0f)
@@ -392,74 +470,11 @@ public class ShipHUDDisplay : MonoBehaviour
         s_SolidSprite.name = "ShipHUDDisplay_SolidSprite";
         return s_SolidSprite;
     }
-}
+    }
 
-[Serializable]
-public class WeaponSpriteMapping
-{
-    public string weaponType = "cannon";
-    public Sprite sprite;
-}
-
-[Serializable]
-public class MountIconBinding
-{
-    [Tooltip("Weapon mount in the scene (e.g., Ship/Model/Deck/Bow_weapon_mount).")]
-    public WeaponMount weaponMount;
-
-    [Tooltip("Image under ShipRepresentation/ShipOutline corresponding to this mount.")]
-    public Image iconImage;
-
-    [Tooltip("Sprite used when the mount is empty or no mapping exists.")]
-    public Sprite emptySprite;
-
-    [Header("Ready Indicator")]
-    public bool manageReadyIndicator = false;
-    [Tooltip("Image (e.g., GreenStoplight) that represents ready state for this mount.")]
-    public Image readyIndicatorImage;
-    [Tooltip("Sprite shown when the mounted weapon is ready (e.g., green light).")]
-    public Sprite readySprite;
-    [Tooltip("Sprite shown while the weapon is not ready/reloading (e.g., red light).")]
-    public Sprite notReadySprite;
-    [Tooltip("Hide the ready indicator entirely when no weapon is mounted.")]
-    public bool hideReadyIndicatorWhenNoWeapon = true;
-
-    [Header("Target Acquisition Indicator")]
-    [Tooltip("When enabled, the target-not-acquired sprite will be toggled by ShipHUDDisplay.")]
-    public bool manageTargetNotAcquiredIndicator = false;
-    [Tooltip("Sprite or Image that represents the TargetNotAcquired indicator for this mount.")]
-    public Image targetNotAcquiredImage;
-    
-    [Header("Health Bar")]
-    [Tooltip("Draws a horizontal green/red health bar inside the assigned placeholder while a weapon is mounted.")]
-    public bool manageHealthBar = false;
-    [Tooltip("Placeholder RectTransform (e.g., an empty Image) that defines the position/size of the health bar.")]
-    public RectTransform healthBarContainer;
-    [Tooltip("Color used for the healthy (left) portion of the bar.")]
-    public Color healthBarHealthyColor = new Color(0.1f, 0.9f, 0.15f);
-    [Tooltip("Color used for the damaged (right) portion of the bar.")]
-    public Color healthBarDamagedColor = new Color(0.95f, 0.1f, 0.1f);
-    [Tooltip("Background color behind the health bar fills.")]
-    public Color healthBarBackgroundColor = new Color(0f, 0f, 0f, 0.5f);
-    [Tooltip("Color used when no health data is available (e.g., no weapon mounted).")]
-    public Color healthBarDisabledColor = new Color(0.2f, 0.2f, 0.2f, 0.4f);
-
-    [NonSerialized]
-    internal bool cachedTargetNotAcquiredVisible = true;
-    [NonSerialized]
-    internal Image healthBarBackground;
-    [NonSerialized]
-    internal Image healthBarGreenFill;
-    [NonSerialized]
-    internal Image healthBarRedFill;
-    [NonSerialized]
-    internal float cachedHealthPercent = -1f;
-    [NonSerialized]
-    internal UnityAction cachedFireHandler;
-    [NonSerialized]
-    internal Button cachedFireButton;
-
-    [Header("Fire Button")]
-    [Tooltip("When assigned, this button fires only the associated weapon mount when clicked.")]
-    public Button fireButton;
-}
+    [Serializable]
+    public class WeaponSpriteMapping
+    {
+        public string weaponType = "cannon";
+        public Sprite sprite;
+    }

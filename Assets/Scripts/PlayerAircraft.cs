@@ -1,9 +1,9 @@
 using UnityEngine;
-
+ 
 // Basic player aircraft controller (starter)
 // Attach to the player GameObject. Configure speed/rotation and the fire point + projectile prefab in the Inspector.
 public class PlayerAircraft : MonoBehaviour
-{
+{ 
     [Header("Flight")]
     public float forwardSpeed = 80f;
     public float pitchSpeed = 45f;
