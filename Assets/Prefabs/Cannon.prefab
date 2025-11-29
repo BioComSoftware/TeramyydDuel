@@ -10056,7 +10056,7 @@ MonoBehaviour:
   disableAccuracyError: 0
   projectileDragOverride: -1
   projectileLinearDampingOverride: -1
-  reloadTime: 1
+  reloadTime: 10
   startReady: 1
   debugLog: 0
   requireValidMountTargetLock: 1

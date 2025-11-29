@@ -14,7 +14,7 @@ public class PlayerProfile
     public string activeShipId; // shipDefId of the currently selected ship
 
     public Inventory inventory = new Inventory();
-    public List<CrewMemberState> crew = new List<CrewMemberState>();
+    public List<PlayerCrewMemberRecord> crew = new List<PlayerCrewMemberRecord>();
 
     public static PlayerProfile CreateNew(string captainId)
     {
@@ -26,7 +26,7 @@ public class PlayerProfile
             ships = new List<OwnedShip>(),
             activeShipId = string.Empty,
             inventory = new Inventory(),
-            crew = new List<CrewMemberState>()
+            crew = new List<PlayerCrewMemberRecord>()
         };
     }
 }
@@ -47,7 +47,7 @@ public class MountedWeaponState
 }
 
 [Serializable]
-public class CrewMemberState
+public class PlayerCrewMemberRecord
 {
     public string crewDefId;
     public float skill01 = 0.5f;   // 0..1
