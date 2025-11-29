@@ -185,16 +185,14 @@ public class AntiGravityDevice : LiftDevice
         float overloadDamageRate = (excessPercent / 100f) * usageDamagePerSecond;
         
         float damageThisFrame = overloadDamageRate * Time.fixedDeltaTime;
-        int damageToApply = Mathf.FloorToInt(damageThisFrame);
+        if (damageThisFrame <= 0f)
+            return;
+
+        healthComponent.TakeDamage(damageThisFrame);
         
-        if (damageToApply > 0)
+        if (debugLog)
         {
-            healthComponent.TakeDamage(damageToApply);
-            
-            if (debugLog)
-            {
-                FileLogger.Log($"{gameObject.name} taking {damageToApply} OVERLOAD damage! Field at {_fieldStrengthPercent:F1}% (max safe: {maxSafeFieldStrength}%)", "AntiGrav");
-            }
+            FileLogger.Log($"{gameObject.name} taking {damageThisFrame:F2} OVERLOAD damage! Field at {_fieldStrengthPercent:F1}% (max safe: {maxSafeFieldStrength}%)", "AntiGrav");
         }
     }
     
@@ -273,14 +271,13 @@ public class AntiGravityDevice : LiftDevice
             float percentOver = excessHeat / Mathf.Max(1f, maxSafeTemperature);
             float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
             float damageThisFrame = overheatDamageRatePerSecond * damageMultiplier * deltaTime;
-            int damageToApply = Mathf.FloorToInt(damageThisFrame);
-            if (damageToApply > 0)
+            if (damageThisFrame <= 0f)
+                return;
+
+            healthComponent.TakeDamage(damageThisFrame);
+            if (debugLog)
             {
-                healthComponent.TakeDamage(damageToApply);
-                if (debugLog)
-                {
-                    FileLogger.Log($"{gameObject.name} [AntiGrav] overheating - Temp {_currentTemperature:F1}/{maxSafeTemperature}, damage {damageToApply}", "AntiGrav");
-                }
+                FileLogger.Log($"{gameObject.name} [AntiGrav] overheating - Temp {_currentTemperature:F1}/{maxSafeTemperature}, damage {damageThisFrame:F2}", "AntiGrav");
             }
         }
     }

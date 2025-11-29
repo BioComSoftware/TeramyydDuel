@@ -5,7 +5,7 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     [Header("Projectile Settings")]
-    public int damage = 10;
+    public float damage = 10f;
     public float lifeTime = 5f;
 
     [Header("Optional Effects")]
@@ -32,7 +32,7 @@ public class Projectile : MonoBehaviour
         if (targetHealth != null)
         {
             targetHealth.TakeDamage(damage);
-            FileLogger.Log($"{gameObject.name} dealt {damage} damage to {other.name}", "Projectile");
+            FileLogger.Log($"{gameObject.name} dealt {damage:F2} damage to {other.name}", "Projectile");
         }
         else
         {

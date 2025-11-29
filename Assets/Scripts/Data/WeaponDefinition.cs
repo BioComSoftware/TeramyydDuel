@@ -16,7 +16,7 @@ public class WeaponDefinition : ScriptableObject
     public string weaponType = "cannon"; // matches WeaponMount.mountType acceptance
 
     [Header("Stats")]
-    public int damage = 25;
+    public float damage = 25f;
     public float fireRate = 1f; // shots per second or cooldown proxy
     public float crewSkillRequired = 0f; // min recommended skill (0..1)
 }

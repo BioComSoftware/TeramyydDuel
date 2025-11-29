@@ -11,9 +11,6 @@ using UnityEngine.Events;
 /// - Thrust creates motion (projection into space)
 /// - All systems degrade over time (being-towards-breakdown)
 /// </summary>
-[System.Serializable]
-public class FloatEvent : UnityEvent<float> { }
-
 [RequireComponent(typeof(Health))]
 [AddComponentMenu("Teramyyd/Ship Systems/Engine (Base)")]
 public abstract class Engine : MonoBehaviour
@@ -421,18 +418,15 @@ public abstract class Engine : MonoBehaviour
         if (healthComponent == null || _damagePerSecond <= 0f)
             return;
         
-        // Accumulate fractional damage
         float damageThisFrame = _damagePerSecond * deltaTime;
-        int damageToApply = Mathf.FloorToInt(damageThisFrame);
-        
-        if (damageToApply > 0)
+        if (damageThisFrame <= 0f)
+            return;
+
+        healthComponent.TakeDamage(damageThisFrame);
+
+        if (debugLog)
         {
-            healthComponent.TakeDamage(damageToApply);
-            
-            if (debugLog)
-            {
-                FileLogger.Log($"{gameObject.name} suffered {damageToApply} usage damage (Health: {healthComponent.currentHealth}/{healthComponent.maxHealth})", "Engine");
-            }
+            FileLogger.Log($"{gameObject.name} suffered {damageThisFrame:F2} usage damage (Health: {healthComponent.currentHealth:F2}/{healthComponent.maxHealth:F2})", "Engine");
         }
     }
     

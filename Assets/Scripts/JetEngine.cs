@@ -145,16 +145,14 @@ public class JetEngine : Engine
             float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
             
             float overheatDamage = overheatDamageRatePerSecond * damageMultiplier * deltaTime;
-            int damageToApply = Mathf.FloorToInt(overheatDamage);
+            if (overheatDamage <= 0f)
+                return;
+
+            healthComponent.TakeDamage(overheatDamage);
             
-            if (damageToApply > 0)
+            if (debugLog)
             {
-                healthComponent.TakeDamage(damageToApply);
-                
-                if (debugLog)
-                {
-                    FileLogger.Log($"{gameObject.name} taking {damageToApply} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature} ({percentOver * 100f:F1}% over, {damageMultiplier:F2}× multiplier)", "JetEngine");
-                }
+                FileLogger.Log($"{gameObject.name} taking {overheatDamage:F2} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature} ({percentOver * 100f:F1}% over, {damageMultiplier:F2}× multiplier)", "JetEngine");
             }
         }
     }

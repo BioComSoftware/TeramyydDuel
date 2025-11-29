@@ -22,13 +22,15 @@ public class ShipComponent : MonoBehaviour
         }
     }
     
-    void OnHealthChanged(int newHealth)
+    void OnHealthChanged(float newHealth)
     {
         if (healthSystem != null && renderers != null && renderers.Length > 0)
         {
             // Update visual model based on health
             // Change material color based on damage percentage
-            float healthPercentage = (float)newHealth / healthSystem.maxHealth;
+            float healthPercentage = (healthSystem.maxHealth > 0f)
+                ? Mathf.Clamp01(newHealth / healthSystem.maxHealth)
+                : 0f;
             Color damageColor = Color.Lerp(Color.red, Color.white, healthPercentage);
             
             foreach (var rend in renderers)
@@ -43,15 +45,14 @@ public class ShipComponent : MonoBehaviour
     
     void OnComponentDestroyed()
     {
-        if (renderers != null && renderers.Length > 0)
+        if (renderers == null || renderers.Length == 0)
+            return;
+
+        foreach (var rend in renderers)
         {
-            // Change the visual to show destruction
-            foreach (var rend in renderers)
+            if (rend != null)
             {
-                if (rend != null)
-                {
-                    rend.material.color = Color.black;
-                }
+                rend.material.color = Color.black;
             }
         }
     }

@@ -8,7 +8,7 @@ using UnityEngine;
 public class SimpleShrapnel : MonoBehaviour
 {
     [HideInInspector]
-    public int damage = 5;
+    public float damage = 5f;
     
     [HideInInspector]
     public float lifeTime = 1.5f;

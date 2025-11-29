@@ -116,10 +116,13 @@ public class WeaponMount : MonoBehaviour
             go.transform.SetParent(yawBase != null ? yawBase : transform, false);
             pitchBarrel = go.transform;
         }
+
+        EnsureMountId();
     }
 
     void Start()
     {
+        EnsureMountId();
         if (autoPopulateOnStart && autoPopulatePrefab != null && !isOccupied)
         {
             MountWeapon(autoPopulatePrefab);
@@ -157,6 +160,7 @@ public class WeaponMount : MonoBehaviour
  
     void Update()
     {
+        EnsureMountId();
         bool autoTargetingActive = !disableAutoTargeting && autoTrackTarget;
         if (autoTargetingActive && !_wasAutoTargetingActive)
         {
@@ -187,6 +191,7 @@ public class WeaponMount : MonoBehaviour
         // Check if mounted weapon was destroyed externally (e.g., by Health component)
         if (isOccupied && mountedWeapon == null)
         {
+            WeaponPersistenceManager.Instance.UnregisterMountedWeapon(this);
             FileLogger.Log($"{mountId}: Mounted weapon was destroyed externally, clearing mount", "WeaponMount");
             
             // Clear mount state
@@ -212,6 +217,10 @@ public class WeaponMount : MonoBehaviour
             {
                 _hasBallisticInterceptSolution = false;
                 return;
+                    if (isOccupied)
+                    {
+                        WeaponPersistenceManager.Instance.RegisterMountedWeapon(this);
+                    }
             }
         }
 
@@ -322,7 +331,6 @@ public class WeaponMount : MonoBehaviour
 
         return targetTransform.position;
     }
-
     void ComputeBallisticSolution(Transform targetTransform)
     {
         _hasAimSolution = false;
@@ -449,6 +457,14 @@ public class WeaponMount : MonoBehaviour
         _hasBallisticInterceptSolution = false;
     }
 
+    void EnsureMountId()
+    {
+        if (!string.IsNullOrEmpty(mountId))
+            return;
+
+        mountId = transform.name;
+    }
+
     void HandleDebugKeypadInput()
     {
         float dt = Time.deltaTime;
@@ -497,6 +513,7 @@ public class WeaponMount : MonoBehaviour
         // Cache health if available (on launcher or any child)
         weaponHealth = mountedWeapon.GetComponentInChildren<Health>();
         isOccupied = true;
+            WeaponPersistenceManager.Instance.RegisterMountedWeapon(this);
         if (enableDebugLogging) LogDebug($"Mount complete, isOccupied={isOccupied}, health={weaponHealth}");
         SyncAimTargetsToCurrentPose();
         return true;
@@ -518,6 +535,7 @@ public class WeaponMount : MonoBehaviour
         currentLauncher = null;
         isOccupied = false;
 
+            WeaponPersistenceManager.Instance.UnregisterMountedWeapon(this);
         weapon.transform.SetParent(null);
         return weapon;
     }

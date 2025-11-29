@@ -16,8 +16,8 @@ public class PlayerAircraft : MonoBehaviour
     public float fireCooldown = 0.15f;
 
     [Header("State")]
-    public int maxHealth = 100;
-    int currentHealth;
+    public float maxHealth = 100f;
+    float currentHealth;
 
     float lastFireTime;
 
@@ -55,10 +55,10 @@ public class PlayerAircraft : MonoBehaviour
         }
     }
 
-    public void TakeDamage(int amount)
+    public void TakeDamage(float amount)
     {
         currentHealth -= amount;
-        if (currentHealth <= 0) Die();
+        if (currentHealth <= 0f) Die();
     }
 
     void Die()

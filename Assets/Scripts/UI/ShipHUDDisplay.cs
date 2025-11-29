@@ -297,7 +297,7 @@ public class ShipHUDDisplay : MonoBehaviour
             binding.healthBarContainer.gameObject.SetActive(true);
         }
 
-        float percent = weaponHealth.maxHealth > 0 ? Mathf.Clamp01((float)weaponHealth.currentHealth / weaponHealth.maxHealth) : 0f;
+        float percent = weaponHealth.maxHealth > 0f ? Mathf.Clamp01(weaponHealth.currentHealth / weaponHealth.maxHealth) : 0f;
         if (Mathf.Approximately(percent, binding.cachedHealthPercent))
             return;
 

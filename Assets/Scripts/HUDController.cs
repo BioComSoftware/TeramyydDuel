@@ -37,9 +37,9 @@ public class HUDController : MonoBehaviour
         }
     }
 
-    void UpdateHealthText(int current)
+    void UpdateHealthText(float current)
     {
-        SetTextOnComponent(healthTextComponent, $"Health: {current}");
+        SetTextOnComponent(healthTextComponent, $"Health: {current:F0}");
     }
 
     public void UpdateScore(int score)

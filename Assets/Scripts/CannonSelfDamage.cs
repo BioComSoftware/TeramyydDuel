@@ -4,7 +4,7 @@ using UnityEngine;
 // Attach this to the same GameObject as the Cannon component.
 // Health is expected to live on the visual 3D child (e.g., Cylinder). You can
 // explicitly assign it, or leave empty to auto-find the first Health in children.
-// Supports fractional damage via internal accumulation before applying to Health (int-based).
+// Health now supports fractional values directly, so fractional wear applies immediately.
 public class CannonSelfDamage : MonoBehaviour
 {
     [Header("References")]
@@ -20,7 +20,6 @@ public class CannonSelfDamage : MonoBehaviour
     [Tooltip("Optional cooldown window (seconds) to ignore rapid duplicate events.")]
     public float minShotInterval = 0f;
 
-    private float _fractionalCarry; // carries fractional remainder until it sums to an integer
     private float _lastShotTime = -999f;
 
     void Awake()
@@ -68,13 +67,6 @@ public class CannonSelfDamage : MonoBehaviour
     {
         if (health == null || amount <= 0f) return;
 
-        // Accumulate fractional damage and apply only whole points to Health
-        _fractionalCarry += amount;
-        int whole = Mathf.FloorToInt(_fractionalCarry);
-        if (whole > 0)
-        {
-            health.TakeDamage(whole);
-            _fractionalCarry -= whole;
-        }
+        health.TakeDamage(amount);
     }
 }

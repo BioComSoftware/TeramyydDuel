@@ -3,7 +3,7 @@ using UnityEngine;
 public class Weapon : MonoBehaviour
 {
     public string weaponType = "cannon";
-    public int damage = 25;
+    public float damage = 25f;
     public float range = 100f;
     public float fireRate = 1f;
     

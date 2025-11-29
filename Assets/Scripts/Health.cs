@@ -2,15 +2,15 @@ using UnityEngine;
 using UnityEngine.Events;
 
 [System.Serializable]
-public class IntEvent : UnityEvent<int> { }
+public class FloatEvent : UnityEvent<float> { }
 
 // Generic Health component usable by player and enemies.
 public class Health : MonoBehaviour
 {
-    public int maxHealth = 100;
-    public int currentHealth { get; private set; }
+    public float maxHealth = 100f;
+    public float currentHealth { get; private set; }
 
-    public IntEvent onHealthChanged;
+    public FloatEvent onHealthChanged;
     public UnityEvent onDeath;
 
     [Header("Debug")]
@@ -24,22 +24,22 @@ public class Health : MonoBehaviour
         onHealthChanged?.Invoke(currentHealth);
     }
 
-    public void TakeDamage(int amount)
+    public void TakeDamage(float amount)
     {
         if (amount <= 0) return;
         
-        int oldHealth = currentHealth;
+        float oldHealth = currentHealth;
         currentHealth -= amount;
         if (currentHealth < 0) currentHealth = 0;
         
         if (debugLog)
-            FileLogger.Log($"{gameObject.name} took {amount} damage - Health: {oldHealth} -> {currentHealth}/{maxHealth} ({(float)currentHealth/maxHealth * 100f:F1}%)", "Health");
+            FileLogger.Log($"{gameObject.name} took {amount:F2} damage - Health: {oldHealth:F2} -> {currentHealth:F2}/{maxHealth:F2} ({(currentHealth/maxHealth) * 100f:F1}%)", "Health");
         
         onHealthChanged?.Invoke(currentHealth);
         if (currentHealth == 0) Die();
     }
 
-    public void Heal(int amount)
+    public void Heal(float amount)
     {
         if (amount <= 0) return;
         currentHealth += amount;
@@ -47,7 +47,7 @@ public class Health : MonoBehaviour
         onHealthChanged?.Invoke(currentHealth);
     }
 
-    public void SetHealth(int value)
+    public void SetHealth(float value)
     {
         currentHealth = Mathf.Clamp(value, 0, maxHealth);
         onHealthChanged?.Invoke(currentHealth);

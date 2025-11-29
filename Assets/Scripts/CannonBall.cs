@@ -20,7 +20,7 @@ public class CannonBall : Projectile
     // Set typical defaults for a cannonball when first added
     void Reset()
     {
-        if (damage <= 0) damage = 25;   // Heavier impact than base default
+        if (damage <= 0f) damage = 25f;   // Heavier impact than base default
         if (lifeTime <= 0f) lifeTime = 5f;
         if (shrapnelCount <= 0) shrapnelCount = 16;
         if (shrapnelSpeed <= 0f) shrapnelSpeed = 30f;
@@ -125,15 +125,15 @@ public class CannonBall : Projectile
                 if (proj != null)
                 {
                     // Use the prefab's own settings - don't override
-                    FileLogger.Log($"Shrapnel {i} using Projectile settings: damage={proj.damage}, lifetime={proj.lifeTime}", "Shrapnel");
+                    FileLogger.Log($"Shrapnel {i} using Projectile settings: damage={proj.damage:F2}, lifetime={proj.lifeTime}", "Shrapnel");
                 }
                 else
                 {
                     // No Projectile component - add SimpleShrapnel with default values
                     var shrapnel = piece.AddComponent<SimpleShrapnel>();
-                    shrapnel.damage = 5;  // Default damage if no Projectile
+                    shrapnel.damage = 5f;  // Default damage if no Projectile
                     shrapnel.lifeTime = 1.5f;  // Default lifetime if no Projectile
-                    FileLogger.Log($"Added SimpleShrapnel to shrapnel {i}: damage={shrapnel.damage}, lifetime={shrapnel.lifeTime}", "Shrapnel");
+                    FileLogger.Log($"Added SimpleShrapnel to shrapnel {i}: damage={shrapnel.damage:F2}, lifetime={shrapnel.lifeTime}", "Shrapnel");
                 }
             }
             

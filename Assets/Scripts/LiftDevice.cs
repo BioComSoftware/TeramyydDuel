@@ -256,22 +256,19 @@ public abstract class LiftDevice : MonoBehaviour
             return;
         
         float damageThisFrame = _damagePerSecond * deltaTime;
-        int damageToApply = Mathf.FloorToInt(damageThisFrame);
-        
-        if (damageToApply > 0)
+        if (damageThisFrame <= 0f)
+            return;
+
+        healthComponent.TakeDamage(damageThisFrame);
+
+        if (debugLog)
         {
-            healthComponent.TakeDamage(damageToApply);
-            
-            if (debugLog)
-            {
-                FileLogger.Log($"{gameObject.name} suffered {damageToApply} usage damage (Health: {healthComponent.currentHealth}/{healthComponent.maxHealth})", "LiftDevice");
-            }
-            
-            // Check for critical failure
-            if (healthComponent.currentHealth <= 0)
-            {
-                OnLiftFailure();
-            }
+            FileLogger.Log($"{gameObject.name} suffered {damageThisFrame:F2} usage damage (Health: {healthComponent.currentHealth:F2}/{healthComponent.maxHealth:F2})", "LiftDevice");
+        }
+
+        if (healthComponent.currentHealth <= 0f)
+        {
+            OnLiftFailure();
         }
     }
     
