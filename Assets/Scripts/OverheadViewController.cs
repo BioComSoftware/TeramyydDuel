@@ -160,6 +160,13 @@ public class OverheadViewController : MonoBehaviour
         ConfigureClipPlanes();
     }
 
+    public Vector3 GetOffsetXZ() => offsetXZ;
+    public void SetOffsetXZ(Vector3 value)
+    {
+        offsetXZ.x = value.x;
+        offsetXZ.z = value.z;
+    }
+
     public void SnapToShipCenter()
     {
         if (shipTarget == null) return;

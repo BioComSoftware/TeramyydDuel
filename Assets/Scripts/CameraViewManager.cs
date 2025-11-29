@@ -58,11 +58,28 @@ public class CameraViewManager : MonoBehaviour
     [Tooltip("Store a separate zoom level for each camera view so switching modes restores the last-used zoom for that view.")]
     public bool rememberZoomPerView = true;
 
+    [Header("Pose Memory")]
+    [Tooltip("Remember camera position/orientation for each view mode and restore it when returning to that view.")]
+    public bool rememberPosePerView = true;
+
     private float bridgeStoredFOV = -1f;
     private float followStoredFOV = -1f;
-    private float followStoredDistance = -1f;
+    private float followStoredOrbitDistance = -1f;
     private float overheadStoredFOV = -1f;
     private float overheadStoredHeight = -1f;
+
+    private bool bridgePoseStored = false;
+    private Vector3 bridgeStoredLocalPos = Vector3.zero;
+    private Quaternion bridgeStoredLocalRot = Quaternion.identity;
+    private Vector3 bridgeStoredWorldPos = Vector3.zero;
+    private Quaternion bridgeStoredWorldRot = Quaternion.identity;
+
+    private bool followPoseStored = false;
+    private float followStoredYaw = 0f;
+    private float followStoredPitch = 0f;
+
+    private bool overheadPoseStored = false;
+    private Vector3 overheadStoredOffset = Vector3.zero;
 
     [Header("Input")] 
     // Deprecated: now sourced from KeyBindingConfig
@@ -117,6 +134,7 @@ public class CameraViewManager : MonoBehaviour
         if (!force)
         {
             CaptureZoomState(currentMode);
+            CapturePoseState(currentMode);
         }
 
         currentMode = mode;
@@ -136,6 +154,7 @@ public class CameraViewManager : MonoBehaviour
                 break;
         }
 
+            RestorePoseState(mode);
             RestoreZoomState(mode);
     }
 
@@ -288,7 +307,7 @@ public class CameraViewManager : MonoBehaviour
                     }
                     else
                     {
-                        followStoredDistance = cameraOrbit.distance;
+                        followStoredOrbitDistance = cameraOrbit.distance;
                     }
                 }
                 break;
@@ -328,9 +347,9 @@ public class CameraViewManager : MonoBehaviour
                     {
                         mainCamera.fieldOfView = Mathf.Clamp(followStoredFOV, cameraOrbit.minFOV, cameraOrbit.maxFOV);
                     }
-                    else if (!cameraOrbit.useFOVZoom && followStoredDistance > 0f)
+                    else if (!cameraOrbit.useFOVZoom && followStoredOrbitDistance > 0f)
                     {
-                        cameraOrbit.distance = Mathf.Clamp(followStoredDistance, cameraOrbit.minDistance, cameraOrbit.maxDistance);
+                        cameraOrbit.distance = Mathf.Clamp(followStoredOrbitDistance, cameraOrbit.minDistance, cameraOrbit.maxDistance);
                         cameraOrbit.Reposition();
                     }
                 }
@@ -351,6 +370,100 @@ public class CameraViewManager : MonoBehaviour
                         overheadController.RefreshImmediate();
                     }
                 }
+                break;
+        }
+    }
+
+    void CapturePoseState(ViewMode mode)
+    {
+        if (!rememberPosePerView || mainCamera == null)
+            return;
+
+        switch (mode)
+        {
+            case ViewMode.Bridge:
+                bridgeStoredWorldPos = mainCamera.transform.position;
+                bridgeStoredWorldRot = mainCamera.transform.rotation;
+                if (bridgeMount != null)
+                {
+                    if (mainCamera.transform.parent == bridgeMount)
+                    {
+                        bridgeStoredLocalPos = mainCamera.transform.localPosition;
+                        bridgeStoredLocalRot = mainCamera.transform.localRotation;
+                    }
+                    else
+                    {
+                        bridgeStoredLocalPos = bridgeMount.InverseTransformPoint(mainCamera.transform.position);
+                        bridgeStoredLocalRot = Quaternion.Inverse(bridgeMount.rotation) * mainCamera.transform.rotation;
+                    }
+                }
+                bridgePoseStored = true;
+                break;
+            case ViewMode.Follow:
+                if (cameraOrbit != null)
+                {
+                    followStoredYaw = cameraOrbit.yaw;
+                    followStoredPitch = cameraOrbit.pitch;
+                    followStoredOrbitDistance = cameraOrbit.distance;
+                    followPoseStored = true;
+                }
+                break;
+            case ViewMode.Overhead:
+                if (overheadController != null)
+                {
+                    overheadStoredOffset = overheadController.GetOffsetXZ();
+                    overheadPoseStored = true;
+                }
+                break;
+        }
+    }
+
+    void RestorePoseState(ViewMode mode)
+    {
+        if (!rememberPosePerView || mainCamera == null)
+            return;
+
+        switch (mode)
+        {
+            case ViewMode.Bridge:
+                if (!bridgePoseStored)
+                    break;
+                if (bridgeMount != null)
+                {
+                    if (mainCamera.transform.parent != bridgeMount)
+                    {
+                        mainCamera.transform.SetParent(bridgeMount, false);
+                    }
+                    mainCamera.transform.localPosition = bridgeStoredLocalPos;
+                    mainCamera.transform.localRotation = bridgeStoredLocalRot;
+                }
+                else
+                {
+                    mainCamera.transform.SetParent(null, true);
+                    mainCamera.transform.position = bridgeStoredWorldPos;
+                    mainCamera.transform.rotation = bridgeStoredWorldRot;
+                }
+                if (cameraMove != null)
+                {
+                    cameraMove.RebaselineFromCurrent();
+                }
+                break;
+            case ViewMode.Follow:
+                if (!followPoseStored || cameraOrbit == null)
+                    break;
+                cameraOrbit.yaw = followStoredYaw;
+                cameraOrbit.pitch = Mathf.Clamp(followStoredPitch, cameraOrbit.minPitch, cameraOrbit.maxPitch);
+                if (followStoredOrbitDistance > 0f)
+                {
+                    cameraOrbit.distance = Mathf.Clamp(followStoredOrbitDistance, cameraOrbit.minDistance, cameraOrbit.maxDistance);
+                }
+                cameraOrbit.Reposition();
+                break;
+            case ViewMode.Overhead:
+                if (!overheadPoseStored || overheadController == null)
+                    break;
+                overheadController.SetOffsetXZ(overheadStoredOffset);
+                overheadController.RefreshImmediate();
                 break;
         }
     }
