@@ -76,12 +76,12 @@ public class WeaponMount : MonoBehaviour
     bool _hasAimSolution;
     bool _hasBallisticInterceptSolution;
     bool _wasAutoTargetingActive;
-    int _lastSolverVersion = -1;
     bool _targetColliderInsideSensor;
     bool _hasLoggedSensorState;
     bool _lastLoggedSensorState;
     Health _lastLoggedTarget;
     Collider _lastLoggedTargetCollider;
+    Collider _lastLoggedSensorCollider;
 
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
@@ -161,7 +161,6 @@ public class WeaponMount : MonoBehaviour
         if (autoTargetingActive && !_wasAutoTargetingActive)
         {
             _hasAimSolution = false;
-            _lastSolverVersion = -1;
         }
         else if (!autoTargetingActive && _wasAutoTargetingActive)
         {
@@ -223,10 +222,7 @@ public class WeaponMount : MonoBehaviour
             return;
         }
 
-        if (ShouldRecomputeSolution())
-        {
-            ComputeBallisticSolution(target.transform);
-        }
+        ComputeBallisticSolution(target.transform);
 
         if (!_hasAimSolution)
             return;
@@ -327,21 +323,6 @@ public class WeaponMount : MonoBehaviour
         return targetTransform.position;
     }
 
-    bool ShouldRecomputeSolution()
-    {
-        if (targetingController == null)
-            return !_hasAimSolution;
-
-        int version = targetingController.SolverVersion;
-        if (!_hasAimSolution || version != _lastSolverVersion)
-        {
-            _lastSolverVersion = version;
-            return true;
-        }
-
-        return false;
-    }
-
     void ComputeBallisticSolution(Transform targetTransform)
     {
         _hasAimSolution = false;
@@ -363,9 +344,12 @@ public class WeaponMount : MonoBehaviour
         float horizontalDistance = Mathf.Sqrt(localDisplacement.x * localDisplacement.x + localDisplacement.z * localDisplacement.z);
         float verticalOffset = localDisplacement.y;
 
-        Vector3 toTargetForAiming = origin - aimPoint;
+        Vector3 toTargetForAiming = aimPoint - origin;
         Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
-        float desiredYaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+
+        // Prefab realignment points the cannon down local +Z; treat that as forward for yaw math.
+        float forwardComponent = localDir.z;
+        float desiredYaw = Mathf.Atan2(localDir.x, forwardComponent) * Mathf.Rad2Deg;
         float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
         _aimYawTarget = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
 
@@ -397,7 +381,8 @@ public class WeaponMount : MonoBehaviour
         if (solved)
         {
             float pitchDeg = Mathf.Rad2Deg * launchAngleRad;
-            _aimPitchTarget = Mathf.Clamp(pitchDeg, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+            float desiredPitch = -pitchDeg; // Unity's +X rotates downward, so invert to pitch upward
+            _aimPitchTarget = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
             _aimLaunchSpeed = Mathf.Clamp(launchSpeed, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
             _hasAimSolution = true;
             _hasBallisticInterceptSolution = true;
@@ -405,7 +390,8 @@ public class WeaponMount : MonoBehaviour
         }
 
         Vector3 dirAfterYaw = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localDir;
-        float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, dirAfterYaw.z) * Mathf.Rad2Deg;
+        float forwardAfterYaw = dirAfterYaw.z;
+        float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, forwardAfterYaw) * Mathf.Rad2Deg;
         fallbackPitch = Mathf.Clamp(fallbackPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
         _aimPitchTarget = fallbackPitch;
         _aimLaunchSpeed = currentLauncher.launchSpeed;
@@ -459,7 +445,7 @@ public class WeaponMount : MonoBehaviour
             default:                   fromWorld = axisT.up;      break;
         }
         if (invertLauncherAxis) fromWorld = -fromWorld;
-        Vector3 toWorld = -pitchBarrel.forward;  // desired world direction (mount -Z per request)
+        Vector3 toWorld = pitchBarrel.forward;   // desired world direction (+Z is cannon forward)
         if (fromWorld.sqrMagnitude > 1e-6f && toWorld.sqrMagnitude > 1e-6f)
         {
             // Map the selected launcher axis to mount forward (handles 0..180 automatically)
@@ -531,15 +517,19 @@ public class WeaponMount : MonoBehaviour
         bool stateChanged = !_hasLoggedSensorState || previous != inside;
         bool targetChanged = _lastLoggedTarget != target;
         bool colliderChanged = _lastLoggedTargetCollider != targetCollider;
+        bool sensorChanged = _lastLoggedSensorCollider != targetAcquisitionCollider;
 
-        if (stateChanged || targetChanged || colliderChanged)
+        if (stateChanged || targetChanged || colliderChanged || sensorChanged)
         {
             string targetName = target != null ? target.name : "null";
             string colliderName = targetCollider != null ? targetCollider.name : "null";
-            LogDebug($"Target acquisition update → inside={inside}, target={targetName}, collider={colliderName}, reason={reason}");
+            string sensorName = targetAcquisitionCollider != null ? targetAcquisitionCollider.name : "null";
+            bool sensorIsTrigger = targetAcquisitionCollider != null && targetAcquisitionCollider.isTrigger;
+            LogDebug($"Target acquisition update → inside={inside}, target={targetName}, collider={colliderName}, sensor={sensorName}, sensorIsTrigger={sensorIsTrigger}, reason={reason}");
             _lastLoggedSensorState = inside;
             _lastLoggedTarget = target;
             _lastLoggedTargetCollider = targetCollider;
+            _lastLoggedSensorCollider = targetAcquisitionCollider;
             _hasLoggedSensorState = true;
         }
     }
@@ -569,8 +559,24 @@ public class WeaponMount : MonoBehaviour
         if (!autoAssignTargetAcquisitionCollider)
             return;
 
-        if (targetAcquisitionCollider != null && targetAcquisitionCollider.gameObject.scene.IsValid())
-            return;
+        if (targetAcquisitionCollider != null)
+        {
+            bool colliderDestroyed = !targetAcquisitionCollider.gameObject.scene.IsValid();
+            bool belongsToThisMount = ColliderBelongsToCurrentMount(targetAcquisitionCollider);
+            if (!colliderDestroyed && belongsToThisMount)
+            {
+                return;
+            }
+
+            if (enableDebugLogging)
+            {
+                string reason = colliderDestroyed ? "was destroyed" : "is not parented under this mount";
+                string colliderName = colliderDestroyed ? "(destroyed)" : targetAcquisitionCollider.name;
+                LogDebug($"Discarding cached acquisition collider '{colliderName}' because it {reason}.");
+            }
+
+            targetAcquisitionCollider = null;
+        }
 
         Collider candidate = FindAcquisitionColliderCandidate();
         if (candidate != null)
@@ -631,5 +637,17 @@ public class WeaponMount : MonoBehaviour
         }
 
         return candidate;
+    }
+
+    bool ColliderBelongsToCurrentMount(Collider candidate)
+    {
+        if (candidate == null || pitchBarrel == null)
+            return false;
+
+        Transform t = candidate.transform;
+        if (t == pitchBarrel)
+            return true;
+
+        return t.IsChildOf(pitchBarrel);
     }
 }

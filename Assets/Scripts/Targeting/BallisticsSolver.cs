@@ -10,6 +10,7 @@ public static class BallisticsSolver
 {
     const double DragDistanceScale = 0.5;   // heuristically reduces horizontal reach based on drag
     const double DragVerticalCoupling = 0.15; // shifts apex downward when drag is present
+    const double Deg2Rad = Math.PI / 180.0;
 
     public static bool SolveWithUnityDrag(
         float horizontalDistance,
@@ -31,19 +32,19 @@ public static class BallisticsSolver
         double R = Math.Max(0.0001, horizontalDistance);
         double h = verticalOffset;
         double g = Math.Max(0.0001, gravityMagnitude);
-
         double drag = Math.Max(0.0, rigidbodyDrag);
         double damping = Math.Max(0.0, linearDamping);
 
+        // Apply mild adjustments so drag-heavy projectiles do not overshoot.
         double dragScale = 1.0 / (1.0 + drag * DragDistanceScale);
         double adjustedR = R * dragScale;
         double adjustedH = h - (drag * R * DragVerticalCoupling);
         double adjustedG = g * (1.0 + damping);
 
-        return SolveFastCore(adjustedR, adjustedH, adjustedG, vMax, thetaMaxRad, out launchSpeed, out launchAngleRad);
+        return SolveAdaptive(adjustedR, adjustedH, adjustedG, vMax, thetaMaxRad, out launchSpeed, out launchAngleRad);
     }
 
-    static bool SolveFastCore(
+    static bool SolveAdaptive(
         double R,
         double h,
         double g,
@@ -55,45 +56,53 @@ public static class BallisticsSolver
         launchSpeed = 0f;
         launchAngleRad = 0f;
 
-        double tanThetaMax = Math.Tan(thetaMaxRad);
-        double v2 = vMax * vMax;
-        double gR = g * R;
-        double disc = v2 * v2 - g * (g * R * R + 2.0 * h * v2);
+        if (R <= 0.0 || g <= 0.0)
+            return false;
 
-        if (disc >= 0.0 && Math.Abs(gR) > double.Epsilon)
+            // Aim slightly upward even for downhill shots so gravity can arc the projectile back.
+            double thetaMin = Deg2Rad * 0.25; // 0.25° minimum
+        double thetaMax = Math.Max(thetaMin, Math.Min(thetaMaxRad, Math.PI * 0.499));
+        const int angleSamples = 72; // ~0.2° resolution for 15° cap
+
+        bool found = false;
+        double bestTheta = 0.0;
+        double bestSpeed = double.MaxValue;
+
+        for (int i = angleSamples; i >= 1; i--)
         {
-            double sqrtDisc = Math.Sqrt(disc);
-            double u1 = (v2 - sqrtDisc) / gR;
-            double u2 = (v2 + sqrtDisc) / gR;
+            double t = thetaMin + (thetaMax - thetaMin) * i / angleSamples;
+            double cos = Math.Cos(t);
+            double cos2 = cos * cos;
+            double tan = Math.Tan(t);
+            double verticalTerm = R * tan - h;
+            if (verticalTerm <= 0.0)
+                continue;
 
-            bool u1Valid = (u1 > 0.0 && u1 <= tanThetaMax);
-            bool u2Valid = (u2 > 0.0 && u2 <= tanThetaMax);
+            double denom = 2.0 * cos2 * verticalTerm;
+            if (denom <= double.Epsilon)
+                continue;
 
-            if (u1Valid || u2Valid)
+            double v2req = g * R * R / denom;
+            if (v2req <= 0.0)
+                continue;
+
+            double vReq = Math.Sqrt(v2req);
+            if (vReq <= vMax + 1e-3)
             {
-                double u = u1Valid && u2Valid ? Math.Min(u1, u2) : (u1Valid ? u1 : u2);
-                launchAngleRad = (float)Math.Atan(u);
-                launchSpeed = vMax;
-                return true;
+                found = true;
+                if (vReq < bestSpeed)
+                {
+                    bestSpeed = vReq;
+                    bestTheta = t;
+                }
             }
         }
 
-        double cosMax = Math.Cos(thetaMaxRad);
-        double cosMax2 = cosMax * cosMax;
-        double denom = 2.0 * cosMax2 * (R * tanThetaMax - h);
-        if (denom <= 0.0)
+        if (!found)
             return false;
 
-        double v2req = g * R * R / denom;
-        if (v2req <= 0.0)
-            return false;
-
-        double vReq = Math.Sqrt(v2req);
-        if (vReq > vMax)
-            return false;
-
-        launchSpeed = (float)vReq;
-        launchAngleRad = thetaMaxRad;
+        launchSpeed = (float)bestSpeed;
+        launchAngleRad = (float)bestTheta;
         return true;
     }
 }
