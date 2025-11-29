@@ -62,6 +62,9 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     [SerializeField] private float _shipRotationSpeed = 0f;
     [SerializeField] private bool _turningRight = false;
     [SerializeField] private bool _turningLeft = false;
+    [Header("Auto Return")]
+    [Tooltip("Degrees per second the wheel will spring back toward center when the player releases it (0 disables auto return).")]
+    public float autoReturnSpeedDegPerSec = 90f;
     
     [Header("Debug")]
     public bool debugLog = false;
@@ -74,6 +77,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     // Dragging state
     private bool isDragging = false;
     private float lastWheelRotation = 0f;
+    private bool wheelLatched = false;
     
     // Public properties
     public float CurrentWheelRotation => _currentWheelRotation;
@@ -138,6 +142,11 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
             FileLogger.Log($"Ship Wheel initialized - Max Rotation: ±{maxWheelRotation}°, Max Speed: {maxRotationSpeed}°/s, Dead Zone: ±{deadZoneDegrees}°", "ShipWheel");
         }
     }
+
+    void Update()
+    {
+        HandleAutoReturn();
+    }
     
     void FixedUpdate()
     {
@@ -174,6 +183,11 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     {
         isDragging = true;
         lastWheelRotation = _currentWheelRotation;
+        bool ctrlHeld = IsCtrlModifierHeld();
+        if (!ctrlHeld && wheelLatched)
+        {
+            wheelLatched = false;
+        }
         
         if (debugLog)
         {
@@ -230,6 +244,15 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     public void OnEndDrag(PointerEventData eventData)
     {
         isDragging = false;
+        bool ctrlHeld = IsCtrlModifierHeld();
+        if (ctrlHeld)
+        {
+            wheelLatched = true;
+        }
+        else
+        {
+            wheelLatched = false;
+        }
         
         // Play center click if we're in dead zone
         if (Mathf.Abs(_currentWheelRotation) <= deadZoneDegrees && audioSource != null && centerClickSound != null)
@@ -343,6 +366,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     /// </summary>
     public void ResetToCenter()
     {
+        wheelLatched = false;
         SetWheelRotation(0f);
         
         if (audioSource != null && centerClickSound != null)
@@ -379,5 +403,32 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     public void SetAngle(float degrees)
     {
         SetWheelRotation(degrees);
+    }
+
+    bool IsCtrlModifierHeld()
+    {
+        return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+    }
+
+    void HandleAutoReturn()
+    {
+        if (autoReturnSpeedDegPerSec <= 0f)
+            return;
+
+        if (isDragging || wheelLatched)
+            return;
+
+        if (Mathf.Approximately(_currentWheelRotation, 0f))
+            return;
+
+        float newAngle = Mathf.MoveTowards(
+            _currentWheelRotation,
+            0f,
+            autoReturnSpeedDegPerSec * Time.deltaTime);
+
+        if (!Mathf.Approximately(newAngle, _currentWheelRotation))
+        {
+            SetWheelRotation(newAngle);
+        }
     }
 }
