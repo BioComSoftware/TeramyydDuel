@@ -17,8 +17,8 @@ public class CannonSelfDamage : MonoBehaviour
     public float damagePerShot = 0.5f;
 
     [Header("Filtering")]
-    [Tooltip("Optional cooldown window (seconds) to ignore rapid duplicate key-down events.")]
-    public float minShotInterval = 0.05f;
+    [Tooltip("Optional cooldown window (seconds) to ignore rapid duplicate events.")]
+    public float minShotInterval = 0f;
 
     private float _fractionalCarry; // carries fractional remainder until it sums to an integer
     private float _lastShotTime = -999f;
@@ -26,6 +26,7 @@ public class CannonSelfDamage : MonoBehaviour
     void Awake()
     {
         if (cannon == null) cannon = GetComponent<Cannon>();
+        if (cannon == null) cannon = GetComponentInParent<Cannon>();
         if (health == null)
         {
             // Prefer a child Health (visual mesh child) over self
@@ -34,19 +35,33 @@ public class CannonSelfDamage : MonoBehaviour
         }
     }
 
-    void Update()
+    void OnEnable()
     {
-        if (cannon == null) return;
-
-        // Mirror the firing trigger: when the cannon's fire key is pressed, apply wear
-        if (Input.GetKeyDown(cannon.fireKey))
+        if (cannon != null)
         {
-            float t = Time.time;
-            if (t - _lastShotTime < minShotInterval) return;
-            _lastShotTime = t;
-
-            ApplyWear(damagePerShot);
+            cannon.ProjectileFired += HandleProjectileFired;
         }
+    }
+
+    void OnDisable()
+    {
+        if (cannon != null)
+        {
+            cannon.ProjectileFired -= HandleProjectileFired;
+        }
+    }
+
+    void HandleProjectileFired(ProjectileLauncher launcher)
+    {
+        if (launcher != cannon)
+            return;
+
+        float t = Time.time;
+        if (minShotInterval > 0f && t - _lastShotTime < minShotInterval)
+            return;
+
+        _lastShotTime = t;
+        ApplyWear(damagePerShot);
     }
 
     private void ApplyWear(float amount)

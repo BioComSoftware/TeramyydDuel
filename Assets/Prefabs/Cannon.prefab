@@ -5077,7 +5077,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CannonSelfDamage
   cannon: {fileID: 79155038296863490}
   health: {fileID: 1849268559633723962}
-  damagePerShot: 0.5
+  damagePerShot: 10
   minShotInterval: 0.5
 --- !u!65 &6297898395109153350
 BoxCollider:
@@ -10058,7 +10058,7 @@ MonoBehaviour:
   projectileLinearDampingOverride: -1
   reloadTime: 10
   startReady: 1
-  debugLog: 1
+  debugLog: 0
   requireValidMountTargetLock: 1
   fireAudioSource: {fileID: 0}
 --- !u!82 &5702391970838010796

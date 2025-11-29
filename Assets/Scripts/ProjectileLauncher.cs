@@ -56,6 +56,8 @@ public class ProjectileLauncher : MonoBehaviour
     private float _cachedProjectileLinearDamping;
     private WeaponMount _owningMount;
 
+    public event System.Action<ProjectileLauncher> ProjectileFired;
+
     /// <summary>
     /// True when the launcher has finished reloading and can fire again.
     /// </summary>
@@ -263,7 +265,9 @@ public class ProjectileLauncher : MonoBehaviour
 
         // Set reload time
         _nextFireTime = Time.time + reloadTime;
-        
+
+        ProjectileFired?.Invoke(this);
+
         Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={finalSpeed:F1}, spread={angleSpreadDegrees:F1}");
     }
 
