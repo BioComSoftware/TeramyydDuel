@@ -89,7 +89,7 @@ public class CameraOrbitMove : MonoBehaviour
         Reposition();
     }
 
-    void Reposition()
+    public void Reposition()
     {
         if (target == null) return;
         // Spherical to Cartesian conversion

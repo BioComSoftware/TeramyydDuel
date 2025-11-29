@@ -151,6 +151,15 @@ public class OverheadViewController : MonoBehaviour
         ConfigureClipPlanes();
     }
 
+    public void RefreshImmediate()
+    {
+        if (shipTarget == null) return;
+        Vector3 shipPos = shipTarget.position;
+        transform.position = new Vector3(shipPos.x + offsetXZ.x, shipPos.y + heightAboveShip, shipPos.z + offsetXZ.z);
+        ApplyRotation();
+        ConfigureClipPlanes();
+    }
+
     public void SnapToShipCenter()
     {
         if (shipTarget == null) return;

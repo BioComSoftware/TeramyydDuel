@@ -54,6 +54,16 @@ public class CameraViewManager : MonoBehaviour
     [Tooltip("If true, use FOV-based zoom in all modes to keep HUD stable")]
     public bool forceFOVZoom = true;
 
+    [Header("Zoom Memory")]
+    [Tooltip("Store a separate zoom level for each camera view so switching modes restores the last-used zoom for that view.")]
+    public bool rememberZoomPerView = true;
+
+    private float bridgeStoredFOV = -1f;
+    private float followStoredFOV = -1f;
+    private float followStoredDistance = -1f;
+    private float overheadStoredFOV = -1f;
+    private float overheadStoredHeight = -1f;
+
     [Header("Input")] 
     // Deprecated: now sourced from KeyBindingConfig
     public KeyCode bridgeKey = KeyCode.F1;
@@ -103,6 +113,12 @@ public class CameraViewManager : MonoBehaviour
     public void ApplyMode(ViewMode mode, bool force = false)
     {
         if (!force && mode == currentMode) return;
+
+        if (!force)
+        {
+            CaptureZoomState(currentMode);
+        }
+
         currentMode = mode;
 
         if (mainCamera == null || cameraMove == null) return;
@@ -119,6 +135,8 @@ public class CameraViewManager : MonoBehaviour
                 EnterOverhead();
                 break;
         }
+
+            RestoreZoomState(mode);
     }
 
     void EnterBridge()
@@ -246,5 +264,94 @@ public class CameraViewManager : MonoBehaviour
         overheadController.SnapToShipCenter(); // This resets position and zoom to default
         
         Debug.Log("Switched to Overhead view (reset to default)");
+    }
+
+    void CaptureZoomState(ViewMode mode)
+    {
+        if (!rememberZoomPerView || mainCamera == null)
+            return;
+
+        switch (mode)
+        {
+            case ViewMode.Bridge:
+                if (cameraMove != null && cameraMove.useFOVZoom)
+                {
+                    bridgeStoredFOV = mainCamera.fieldOfView;
+                }
+                break;
+            case ViewMode.Follow:
+                if (cameraOrbit != null)
+                {
+                    if (cameraOrbit.useFOVZoom && mainCamera != null)
+                    {
+                        followStoredFOV = mainCamera.fieldOfView;
+                    }
+                    else
+                    {
+                        followStoredDistance = cameraOrbit.distance;
+                    }
+                }
+                break;
+            case ViewMode.Overhead:
+                if (overheadController != null)
+                {
+                    if (overheadController.useFOVZoom && mainCamera != null)
+                    {
+                        overheadStoredFOV = mainCamera.fieldOfView;
+                    }
+                    else
+                    {
+                        overheadStoredHeight = overheadController.heightAboveShip;
+                    }
+                }
+                break;
+        }
+    }
+
+    void RestoreZoomState(ViewMode mode)
+    {
+        if (!rememberZoomPerView || mainCamera == null)
+            return;
+
+        switch (mode)
+        {
+            case ViewMode.Bridge:
+                if (cameraMove != null && cameraMove.useFOVZoom && bridgeStoredFOV > 0f)
+                {
+                    mainCamera.fieldOfView = Mathf.Clamp(bridgeStoredFOV, cameraMove.minFOV, cameraMove.maxFOV);
+                }
+                break;
+            case ViewMode.Follow:
+                if (cameraOrbit != null)
+                {
+                    if (cameraOrbit.useFOVZoom && followStoredFOV > 0f)
+                    {
+                        mainCamera.fieldOfView = Mathf.Clamp(followStoredFOV, cameraOrbit.minFOV, cameraOrbit.maxFOV);
+                    }
+                    else if (!cameraOrbit.useFOVZoom && followStoredDistance > 0f)
+                    {
+                        cameraOrbit.distance = Mathf.Clamp(followStoredDistance, cameraOrbit.minDistance, cameraOrbit.maxDistance);
+                        cameraOrbit.Reposition();
+                    }
+                }
+                break;
+            case ViewMode.Overhead:
+                if (overheadController != null)
+                {
+                    if (overheadController.useFOVZoom && overheadStoredFOV > 0f)
+                    {
+                        mainCamera.fieldOfView = Mathf.Clamp(overheadStoredFOV, overheadController.minFOV, overheadController.maxFOV);
+                    }
+                    else if (!overheadController.useFOVZoom && overheadStoredHeight > 0f)
+                    {
+                        float minHeight = Mathf.Max(overheadController.minHeightAboveGround, 1f);
+                        float maxHeightCandidate = overheadController.maxHeightAboveShip > 0f ? overheadController.maxHeightAboveShip : overheadController.heightAboveShip;
+                        float maxHeight = Mathf.Max(maxHeightCandidate, minHeight);
+                        overheadController.heightAboveShip = Mathf.Clamp(overheadStoredHeight, minHeight, maxHeight);
+                        overheadController.RefreshImmediate();
+                    }
+                }
+                break;
+        }
     }
 }
