@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // General weapon mount with yaw/pitch pivots and runtime mounting for ProjectileLauncher-based weapons.
 public class WeaponMount : MonoBehaviour
@@ -12,7 +12,7 @@ public class WeaponMount : MonoBehaviour
     [Tooltip("Pitch pivot (up/down) rotates around local X; weapon is parented here")] public Transform pitchBarrel;
 
     [Header("Limits (degrees)")]
-    [Tooltip("Total left+right arc; yaw clamped to ±(yawLimitDeg/2)")] public float yawLimitDeg = 60f;
+    [Tooltip("Total left+right arc; yaw clamped to +/- (yawLimitDeg/2)")] public float yawLimitDeg = 60f;
     [Tooltip("Max elevation above center")] public float pitchUpDeg = 15f;
     [Tooltip("Max depression below center")] public float pitchDownDeg = 15f;
 
@@ -63,8 +63,8 @@ public class WeaponMount : MonoBehaviour
     public CrewStation crewStation;
     [Tooltip("Creates a transient CrewStation at runtime when none is configured so the mount can participate in the crew system before dedicated mount points exist.")]
     public bool autoCreateCrewStation = true;
-    [Tooltip("Role specialization expected when a runtime station needs to be created automatically.")]
-    public CrewRole defaultCrewRole = CrewRole.Gunnery;
+    [Tooltip("Crew skill focus expected when a runtime station needs to be created automatically.")]
+    public CrewSkill defaultCrewSkill = CrewSkill.Gunnery;
     [Range(1, 4)] public int defaultCrewRequired = 1;
     [Range(1, 4)] public int defaultCrewMax = 2;
 
@@ -93,6 +93,7 @@ public class WeaponMount : MonoBehaviour
     Collider _lastLoggedTargetCollider;
     Collider _lastLoggedSensorCollider;
     bool _loggedCrewWarning;
+    float _lastAccuracyScale = -1f;
 
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
@@ -187,7 +188,10 @@ public class WeaponMount : MonoBehaviour
         EnsureMountId();
         EnsureCrewStation();
 
-        if (!HasOperationalCrew())
+        bool hasCrew = HasOperationalCrew();
+        UpdateCrewAccuracyBonus(hasCrew);
+
+        if (!hasCrew)
         {
             _hasBallisticInterceptSolution = false;
             _targetColliderInsideSensor = false;
@@ -355,7 +359,7 @@ public class WeaponMount : MonoBehaviour
         {
             float separation = EstimateColliderSeparation(targetAcquisitionCollider, targetCollider);
             reason = separation < float.MaxValue
-                ? $"No penetration (surface separation ≈ {separation:F3}m)"
+                ? $"No penetration (surface separation â‰ˆ {separation:F3}m)"
                 : "Unable to compute precise separation";
         }
         FinalizeAcquisitionState(inside, target, targetCollider, reason);
@@ -385,10 +389,10 @@ public class WeaponMount : MonoBehaviour
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = string.IsNullOrEmpty(mountId) ? name + " Crew" : mountId + " Crew";
-            crewStation.requiredRole = defaultCrewRole;
+            crewStation.primarySkill = defaultCrewSkill;
+            crewStation.trainingSkill = CrewSkill.None;
             crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
             crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
-            crewStation.allowGeneralists = true;
             crewStation.enforceRequirements = true;
         }
 
@@ -562,8 +566,9 @@ public class WeaponMount : MonoBehaviour
         if (currentLauncher != null)
         {
             currentLauncher.BindOwningMount(this);
+            currentLauncher.SetCrewAccuracyScale(1f);
         }
-        if (enableDebugLogging) LogDebug($"Mounting {weaponPrefab.name} → created {mountedWeapon.name}, launcher={currentLauncher}");
+        if (enableDebugLogging) LogDebug($"Mounting {weaponPrefab.name} -> created {mountedWeapon.name}, launcher={currentLauncher}");
         TryResolveTargetAcquisitionCollider();
         
         // Align launcher spawn axis (+Y) to mount forward (+Z)
@@ -587,9 +592,11 @@ public class WeaponMount : MonoBehaviour
         // Cache health if available (on launcher or any child)
         weaponHealth = mountedWeapon.GetComponentInChildren<Health>();
         isOccupied = true;
-            WeaponPersistenceManager.Instance.RegisterMountedWeapon(this);
+        WeaponPersistenceManager.Instance.RegisterMountedWeapon(this);
         if (enableDebugLogging) LogDebug($"Mount complete, isOccupied={isOccupied}, health={weaponHealth}");
         SyncAimTargetsToCurrentPose();
+        _lastAccuracyScale = -1f;
+        UpdateCrewAccuracyBonus(HasOperationalCrew());
         return true;
     }
 
@@ -605,12 +612,14 @@ public class WeaponMount : MonoBehaviour
         if (currentLauncher != null)
         {
             currentLauncher.BindOwningMount(null);
+            currentLauncher.SetCrewAccuracyScale(1f);
         }
         currentLauncher = null;
         isOccupied = false;
 
-            WeaponPersistenceManager.Instance.UnregisterMountedWeapon(this);
+        WeaponPersistenceManager.Instance.UnregisterMountedWeapon(this);
         weapon.transform.SetParent(null);
+        _lastAccuracyScale = -1f;
         return weapon;
     }
 
@@ -639,6 +648,28 @@ public class WeaponMount : MonoBehaviour
         if (pitchBarrel != null) pitchBarrel.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
     }
 
+    void UpdateCrewAccuracyBonus(bool hasCrew)
+    {
+        if (currentLauncher == null)
+            return;
+
+        float desiredScale = 1f;
+        if (hasCrew && crewStation != null)
+        {
+            float skill = crewStation.GetBestSkillLevel();
+            if (skill > 0f)
+            {
+                desiredScale = CrewSkillUtility.EvaluateAccuracyScale(skill);
+            }
+        }
+
+        if (_lastAccuracyScale >= 0f && Mathf.Approximately(desiredScale, _lastAccuracyScale))
+            return;
+
+        currentLauncher.SetCrewAccuracyScale(desiredScale);
+        _lastAccuracyScale = desiredScale;
+    }
+
     void FinalizeAcquisitionState(bool inside, Health target, Collider targetCollider, string reason)
     {
         bool previous = _targetColliderInsideSensor;
@@ -658,7 +689,7 @@ public class WeaponMount : MonoBehaviour
             string colliderName = targetCollider != null ? targetCollider.name : "null";
             string sensorName = targetAcquisitionCollider != null ? targetAcquisitionCollider.name : "null";
             bool sensorIsTrigger = targetAcquisitionCollider != null && targetAcquisitionCollider.isTrigger;
-            LogDebug($"Target acquisition update → inside={inside}, target={targetName}, collider={colliderName}, sensor={sensorName}, sensorIsTrigger={sensorIsTrigger}, reason={reason}");
+            LogDebug($"Target acquisition update â†’ inside={inside}, target={targetName}, collider={colliderName}, sensor={sensorName}, sensorIsTrigger={sensorIsTrigger}, reason={reason}");
             _lastLoggedSensorState = inside;
             _lastLoggedTarget = target;
             _lastLoggedTargetCollider = targetCollider;

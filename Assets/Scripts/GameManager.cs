@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Minimal GameManager singleton for state and simple spawning
 public class GameManager : MonoBehaviour
@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // basic spawn to get things moving — expand later
+        // basic spawn to get things moving â€” expand later
         if (enemyPrefab != null && enemySpawnPoints != null && enemySpawnPoints.Length > 0)
         {
             foreach (var sp in enemySpawnPoints)

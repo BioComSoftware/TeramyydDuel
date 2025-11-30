@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Overhead view: follows ship at a fixed height with persistent X/Z offset and simple panning.
 // - Starts directly above the ship at heightAboveShip.

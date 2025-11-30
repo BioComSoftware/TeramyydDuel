@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Smooth follow camera for the player aircraft.
 // Attach to the Main Camera and assign the player's transform as Target.

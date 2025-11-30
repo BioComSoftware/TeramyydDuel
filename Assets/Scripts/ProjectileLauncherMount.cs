@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Specialized mount for ProjectileLauncher-based weapons (e.g., Cannon).
 // Designer setup:
@@ -24,7 +24,7 @@ public class ProjectileLauncherMount : MonoBehaviour
     public Transform pitchBarrel;
 
     [Header("Limits (degrees)")]
-    [Tooltip("Total left+right arc. Current yaw is clamped to ±(yawLimitDeg/2) around mount forward.")]
+    [Tooltip("Total left+right arc. Current yaw is clamped to Â±(yawLimitDeg/2) around mount forward.")]
     public float yawLimitDeg = 45f;
     [Tooltip("Maximum degrees the barrel can elevate above center.")]
     public float pitchUpDeg = 15f;

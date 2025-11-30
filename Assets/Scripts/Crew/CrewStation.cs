@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,11 +11,17 @@ public class CrewStation : MonoBehaviour
     public string displayName = "Crew Station";
 
     [Header("Requirements")]
-    public CrewRole requiredRole = CrewRole.General;
-    [Tooltip("When true, any crew member may fill this station regardless of specialization.")]
-    public bool allowGeneralists = true;
+    public CrewSkill primarySkill = CrewSkill.Gunnery;
+    [Tooltip("Minimum skill level required to accept an assignment.")]
+    [Min(1f)] public float minimumSkillLevel = 1f;
     [Range(0, 4)] public int minimumCrewRequired = 1;
     [Range(1, 4)] public int maximumCrewAllowed = 1;
+
+    [Header("Training")]
+    [Tooltip("Skill used for progression when someone operates this station. Defaults to Primary Skill.")]
+    public CrewSkill trainingSkill = CrewSkill.None;
+    [Tooltip("Multiplier for how quickly stationed crew gain experience here.")]
+    public float skillGainMultiplier = 1f;
 
     [Header("Status")] public bool enforceRequirements = true;
 
@@ -72,7 +78,8 @@ public class CrewStation : MonoBehaviour
         if (_assignedCrew.Count >= maximumCrewAllowed)
             return false;
 
-        if (!allowGeneralists && member.specialization != requiredRole)
+        CrewSkill skill = primarySkill;
+        if (skill != CrewSkill.None && member.GetSkillLevel(skill) < minimumSkillLevel)
             return false;
 
         return true;
@@ -85,7 +92,7 @@ public class CrewStation : MonoBehaviour
 
         _assignedCrew.Add(member);
         member.AssignedStation = this;
-        member.PendingStationId = stationId;
+        member.PendingStationId = string.Empty;
     }
 
     internal void RemoveCrewInternal(CrewMember member)
@@ -99,6 +106,7 @@ public class CrewStation : MonoBehaviour
             {
                 member.AssignedStation = null;
             }
+            member.PendingStationId = stationId;
         }
     }
 
@@ -108,5 +116,23 @@ public class CrewStation : MonoBehaviour
             return;
 
         stationId = $"station_{Guid.NewGuid().ToString("N")}";
+    }
+
+    public float GetBestSkillLevel()
+    {
+        CrewSkill skill = primarySkill;
+        if (skill == CrewSkill.None || _assignedCrew.Count == 0)
+            return 0f;
+
+        float best = 0f;
+        foreach (var crew in _assignedCrew)
+        {
+            if (crew == null)
+                continue;
+
+            best = Mathf.Max(best, crew.GetSkillLevel(skill));
+        }
+
+        return best;
     }
 }

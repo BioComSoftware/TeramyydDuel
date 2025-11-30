@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -30,6 +30,7 @@ public class CrewManager : MonoBehaviour
     public bool enforceCrewRequirements = false;
 
     public IEnumerable<CrewMember> RegisteredCrew => _crewById.Values;
+    public IEnumerable<CrewStation> RegisteredStations => _stationsById.Values;
 
     readonly Dictionary<string, CrewMember> _crewById = new Dictionary<string, CrewMember>();
     readonly Dictionary<string, CrewStation> _stationsById = new Dictionary<string, CrewStation>();
@@ -213,6 +214,17 @@ public class CrewManager : MonoBehaviour
             return false;
 
         return _stationsById.TryGetValue(stationId, out var station) && station.HasRequiredCrew;
+    }
+
+    public bool TryGetStation(string stationId, out CrewStation station)
+    {
+        if (string.IsNullOrEmpty(stationId))
+        {
+            station = null;
+            return false;
+        }
+
+        return _stationsById.TryGetValue(stationId, out station);
     }
 
     public IEnumerable<CrewMember> GetUnassignedCrew()

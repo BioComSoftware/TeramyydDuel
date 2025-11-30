@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Slides a lift-device temperature strip so the pixel that matches the
@@ -12,7 +12,7 @@ public class LiftDeviceTemperatureGauge : MonoBehaviour
     [Tooltip("AntiGravityDevice providing CurrentTemperature readings.")]
     public AntiGravityDevice targetLiftDevice;
 
-    [Header("Temperature Range (°F)")]
+    [Header("Temperature Range (Â°F)")]
     [Tooltip("Minimum temperature mapped to the start of the strip (usually 0).")]
     public float minTemperature = 0f;
 

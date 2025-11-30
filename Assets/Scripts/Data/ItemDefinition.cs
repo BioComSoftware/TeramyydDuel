@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [CreateAssetMenu(menuName = "Teramyyd/Items/Item Definition", fileName = "ItemDefinition")]
 public class ItemDefinition : ScriptableObject

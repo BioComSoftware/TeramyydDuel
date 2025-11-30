@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [CreateAssetMenu(menuName = "Teramyyd/Items/Weapon Definition", fileName = "WeaponDefinition")]
 public class WeaponDefinition : ScriptableObject

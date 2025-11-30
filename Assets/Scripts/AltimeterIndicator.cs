@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Altimeter - Three rotating hands for 10s, 100s, and 1000s of meters.
@@ -31,7 +31,7 @@ public class AltimeterIndicator : MonoBehaviour
     public ShipCharacteristics shipCharacteristics;
     
     [Header("Configuration")]
-    [Tooltip("Rotation at zero altitude (0° = top/12 o'clock = 0 position).")]
+    [Tooltip("Rotation at zero altitude (0Â° = top/12 o'clock = 0 position).")]
     public float zeroRotationDegrees = 0f;
     
     [Tooltip("Does the needle rotate clockwise (true) or counter-clockwise (false)?")]
@@ -81,23 +81,23 @@ public class AltimeterIndicator : MonoBehaviour
         // Calculate rotations for each hand on 0-9 scale
         // Each position represents one digit (0-9), so we map to 0-10 range (10 positions)
         
-        // 10s hand: 0-100 meters maps to 0-9 scale (0-360°)
+        // 10s hand: 0-100 meters maps to 0-9 scale (0-360Â°)
         // Position 0 = 0-9m, Position 1 = 10-19m, Position 9 = 90-99m
         float tens = (currentAltitudeMeters % 100f) / 10f; // 0.0 to 10.0 (maps to 0-9 positions)
         
-        // 100s hand: 0-1000 meters maps to 0-9 scale (0-360°)
+        // 100s hand: 0-1000 meters maps to 0-9 scale (0-360Â°)
         // Position 0 = 0-99m, Position 1 = 100-199m, Position 9 = 900-999m
         float hundreds = (currentAltitudeMeters % 1000f) / 100f; // 0.0 to 10.0
         
-        // 1000s hand: 0-10000 meters maps to 0-9 scale (0-360°)
+        // 1000s hand: 0-10000 meters maps to 0-9 scale (0-360Â°)
         // Position 0 = 0-999m, Position 1 = 1000-1999m, Position 9 = 9000-9999m
         float thousands = (currentAltitudeMeters % 10000f) / 1000f; // 0.0 to 10.0
         
-        // Convert to degrees (0-10 maps to 0-360°)
+        // Convert to degrees (0-10 maps to 0-360Â°)
         // Note: We use 10 positions for 0-9 scale (position between 9 and 0)
         if (rotateClockwise)
         {
-            targetTensRotation = zeroRotationDegrees + (tens * 36f); // 36° per digit (360/10)
+            targetTensRotation = zeroRotationDegrees + (tens * 36f); // 36Â° per digit (360/10)
             targetHundredsRotation = zeroRotationDegrees + (hundreds * 36f);
             targetThousandsRotation = zeroRotationDegrees + (thousands * 36f);
         }

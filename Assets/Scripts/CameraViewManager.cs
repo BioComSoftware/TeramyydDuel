@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Manages three camera views (Bridge, Follow, Overhead) using a single Camera + CameraMove.
 // Switch views with F1 (Bridge), F2 (Follow), F3 (Overhead) by default.
@@ -36,7 +36,7 @@ public class CameraViewManager : MonoBehaviour
     [Header("Follow View Settings")]
     [Tooltip("Default orbit distance when entering Follow view (used if no followMount or mount is at target)")] 
     public float followDefaultDistance = 18f;
-    [Tooltip("Default pitch angle (degrees) when entering Follow view; 0=horizon, 30=looking down 30°")] 
+    [Tooltip("Default pitch angle (degrees) when entering Follow view; 0=horizon, 30=looking down 30Â°")] 
     public float followDefaultPitch = 25f;
     
     public enum FollowAimMode { LookAtTargetCenter, UseMountForward, LookAtTargetAhead }

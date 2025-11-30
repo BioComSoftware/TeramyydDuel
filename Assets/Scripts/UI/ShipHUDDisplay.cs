@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -13,7 +13,7 @@ public class ShipHUDDisplay : MonoBehaviour
     static Sprite s_SolidSprite;
     static Texture2D s_SolidTexture;
 
-    [Header("Weapon Type → Sprite Mappings")]
+    [Header("Weapon Type â†’ Sprite Mappings")]
     [Tooltip("Map weapon type strings (e.g., 'cannon') to HUD sprites.")]
     public WeaponSpriteMapping[] weaponSpriteMappings;
 
@@ -165,7 +165,7 @@ public class ShipHUDDisplay : MonoBehaviour
                 bool hasTarget = mount != null && mount.HasSelectedTarget;
                 bool insideSensor = mount != null && mount.HasTargetInsideAcquisitionCollider;
                 bool hasSolution = mount != null && mount.HasValidFiringSolution;
-                LogDebug($"TargetNotAcquired → {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, InsideSensor={insideSensor}, HasSolution={hasSolution})");
+                LogDebug($"TargetNotAcquired â†’ {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, InsideSensor={insideSensor}, HasSolution={hasSolution})");
             }
         }
 

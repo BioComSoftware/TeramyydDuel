@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Procedurally builds an equilateral triangular prism and assigns it to a MeshCollider.
 // Useful when you need a simple triangle-shaped 3D collider.

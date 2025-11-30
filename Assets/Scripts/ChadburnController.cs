@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
@@ -7,9 +7,9 @@ using UnityEngine.EventSystems;
 /// Allows player to drag a handle to set engine speed ahead or astern.
 /// 
 /// Handle Positions:
-/// - 0° (up) = Full Stop
-/// - 1° to 100° clockwise = 1% to 100% ahead (forward)
-/// - 1° to 100° counter-clockwise (359° to 260°) = 1% to 100% astern (reverse)
+/// - 0Â° (up) = Full Stop
+/// - 1Â° to 100Â° clockwise = 1% to 100% ahead (forward)
+/// - 1Â° to 100Â° counter-clockwise (359Â° to 260Â°) = 1% to 100% astern (reverse)
 /// 
 /// Integrates with ship max speed and engine power to calculate requested speed.
 /// </summary>
@@ -134,7 +134,7 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         
         if (debugLog)
         {
-            FileLogger.Log($"Chadburn initialized - Max Rotation: ±{maxRotationDegrees}°, Engine: {(targetEngine != null ? targetEngine.gameObject.name : "None")}", "Chadburn");
+            FileLogger.Log($"Chadburn initialized - Max Rotation: Â±{maxRotationDegrees}Â°, Engine: {(targetEngine != null ? targetEngine.gameObject.name : "None")}", "Chadburn");
         }
     }
     
@@ -148,7 +148,7 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         
         if (debugLog)
         {
-            FileLogger.Log($"Chadburn drag started at {_currentRotation:F1}°", "Chadburn");
+            FileLogger.Log($"Chadburn drag started at {_currentRotation:F1}Â°", "Chadburn");
         }
     }
     
@@ -210,13 +210,13 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         
         if (debugLog)
         {
-            FileLogger.Log($"Chadburn drag ended at {_currentRotation:F1}° ({_currentPercentage:F0}% {(_isAhead ? "AHEAD" : _isAstern ? "ASTERN" : "STOP")})", "Chadburn");
+            FileLogger.Log($"Chadburn drag ended at {_currentRotation:F1}Â° ({_currentPercentage:F0}% {(_isAhead ? "AHEAD" : _isAstern ? "ASTERN" : "STOP")})", "Chadburn");
         }
     }
     
     /// <summary>
     /// Set the handle rotation and update engine commands.
-    /// Dead zone: ±5° around center is considered STOP.
+    /// Dead zone: Â±5Â° around center is considered STOP.
     /// </summary>
     /// <param name="angleDegrees">Angle in degrees: 0 = stop, positive = ahead, negative = astern</param>
     public void SetRotation(float angleDegrees)
@@ -230,7 +230,7 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
             handleTransform.localRotation = Quaternion.Euler(0f, 0f, -_currentRotation); // Negative for clockwise = forward
         }
         
-        // Apply 5° dead zone around center
+        // Apply 5Â° dead zone around center
         const float DEAD_ZONE = 5f;
         float effectiveRotation = _currentRotation;
         
@@ -287,7 +287,7 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
             string status = _isAhead ? $"AHEAD {_requestedSpeedKnots:F1}kt" :
                            _isAstern ? $"ASTERN {_requestedSpeedKnots:F1}kt" :
                            "STOP";
-            FileLogger.Log($"Chadburn: {_currentRotation:F1}° → {status} ({_currentPercentage:F0}%)", "Chadburn");
+            FileLogger.Log($"Chadburn: {_currentRotation:F1}Â° â†’ {status} ({_currentPercentage:F0}%)", "Chadburn");
             lastRotation = _currentRotation;
         }
     }
@@ -315,7 +315,7 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
     }
     
     /// <summary>
-    /// Reset handle to stop position (0°).
+    /// Reset handle to stop position (0Â°).
     /// </summary>
     public void ResetToStop()
     {

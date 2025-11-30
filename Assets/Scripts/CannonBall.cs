@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Cannon-specific projectile with explosion + shrapnel on impact.
 [AddComponentMenu("Teramyyd/Weapons/CannonBall")]

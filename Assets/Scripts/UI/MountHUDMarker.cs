@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Simple component attached to each weapon mount GameObject.
 // Defines where and how this mount appears on the ship HUD.

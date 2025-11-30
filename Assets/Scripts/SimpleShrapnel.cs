@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Simple shrapnel behavior - flies, damages on impact, then destroys itself.

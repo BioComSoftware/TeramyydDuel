@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Attach this to the Ship root for quick testing. On Start, it finds all
 // ProjectileLauncherMounts in children and mounts the provided prefab into any

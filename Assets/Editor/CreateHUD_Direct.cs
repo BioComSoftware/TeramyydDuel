@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -60,7 +60,7 @@ public static class CreateHUD_Direct
         var gearTextGO = new GameObject("GearText");
         gearTextGO.transform.SetParent(settingsGO.transform, false);
         var gearText = gearTextGO.AddComponent<Text>();
-        gearText.text = "⚙";
+        gearText.text = "âš™";
         gearText.fontSize = 72;
         gearText.color = Color.white;
         gearText.alignment = TextAnchor.MiddleCenter;

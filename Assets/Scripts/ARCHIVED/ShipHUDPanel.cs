@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -123,7 +123,7 @@ public class ShipHUDPanel : MonoBehaviour
     {
         if (rep == null || markersRoot == null) return;
 
-        // Build a lookup of live mounts by id → (occupied, typeKey)
+        // Build a lookup of live mounts by id â†’ (occupied, typeKey)
         Transform searchRoot = rep.mountSearchRoot != null ? rep.mountSearchRoot : rep.transform.root;
         var mounts1 = searchRoot.GetComponentsInChildren<WeaponMount>(true);
         var mounts2 = searchRoot.GetComponentsInChildren<ProjectileLauncherMount>(true);
@@ -180,7 +180,7 @@ public class ShipHUDPanel : MonoBehaviour
             }
             
             mountInfo[m.mountId] = (occ, typeKey);
-            if (debugLog) Debug.Log($"[HUD] → Result: occupied={occ}, typeKey='{typeKey}'");
+            if (debugLog) Debug.Log($"[HUD] â†’ Result: occupied={occ}, typeKey='{typeKey}'");
         }
         foreach (var m in mounts2)
         {
@@ -299,7 +299,7 @@ public class ShipHUDPanel : MonoBehaviour
 
     static string ResolveTypeKey(string declaredType, GameObject launcherObject, string launcherTypeName)
     {
-        // Priority: declared mount type → prefab name → component type name
+        // Priority: declared mount type â†’ prefab name â†’ component type name
         string k = declaredType;
         if (string.IsNullOrEmpty(k) && launcherObject != null) k = launcherObject.name;
         if (string.IsNullOrEmpty(k) && !string.IsNullOrEmpty(launcherTypeName)) k = launcherTypeName;

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Wing Leveler Indicator - Shows ship's roll and pitch attitude.
@@ -8,12 +8,12 @@ using UnityEngine;
 /// The wing leveler image represents the ship's current attitude (NOT trajectory).
 /// 
 /// ROLL: Wing image rotates to match ship roll
-///   - Ship rolled 30° left → Image rotates 30° counter-clockwise
-///   - Ship rolled 10° right → Image rotates 10° clockwise
+///   - Ship rolled 30Â° left â†’ Image rotates 30Â° counter-clockwise
+///   - Ship rolled 10Â° right â†’ Image rotates 10Â° clockwise
 /// 
 /// PITCH: Wing image translates vertically to match ship pitch
-///   - Ship pitched 30° nose-up → Image moves up (e.g., 90 pixels at 3px/degree)
-///   - Ship pitched 30° nose-down → Image moves down (e.g., 90 pixels at 3px/degree)
+///   - Ship pitched 30Â° nose-up â†’ Image moves up (e.g., 90 pixels at 3px/degree)
+///   - Ship pitched 30Â° nose-down â†’ Image moves down (e.g., 90 pixels at 3px/degree)
 /// 
 /// Reads attitude from ShipCharacteristics.currentRollDegrees and currentPitchDegrees.
 /// </summary>
@@ -28,7 +28,7 @@ public class WingLevelerIndicator : MonoBehaviour
     public ShipCharacteristics shipCharacteristics;
     
     [Header("Pitch Configuration")]
-    [Tooltip("Pixels to move vertically per degree of pitch. E.g., 3 means 30° pitch = 90 pixels movement.")]
+    [Tooltip("Pixels to move vertically per degree of pitch. E.g., 3 means 30Â° pitch = 90 pixels movement.")]
     public float pixelsPerPitchDegree = 3f;
     
     [Header("Smoothing")]
@@ -97,15 +97,15 @@ public class WingLevelerIndicator : MonoBehaviour
         currentShipPitchDegrees = shipCharacteristics.currentPitchDegrees;
         
         // ROLL: Rotate wing image to match ship roll
-        // Ship rolled right (+) → Image rotates clockwise (+)
-        // Ship rolled left (-) → Image rotates counter-clockwise (-)
+        // Ship rolled right (+) â†’ Image rotates clockwise (+)
+        // Ship rolled left (-) â†’ Image rotates counter-clockwise (-)
         // Note: Unity UI uses Z-axis rotation where positive = counter-clockwise
         // So we negate the roll to make positive roll = clockwise rotation
         targetImageRotation = -currentShipRollDegrees;
         
         // PITCH: Move wing image vertically
-        // Ship pitched nose-up (+) → Image moves UP (+Y)
-        // Ship pitched nose-down (-) → Image moves DOWN (-Y)
+        // Ship pitched nose-up (+) â†’ Image moves UP (+Y)
+        // Ship pitched nose-down (-) â†’ Image moves DOWN (-Y)
         // Use ship's max pitch limits from ShipCharacteristics
         float maxPitch = Mathf.Max(shipCharacteristics.maxPitchUpDegrees, shipCharacteristics.maxPitchDownDegrees);
         float clampedPitch = Mathf.Clamp(currentShipPitchDegrees, -maxPitch, maxPitch);
@@ -135,8 +135,8 @@ public class WingLevelerIndicator : MonoBehaviour
         // Debug output
         if (debugLog && Time.frameCount % 60 == 0) // Every ~1 second at 60 FPS
         {
-            Debug.Log($"WingLeveler: Roll={currentShipRollDegrees:F1}° → Rotation={currentImageRotation:F1}°, " +
-                      $"Pitch={currentShipPitchDegrees:F1}° → Y Offset={pitchOffsetPixels:F1}px");
+            Debug.Log($"WingLeveler: Roll={currentShipRollDegrees:F1}Â° â†’ Rotation={currentImageRotation:F1}Â°, " +
+                      $"Pitch={currentShipPitchDegrees:F1}Â° â†’ Y Offset={pitchOffsetPixels:F1}px");
         }
     }
     
@@ -186,7 +186,7 @@ public class WingLevelerIndicator : MonoBehaviour
         
         if (debugLog)
         {
-            Debug.Log($"WingLeveler test attitude set: Roll={rollDegrees}°, Pitch={pitchDegrees}° → Offset={pitchOffsetPixels}px");
+            Debug.Log($"WingLeveler test attitude set: Roll={rollDegrees}Â°, Pitch={pitchDegrees}Â° â†’ Offset={pitchOffsetPixels}px");
         }
     }
 }

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
@@ -7,11 +7,11 @@ using UnityEngine.EventSystems;
 /// Allows player to drag a wheel to rotate the ship around its central axis.
 /// 
 /// Wheel Positions:
-/// - 0° (indicator pointing up) = No rotation
-/// - 1° to 90° clockwise = Rotate ship right (0.0167 to 1.5 degrees/sec)
-/// - 1° to 90° counter-clockwise = Rotate ship left (0.0167 to 1.5 degrees/sec)
+/// - 0Â° (indicator pointing up) = No rotation
+/// - 1Â° to 90Â° clockwise = Rotate ship right (0.0167 to 1.5 degrees/sec)
+/// - 1Â° to 90Â° counter-clockwise = Rotate ship left (0.0167 to 1.5 degrees/sec)
 /// 
-/// Dead zone: ±5° around center = no rotation
+/// Dead zone: Â±5Â° around center = no rotation
 /// </summary>
 [AddComponentMenu("Teramyyd/UI/Ship Wheel Controller")]
 public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -28,7 +28,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     [Range(45f, 180f)]
     public float maxWheelRotation = 90f;
     
-    [Tooltip("Dead zone in degrees around center (±degrees) where no rotation occurs.")]
+    [Tooltip("Dead zone in degrees around center (Â±degrees) where no rotation occurs.")]
     [Range(0f, 15f)]
     public float deadZoneDegrees = 5f;
     
@@ -139,7 +139,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
         
         if (debugLog)
         {
-            FileLogger.Log($"Ship Wheel initialized - Max Rotation: ±{maxWheelRotation}°, Max Speed: {maxRotationSpeed}°/s, Dead Zone: ±{deadZoneDegrees}°", "ShipWheel");
+            FileLogger.Log($"Ship Wheel initialized - Max Rotation: Â±{maxWheelRotation}Â°, Max Speed: {maxRotationSpeed}Â°/s, Dead Zone: Â±{deadZoneDegrees}Â°", "ShipWheel");
         }
     }
 
@@ -191,7 +191,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
         
         if (debugLog)
         {
-            FileLogger.Log($"Ship Wheel drag started at {_currentWheelRotation:F1}°", "ShipWheel");
+            FileLogger.Log($"Ship Wheel drag started at {_currentWheelRotation:F1}Â°", "ShipWheel");
         }
     }
     
@@ -263,13 +263,13 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
         if (debugLog)
         {
             string direction = _turningRight ? "RIGHT" : _turningLeft ? "LEFT" : "CENTER";
-            FileLogger.Log($"Ship Wheel drag ended at {_currentWheelRotation:F1}° ({direction}, {_shipRotationSpeed:F2}°/s)", "ShipWheel");
+            FileLogger.Log($"Ship Wheel drag ended at {_currentWheelRotation:F1}Â° ({direction}, {_shipRotationSpeed:F2}Â°/s)", "ShipWheel");
         }
     }
     
     /// <summary>
     /// Set the wheel rotation and calculate ship rotation speed.
-    /// Dead zone: ±deadZoneDegrees around center = no rotation.
+    /// Dead zone: Â±deadZoneDegrees around center = no rotation.
     /// </summary>
     /// <param name="angleDegrees">Angle in degrees: 0 = center, positive = right, negative = left</param>
     public void SetWheelRotation(float angleDegrees)
@@ -329,10 +329,10 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
         
         if (debugLog && Mathf.Abs(_currentWheelRotation - lastWheelRotation) > 5f) // Log every 5 degrees
         {
-            string status = _turningRight ? $"RIGHT {_shipRotationSpeed:F2}°/s" :
-                           _turningLeft ? $"LEFT {Mathf.Abs(_shipRotationSpeed):F2}°/s" :
+            string status = _turningRight ? $"RIGHT {_shipRotationSpeed:F2}Â°/s" :
+                           _turningLeft ? $"LEFT {Mathf.Abs(_shipRotationSpeed):F2}Â°/s" :
                            "CENTER";
-            FileLogger.Log($"Ship Wheel: {_currentWheelRotation:F1}° → {status}", "ShipWheel");
+            FileLogger.Log($"Ship Wheel: {_currentWheelRotation:F1}Â° â†’ {status}", "ShipWheel");
             lastWheelRotation = _currentWheelRotation;
         }
     }
@@ -362,7 +362,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     }
     
     /// <summary>
-    /// Reset wheel to center position (0°).
+    /// Reset wheel to center position (0Â°).
     /// </summary>
     public void ResetToCenter()
     {

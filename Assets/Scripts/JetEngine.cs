@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Serialization;
 
 /// <summary>
@@ -96,7 +96,7 @@ public class JetEngine : Engine
     /// <summary>
     /// Manage heat generation and dissipation.
     /// Heat generation scales with actual power utilization (0-1) and burn rate.
-    /// - ≤100% burn: linear response (utilization × burnFraction)
+    /// - â‰¤100% burn: linear response (utilization Ã— burnFraction)
     /// - >100% burn: exponential amplification to punish overburn ((burnFraction)^5)
     /// Dissipation: Constant rate, cannot go below minOperatingTemperature
     /// </summary>
@@ -140,8 +140,8 @@ public class JetEngine : Engine
             float percentOver = excessHeat / maxSafeTemperature;
             
             // 5th power damage scaling
-            // Example: 10% over (110°/100°) = 1.1^5 = 1.61× damage
-            //          20% over (120°/100°) = 1.2^5 = 2.49× damage
+            // Example: 10% over (110Â°/100Â°) = 1.1^5 = 1.61Ã— damage
+            //          20% over (120Â°/100Â°) = 1.2^5 = 2.49Ã— damage
             float damageMultiplier = Mathf.Pow(1f + percentOver, 5f);
             
             float overheatDamage = overheatDamageRatePerSecond * damageMultiplier * deltaTime;
@@ -152,7 +152,7 @@ public class JetEngine : Engine
             
             if (debugLog)
             {
-                FileLogger.Log($"{gameObject.name} taking {overheatDamage:F2} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature} ({percentOver * 100f:F1}% over, {damageMultiplier:F2}× multiplier)", "JetEngine");
+                FileLogger.Log($"{gameObject.name} taking {overheatDamage:F2} overheat damage! Temp: {_currentTemperature:F1}/{maxSafeTemperature} ({percentOver * 100f:F1}% over, {damageMultiplier:F2}Ã— multiplier)", "JetEngine");
             }
         }
     }

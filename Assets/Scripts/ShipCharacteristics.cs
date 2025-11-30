@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
@@ -9,7 +9,7 @@ using System.Collections.Generic;
 /// 
 /// Unity scale: 1 unit = 1 meter
 /// Gameplay area: 1000x1000x1000 units (1 cubic kilometer)
-/// Speed: measured in knots, where 10 knots ≈ 5 m/s in reality
+/// Speed: measured in knots, where 10 knots â‰ˆ 5 m/s in reality
 /// </summary>
 [AddComponentMenu("Teramyyd/Ship Systems/Ship Characteristics")]
 public class ShipCharacteristics : MonoBehaviour
@@ -19,12 +19,12 @@ public class ShipCharacteristics : MonoBehaviour
     public float shipWeightTons = 100f;
     
     [Tooltip("Drag coefficient (C_D) - resistance to movement (0 = no drag, higher = more resistance).")]
-    [InspectorName("Drag coefficient C₍D₎")]
+    [InspectorName("Drag coefficient Câ‚Dâ‚Ž")]
     [Range(0f, 5f)]
     public float dragCoefficient = 0.5f;
     
     [Tooltip("Reference frontal area (S_ref) used for drag calculations (square meters).")]
-    [InspectorName("Frontal Area S₍ref₎")]
+    [InspectorName("Frontal Area Sâ‚refâ‚Ž")]
     [Range(0.1f, 10000f)]
     public float frontalAreaSref = 50f;
 
@@ -388,7 +388,7 @@ public class ShipCharacteristics : MonoBehaviour
             float yawDiff = Mathf.Abs(_currentYawDegrees - _targetYawDegrees);
             if (rollDiff > 0.1f || pitchDiff > 0.1f || yawDiff > 0.1f)
             {
-                FileLogger.Log($"{gameObject.name} attitude - Roll: {_currentRollDegrees:F1}°→{_targetRollDegrees:F1}°, Pitch: {_currentPitchDegrees:F1}°→{_targetPitchDegrees:F1}°, Yaw: {_currentYawDegrees:F1}°→{_targetYawDegrees:F1}°", "ShipCharacteristics");
+                FileLogger.Log($"{gameObject.name} attitude - Roll: {_currentRollDegrees:F1}Â°â†’{_targetRollDegrees:F1}Â°, Pitch: {_currentPitchDegrees:F1}Â°â†’{_targetPitchDegrees:F1}Â°, Yaw: {_currentYawDegrees:F1}Â°â†’{_targetYawDegrees:F1}Â°", "ShipCharacteristics");
             }
         }
     }
@@ -404,7 +404,7 @@ public class ShipCharacteristics : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"{gameObject.name} roll target set to {rollDegrees:F1}° (current: {_currentRollDegrees:F1}°, velocity unchanged)", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} roll target set to {rollDegrees:F1}Â° (current: {_currentRollDegrees:F1}Â°, velocity unchanged)", "ShipCharacteristics");
         }
     }
     
@@ -419,7 +419,7 @@ public class ShipCharacteristics : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"{gameObject.name} pitch target set to {pitchDegrees:F1}° (current: {_currentPitchDegrees:F1}°, velocity unchanged)", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} pitch target set to {pitchDegrees:F1}Â° (current: {_currentPitchDegrees:F1}Â°, velocity unchanged)", "ShipCharacteristics");
         }
     }
     
@@ -433,7 +433,7 @@ public class ShipCharacteristics : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"{gameObject.name} yaw target set to {yawDegrees:F1}° (current: {_currentYawDegrees:F1}°, velocity unchanged)", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} yaw target set to {yawDegrees:F1}Â° (current: {_currentYawDegrees:F1}Â°, velocity unchanged)", "ShipCharacteristics");
         }
     }
     
@@ -449,7 +449,7 @@ public class ShipCharacteristics : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"{gameObject.name} attitude targets set to Roll:{rollDegrees:F1}° Pitch:{pitchDegrees:F1}° Yaw:{yawDegrees:F1}° (velocity unchanged)", "ShipCharacteristics");
+            FileLogger.Log($"{gameObject.name} attitude targets set to Roll:{rollDegrees:F1}Â° Pitch:{pitchDegrees:F1}Â° Yaw:{yawDegrees:F1}Â° (velocity unchanged)", "ShipCharacteristics");
         }
     }
     
@@ -467,7 +467,7 @@ public class ShipCharacteristics : MonoBehaviour
     }
     
     /// <summary>
-    /// Normalize angle to -180° to +180° range.
+    /// Normalize angle to -180Â° to +180Â° range.
     /// </summary>
     float NormalizeAngle(float angle)
     {

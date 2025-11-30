@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 /// <summary>
 /// Pitch control lever for ship attitude (visual orientation only).
-/// Starts at 90° (level flight). Up (toward 0°) = nose up, Down (toward 180°) = nose down.
+/// Starts at 90Â° (level flight). Up (toward 0Â°) = nose up, Down (toward 180Â°) = nose down.
 /// Asymmetric limits: maxPitchUpDegrees and maxPitchDownDegrees define lever range.
 /// Does NOT affect ship velocity, lift, or trajectory - purely visual attitude.
 /// 
@@ -14,7 +14,7 @@ using UnityEngine.EventSystems;
 [AddComponentMenu("Teramyyd/UI/Pitch Lever Controller")]
 public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    private const float LEVEL_FLIGHT_ANGLE = 90f; // Lever at 90° = ship level
+    private const float LEVEL_FLIGHT_ANGLE = 90f; // Lever at 90Â° = ship level
 
     [Header("References")]
     [Tooltip("The lever RectTransform that rotates (pivot at bottom).")]
@@ -24,11 +24,11 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
     public ShipCharacteristics targetShip;
 
     [Header("Pitch Limits")]
-    [Tooltip("Maximum nose-up pitch in degrees. Lever moves from 90° toward 0°.")]
+    [Tooltip("Maximum nose-up pitch in degrees. Lever moves from 90Â° toward 0Â°.")]
     [Range(5f, 90f)]
     public float maxPitchUpDegrees = 30f;
 
-    [Tooltip("Maximum nose-down pitch in degrees. Lever moves from 90° toward 180°.")]
+    [Tooltip("Maximum nose-down pitch in degrees. Lever moves from 90Â° toward 180Â°.")]
     [Range(5f, 90f)]
     public float maxPitchDownDegrees = 20f;
 
@@ -40,7 +40,7 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
     public float snapIncrement = 0f;
 
     [Header("Visual Feedback")]
-    [Tooltip("Lever color at level flight (90°).")]
+    [Tooltip("Lever color at level flight (90Â°).")]
     public Color levelColor = Color.white;
 
     [Tooltip("Lever color at maximum nose-up pitch.")]
@@ -125,11 +125,11 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
             
             if (debugLog)
             {
-                FileLogger.Log($"Pitch Lever controlling {targetShip.gameObject.name}, pitch range: +{maxPitchUpDegrees}° / -{maxPitchDownDegrees}°", "PitchLever");
+                FileLogger.Log($"Pitch Lever controlling {targetShip.gameObject.name}, pitch range: +{maxPitchUpDegrees}Â° / -{maxPitchDownDegrees}Â°", "PitchLever");
             }
         }
 
-        // Initialize at level flight (90°)
+        // Initialize at level flight (90Â°)
         SetLeverAngle(LEVEL_FLIGHT_ANGLE);
     }
 
@@ -148,7 +148,7 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
 
         if (debugLog)
         {
-            FileLogger.Log($"Pitch Lever limits: {_minLeverAngle:F1}° (max nose-up) to {_maxLeverAngle:F1}° (max nose-down), level at {LEVEL_FLIGHT_ANGLE}° (synced from ShipCharacteristics)", "PitchLever");
+            FileLogger.Log($"Pitch Lever limits: {_minLeverAngle:F1}Â° (max nose-up) to {_maxLeverAngle:F1}Â° (max nose-down), level at {LEVEL_FLIGHT_ANGLE}Â° (synced from ShipCharacteristics)", "PitchLever");
         }
     }
 
@@ -158,7 +158,7 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
 
         if (debugLog)
         {
-            FileLogger.Log($"Pitch Lever drag start at {_currentLeverAngle:F1}° (ship pitch: {_currentShipPitch:F1}°)", "PitchLever");
+            FileLogger.Log($"Pitch Lever drag start at {_currentLeverAngle:F1}Â° (ship pitch: {_currentShipPitch:F1}Â°)", "PitchLever");
         }
     }
 
@@ -210,14 +210,14 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
 
         if (debugLog)
         {
-            FileLogger.Log($"Pitch Lever drag end at {_currentLeverAngle:F1}° (ship pitch: {_currentShipPitch:F1}°)", "PitchLever");
+            FileLogger.Log($"Pitch Lever drag end at {_currentLeverAngle:F1}Â° (ship pitch: {_currentShipPitch:F1}Â°)", "PitchLever");
         }
     }
 
     /// <summary>
     /// Set lever angle and apply pitch to ship.
-    /// Lever angle maps to ship pitch: 90° = level, <90° = nose up, >90° = nose down.
-    /// Ship pitch = leverAngle - 90° (so 60° lever = +30° pitch, 110° lever = -20° pitch).
+    /// Lever angle maps to ship pitch: 90Â° = level, <90Â° = nose up, >90Â° = nose down.
+    /// Ship pitch = leverAngle - 90Â° (so 60Â° lever = +30Â° pitch, 110Â° lever = -20Â° pitch).
     /// </summary>
     public void SetLeverAngle(float angleDegrees)
     {
@@ -231,9 +231,9 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
         }
 
         // Convert lever angle to ship pitch angle
-        // Lever 90° = 0° pitch (level)
-        // Normal: Lever 60° = +30° pitch (nose up), Lever 110° = -20° pitch (nose down)
-        // Reversed: Lever 60° = -30° pitch (nose down), Lever 110° = +20° pitch (nose up)
+        // Lever 90Â° = 0Â° pitch (level)
+        // Normal: Lever 60Â° = +30Â° pitch (nose up), Lever 110Â° = -20Â° pitch (nose down)
+        // Reversed: Lever 60Â° = -30Â° pitch (nose down), Lever 110Â° = +20Â° pitch (nose up)
         float shipPitchAngle = reversePitchDirection ? 
             (_currentLeverAngle - LEVEL_FLIGHT_ANGLE) : 
             (LEVEL_FLIGHT_ANGLE - _currentLeverAngle);
@@ -256,9 +256,9 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
         if (debugLog && Mathf.Abs(_currentLeverAngle - lastLoggedAngle) >= 5f)
         {
             string status = IsLevelFlight ? "LEVEL FLIGHT" :
-                           IsPitchingUp ? $"NOSE UP {shipPitchAngle:F1}°" :
-                           $"NOSE DOWN {Mathf.Abs(shipPitchAngle):F1}°";
-            FileLogger.Log($"Pitch Lever: {_currentLeverAngle:F1}° → {status}", "PitchLever");
+                           IsPitchingUp ? $"NOSE UP {shipPitchAngle:F1}Â°" :
+                           $"NOSE DOWN {Mathf.Abs(shipPitchAngle):F1}Â°";
+            FileLogger.Log($"Pitch Lever: {_currentLeverAngle:F1}Â° â†’ {status}", "PitchLever");
             lastLoggedAngle = _currentLeverAngle;
         }
     }
@@ -290,7 +290,7 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
     }
 
     /// <summary>
-    /// Reset lever to level flight (90°).
+    /// Reset lever to level flight (90Â°).
     /// </summary>
     public void ResetToLevelFlight()
     {
@@ -318,13 +318,13 @@ public class PitchLeverController : MonoBehaviour, IBeginDragHandler, IDragHandl
         float angle;
         if (clampedPercent >= 0f)
         {
-            // Positive percentage = nose up (lever moves from 90° toward minLeverAngle)
+            // Positive percentage = nose up (lever moves from 90Â° toward minLeverAngle)
             float range = LEVEL_FLIGHT_ANGLE - _minLeverAngle;
             angle = LEVEL_FLIGHT_ANGLE - (range * clampedPercent / 100f);
         }
         else
         {
-            // Negative percentage = nose down (lever moves from 90° toward maxLeverAngle)
+            // Negative percentage = nose down (lever moves from 90Â° toward maxLeverAngle)
             float range = _maxLeverAngle - LEVEL_FLIGHT_ANGLE;
             angle = LEVEL_FLIGHT_ANGLE + (range * Mathf.Abs(clampedPercent) / 100f);
         }

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// ShipAttitudeController: Controls visual pitch and roll of airship.
@@ -50,7 +50,7 @@ public class ShipAttitudeController : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"ShipAttitudeController initialized - PitchRange: [{-maxPitchDown}° to {maxPitchUp}°], RollRange: [{-maxRoll}° to {maxRoll}°]", "ShipAttitudeController");
+            FileLogger.Log($"ShipAttitudeController initialized - PitchRange: [{-maxPitchDown}Â° to {maxPitchUp}Â°], RollRange: [{-maxRoll}Â° to {maxRoll}Â°]", "ShipAttitudeController");
         }
     }
     
@@ -78,7 +78,7 @@ public class ShipAttitudeController : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"Attitude: Pitch {_currentPitch:F1}° (target {_targetPitch:F1}°), Roll {_currentRoll:F1}° (target {_targetRoll:F1}°)", "ShipAttitudeController");
+            FileLogger.Log($"Attitude: Pitch {_currentPitch:F1}Â° (target {_targetPitch:F1}Â°), Roll {_currentRoll:F1}Â° (target {_targetRoll:F1}Â°)", "ShipAttitudeController");
         }
     }
     
@@ -99,7 +99,7 @@ public class ShipAttitudeController : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"Pitch commanded to {_targetPitch:F1}° (input: {pitchDegrees:F1}°)", "ShipAttitudeController");
+            FileLogger.Log($"Pitch commanded to {_targetPitch:F1}Â° (input: {pitchDegrees:F1}Â°)", "ShipAttitudeController");
         }
     }
     
@@ -132,7 +132,7 @@ public class ShipAttitudeController : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"Roll commanded to {_targetRoll:F1}° (input: {rollDegrees:F1}°)", "ShipAttitudeController");
+            FileLogger.Log($"Roll commanded to {_targetRoll:F1}Â° (input: {rollDegrees:F1}Â°)", "ShipAttitudeController");
         }
     }
     
@@ -146,7 +146,7 @@ public class ShipAttitudeController : MonoBehaviour
     }
     
     /// <summary>
-    /// Level the ship (return pitch and roll to 0°)
+    /// Level the ship (return pitch and roll to 0Â°)
     /// </summary>
     public void LevelShip()
     {
@@ -155,7 +155,7 @@ public class ShipAttitudeController : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log("Leveling ship - pitch and roll to 0°", "ShipAttitudeController");
+            FileLogger.Log("Leveling ship - pitch and roll to 0Â°", "ShipAttitudeController");
         }
     }
     

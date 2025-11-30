@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 /// <summary>
@@ -60,9 +60,9 @@ public static class BallisticsSolver
             return false;
 
             // Aim slightly upward even for downhill shots so gravity can arc the projectile back.
-            double thetaMin = Deg2Rad * 0.25; // 0.25° minimum
+            double thetaMin = Deg2Rad * 0.25; // 0.25Â° minimum
         double thetaMax = Math.Max(thetaMin, Math.Min(thetaMaxRad, Math.PI * 0.499));
-        const int angleSamples = 72; // ~0.2° resolution for 15° cap
+        const int angleSamples = 72; // ~0.2Â° resolution for 15Â° cap
 
         bool found = false;
         double bestTheta = 0.0;

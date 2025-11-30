@@ -327,6 +327,10 @@ float powerNeeded = antiGravLift.CalculatePowerForVelocity(2.0f); // 2 m/s climb
 - Authoring contract:
   - Keep Ship/Model/Mount and pivots at positive scale (1,1,1). Do not mirror axes.
   - Baseline pose: with yaw=0 and pitch=0, the mount’s +Z should be straight ahead; leave pivots at zero rotation in the prefab/scene.
+- Crew skill integration:
+  - On every Update the mount checks `crewStation.GetBestSkillLevel()` and feeds the result into `CrewSkillUtility.EvaluateAccuracyScale`.
+  - The computed multiplier is pushed into the mounted `ProjectileLauncher` through `SetCrewAccuracyScale`, scaling both `angleSpreadDegrees` and `speedJitterPercent` (1.0 = worst accuracy, 0.0 = perfect aim).
+  - Tune the launcher’s serialized spread/jitter as “untrained” baselines; the skill curve halves the penalty at skill 5, quarters it by skill 7, and removes it entirely at skill 10.
 
 ## ProjectileLauncherMount (specialized mount)
 - Same pivot/limit pattern as WeaponMount but intended specifically for ProjectileLauncher weapons.
@@ -344,28 +348,76 @@ unOnStart.
 ## Crew Systems
 
 ### Crew Components
-- **CrewRole (enum)**: Shared role IDs (`General`, `Gunnery`, `Navigation`, `DriveEngineering`, `LiftEngineering`). Assign the role that best matches what the station expects.
-- **CrewMember** (`Assets/Scripts/Crew/CrewMember.cs`): Attach to every crew prefab/icon. Requires `Health`. Key fields: `crewId` (leave blank for auto `crew_<guid>`), `displayName`, ratings (1–10) per discipline, `specialization` (preferred role), `initialStationId` (optional starting seat).
-- **CrewStation** (`Assets/Scripts/Crew/CrewStation.cs`): Add anywhere a crew member can operate (weapon icons, helm, engine room). Fields: `stationId` (use meaningful unique IDs), `requiredRole`, `allowGeneralists`, `minimumCrewRequired`, `maximumCrewAllowed`, `enforceRequirements`.
-- **CrewManager** (`Assets/Scripts/Crew/CrewManager.cs`): Singleton registry and assignment brain. Auto-spawns if missing. Handles `RegisterCrew`, `RegisterStation`, auto-matches unassigned crew, exposes queries like `RegisteredCrew`, `GetUnassignedCrew()`, `MeetsRequirement()` and helpers `TryAssignCrewToStation*`.
-- **CrewPersistenceManager** (`Assets/Scripts/Systems/CrewPersistenceManager.cs`): Saves crew IDs, stats, health, and station assignments to `Assets/Resources/CrewPersistence.json` (Editor) or `Application.persistentDataPath` (builds). Created automatically, marked `DontDestroyOnLoad`.
+- **CrewSkill (enum)**: Discipline identifiers used throughout the sim (`Gunnery`, `Navigation`, `Repair`, `PowerEngineering`, `LiftEngineering`, plus `None` for “no focus”). Skills are floats ranging from 1–10, but stations can demand any minimum value.
+- **CrewMember** (`Assets/Scripts/Crew/CrewMember.cs`): Attach to each crew prefab alongside `Health`. Key fields: `crewId` (auto `crew_<guid>` if blank), `displayName`, skill sliders for every discipline (no specialization flag anymore), `initialStationId`, and optional per-skill gain rates. At runtime the component tracks `AssignedStation`, `PendingStationId`, and handles training progress + persistence callbacks.
+- **CrewStation** (`Assets/Scripts/Crew/CrewStation.cs`): Place anywhere an interaction point exists. Configure `stationId`, `displayName`, `primarySkill`, `minimumSkillLevel`, `minimumCrewRequired`, `maximumCrewAllowed`, `enforceRequirements`, and optional training parameters (`trainingSkill`, `skillGainMultiplier`). The helper `GetBestSkillLevel()` is how systems query the top-performing operator on that station.
+- **CrewManager** (`Assets/Scripts/Crew/CrewManager.cs`): Singleton registry that wires stations and crew together, enforces min crew + skill thresholds, and exposes helper APIs such as `TryAssignCrewToStationId`, `RegisteredCrew`, and `GetUnassignedCrew()`. When `enforceCrewRequirements` is enabled it becomes the gatekeeper for engines, lifts, and weapon mounts.
+- **CrewPersistenceManager** (`Assets/Scripts/Systems/CrewPersistenceManager.cs`): Serializes skill floats, health, and assignments to `Assets/Resources/CrewPersistence.json` in the Editor (or `Application.persistentDataPath` in builds). Exists as a `DontDestroyOnLoad` singleton so leveling progress survives scene loads.
 
 ### Authoring Workflow
-1. **Prep crew prefabs**: Add `Health`, then `CrewMember`. Fill names/ratings/specializations; leave `crewId` blank unless you need deterministic IDs across variants.
+1. **Prep crew prefabs**: Add `Health`, then `CrewMember`. Fill the display name and all skill sliders (Gunnery/Nav/Repair/Power/Lift); leave `crewId` blank unless you need deterministic IDs across variants.
 2. **Place crew in the scene**: Drop crew prefabs anywhere under the ship. Physical hierarchy does not matter for assignments. Optionally set `initialStationId` to auto-seat them.
-3. **Create crew stations**: For every subsystem needing staff, add `CrewStation` (often as a child of the subsystem). Give stable `stationId`s (`Engine_Main_Crew`, `BowGun_Port`). Configure role + headcount.
-4. **Hook stations into systems**: `WeaponMount`, `Engine`, and `LiftDevice` each expose `crewStation`, `autoCreateCrewStation`, `defaultCrewRole`, and min/max fields.
-  - Preferred: author a dedicated `CrewStation` object, assign it, and disable `autoCreateCrewStation`.
-  - Temporary/testing: leave reference empty with `autoCreateCrewStation = true` so the component spawns a station at runtime using the defaults.
+3. **Create crew stations**: For every subsystem needing staff, add `CrewStation` (often as a child of the subsystem). Give stable `stationId`s (`Engine_Main_Crew`, `BowGun_Port`). Configure `primarySkill`, `minimumSkillLevel`, and headcount limits.
+4. **Hook stations into systems**: `WeaponMount`, `Engine`, and `LiftDevice` expose `crewStation`, `autoCreateCrewStation`, `defaultCrewSkill`, and min/max crew fields.
+  - Preferred: author a dedicated `CrewStation`, set `primarySkill` + `minimumSkillLevel`, assign it to the component, and disable `autoCreateCrewStation` once the scene object is stable.
+  - Temporary/testing: leave the reference empty with `autoCreateCrewStation = true`. The component will spawn a basic station that targets `defaultCrewSkill`, requires at least `defaultCrewRequired` crew, and enforces minimum skill 1. Tweak those defaults per prefab so designers know which skill improves that subsystem.
 5. **Verify runtime wiring**: Enter Play Mode. The first crew/station registration spawns `CrewManager`. Watch the Console (set `CrewManager.debugLog = true`) to confirm registrations. Use `CrewManager.GetUnassignedCrew()` in a temporary `Debug.Log` to see who still needs a seat.
 6. **UI/interaction**: The HUD or in-world consoles should call `CrewManager.TryAssignCrewToStationId(crew, stationId)` when the designer drags/drops crew icons. The manager queues requests if the station loads later.
 
+#### Skill Wiring Checklist
+1. **Author station requirements**
+  - Decide which skill drives the subsystem bonus (`Gunnery`, `Navigation`, `Repair`, `PowerEngineering`, `LiftEngineering`).
+  - On each `CrewStation`, set `primarySkill` accordingly and enter the minimum acceptable skill (e.g., 3.5 for training cannons, 6+ for capital mounts). If the station should train a different discipline (e.g., Navigation station trains Repair for triage), set `trainingSkill`; otherwise leave it at `None` to default to the primary.
+2. **Link stations to gameplay scripts**
+  - Assign the station reference directly in the inspector for `WeaponMount`, `Engine`, `JetEngine`, `LiftDevice`, `AntiGravityDevice`, etc. If the system lives on a spawned prefab, enable `autoCreateCrewStation` and configure `defaultCrewSkill`, `defaultCrewRequired`, and `defaultCrewMax` so the runtime-generated station mirrors your intent.
+  - For weapon prefabs, no additional wiring is required: `WeaponMount` automatically queries `crewStation.GetBestSkillLevel()` and pushes the resulting accuracy multiplier into the attached `ProjectileLauncher`.
+3. **Verify bonuses in Play Mode**
+  - Select the mount and watch the inspector-only `currentLauncher` field. When crew sit down, `WeaponMount` logs the applied accuracy scale if `enableDebugLogging` is true.
+  - With the HUD running, drag crew of different skill levels onto the mount and observe how `angleSpreadDegrees`/`speedJitterPercent` shrink (value stream is visible in the `ProjectileLauncher` inspector while in play).
+  - Repeat the process for engines/lift devices once their subsystems consume skill curves (power allocation, repair speed, etc.).
+
 ### Persistence & Save Data
-- Snapshot format (`CrewPersistenceSnapshot`) contains version, `lastSavedUtc`, and an array of `CrewMemberState` values (id, stats, specialization, float health, assigned station ID).
+- Snapshot format (`CrewPersistenceSnapshot`) contains version, `lastSavedUtc`, and an array of `CrewMemberState` records (id, skill floats, health, current + pending station IDs).
 - Autosave every `saveIntervalSeconds` (default 30). Toggle `autoSaveEnabled` while profiling to reduce IO noise.
 - Editor data path: `Assets/Resources/CrewPersistence.json`. Delete to reset roster; a new file is generated at next launch.
 - Build data path: `Application.persistentDataPath/CrewPersistence.json`. Surface a debug button to nuke saves when needed.
 - Fractional health from `Health` is persisted, so injuries carry forward. Death currently sets `currentHealth = 0` but leaves the roster entry intact for future revival systems.
+
+#### JSON Layout
+Each entry under `crewMembers` mirrors `CrewMemberState` and must include:
+
+| Field | Description |
+| --- | --- |
+| `crewId` | Unique identifier (auto-filled if left blank in the scene, but required in the JSON seed). |
+| `displayName` | UI-friendly name. |
+| `gunnery`, `navigation`, `repair`, `powerEngineering`, `liftEngineering` | Float skills (1–10 recommended) for every discipline. |
+| `maxHealth`, `currentHealth` | Health values copied to the `Health` component at load time. |
+| `assignedStationId` | Station to re-seat on load. Use empty string to start unassigned. |
+
+**Example (`Assets/Resources/CrewPersistence.json`)**
+
+```json
+{
+  "version": "1.0.0",
+  "lastSavedUtc": "2025-11-30T00:00:00.0000000Z",
+  "crewMembers": [
+    {
+      "crewId": "crew_default_quartermaster",
+      "displayName": "Quartermaster Ryn Calder",
+      "gunnery": 4.5,
+      "navigation": 6.2,
+      "repair": 5.0,
+      "powerEngineering": 3.8,
+      "liftEngineering": 4.1,
+      "maxHealth": 100.0,
+      "currentHealth": 100.0,
+      "assignedStationId": ""
+    }
+  ]
+}
+```
+
+Drop-in replacements should follow this structure; the persistence manager will auto-append new crew as they appear in scenes and update the file whenever skills/health change.
 
 ### Runtime Usage & Troubleshooting
 - **Requirement enforcement**: Global on `CrewManager.enforceCrewRequirements`. When true, engines, lift devices, and weapon mounts call `CrewManager.MeetsRequirement()` each update; when false, requirements short-circuit for rapid iteration. You can also toggle each `CrewStation.enforceRequirements` for optional redundancy seats.
@@ -373,7 +425,45 @@ unOnStart.
 - **Missing stations**: If a crew member’s `initialStationId` doesn’t exist yet, the manager stores it in `PendingStationId` and keeps retrying until a matching station registers. Use consistent IDs baked into prefabs to avoid typos.
 - **UI hookup tips**: Build crew lists from `CrewManager.RegisteredCrew`. Idle crew = entries where `AssignedStation == null`. When dragging to a slot, call `TryAssignCrewToStationId`; the manager validates requirements and handles unassigning from previous stations.
 - **Testing shortcuts**: Enable `debugLog` on `WeaponMount`, `Engine`, or `LiftDevice` to see explicit “awaiting crew” vs “requirements satisfied” logs. Expose temporary inspector buttons to call `CrewManager.UnassignCrew()` for fast iteration. Toggle the global enforcement flag mid-play to verify fallback behavior.
-- **Extensibility hooks**: Ratings remain ints (1–10). Normalize (`rating / 10f`) before feeding accuracy/spread/thrust modifiers. `CrewStation.maximumCrewAllowed > minimumCrewRequired` lets you script redundancy (second crew grants a buff but is optional).
+- **Extensibility hooks**: Skills are floats by design (defaults land between 1–10). Use `CrewSkillUtility` helpers (e.g., `EvaluateAccuracyScale`) when translating skills into modifiers so tuning stays consistent. `CrewStation.maximumCrewAllowed > minimumCrewRequired` still supports redundancy bonuses (e.g., second engineer adds a passive buff but is optional).
+
+### HUD Roster & Drag/Drop Setup
+1. **Build the crew icon prefab** (Assets/UI/Prefabs/CrewHUDCrewIcon?):
+  1. UI → Image (100x100) = portrait background.
+  2. Add child Text for `nameLabel` (top), another Text for `specializationLabel` (bottom-right, shows the dominant skill + value), optional overlay Image/Text for `pendingBackground`/`pendingText` (hidden by default).
+  3. Add `CrewHUDCrewIcon` component, wire the references, assign optional role sprites (General/Gunnery/Navigation/Repair/Power/Lift icons).
+  4. Add `CanvasGroup` (required by script) and mark Raycast Target on Image true so dragging works.
+2. **Create the tooltip panel**:
+  1. UI → Panel next to the ship outline, add `CrewHUDTooltip`.
+  2. Inside panel, add Text objects for Name, Skill Label, Stats (`Gun xx / Nav xx` line), Current Station, and Health; add an Image with Image Type = Filled for `healthFill`.
+  3. Assign these references on `CrewHUDTooltip`, drag the panel root into the `root` field, leave it disabled in the scene.
+3. **Add `CrewHUDController` to the HUD canvas**:
+  1. Select the Ship HUD Canvas → Add Component → `CrewHUDController`.
+  2. Set `Unassigned Container` to a vertical layout group sitting beside the ship outline (these slots are the “crew pool”).
+  3. Add `CrewHUDUnassignedZone` to the same RectTransform so drops there unassign crew; point its `highlightImage` to a semi-transparent frame.
+  4. Assign the crew icon prefab to `Icon Prefab`, hook the tooltip, and (optionally) specify a dedicated drag canvas if your HUD uses nested canvases.
+4. **Author ship-outline slots**:
+  1. For every subsystem that wants visible crew, duplicate a small square (`50x50`) next to the relevant element on the ship outline.
+  2. Add `CrewHUDStationSlot` to that square, drag its `iconAnchor` to the inner image (so the portrait scales inside), and point `highlightImage` to a subtle border.
+  3. Enter the actual `CrewStation` reference if the scene object is accessible; otherwise type the `stationIdOverride` string (e.g., `Mount_Bow_Crew`).
+  4. Optional: create an empty child under the 3D ship mesh, position it where the real crew should stand, and assign it to `worldAnchor`. This lets the game spawn live crew objects later using `CrewHUDController.OnVisualAnchorChanged`.
+5. **Connect `CrewHUDController` fields**:
+  - `Unassigned Container`: the left/right column hosting free crew slots.
+  - `Unassigned Drop Zone`: the same RectTransform with `CrewHUDUnassignedZone` on it.
+  - `Ship Slots`: leave empty to auto-discover, or drag explicit `CrewHUDStationSlot` entries if you prefer manual ordering.
+  - `Tooltip`: drag the tooltip panel you made earlier.
+6. **Playtest flow**:
+  1. Enter Play Mode → the controller instantiates one icon per `CrewManager.RegisteredCrew`.
+  2. Hover over any portrait to see stats, dominant skill label, current/pending station, and live health pulled from the `Health` component.
+  3. Drag a portrait from the pool onto a ship slot → the controller calls `CrewManager.TryAssignCrewToStation` and, on success, snaps the shrunken portrait into that slot.
+  4. Drag from a ship slot back to the pool → drops onto the unassigned zone, which calls `CrewManager.UnassignCrew` and frees the subsystem.
+  5. Pending stations (station exists later or is outside the HUD) tint the icon with the `pendingBackground` color and display “Waiting for <stationId>`.
+7. **3D crew hand-off (planning for later)**:
+  - Subscribe to `CrewHUDController.OnVisualAnchorChanged` to know when a crew member gains/loses a slot. The event passes `(CrewMember crew, CrewStation station, Transform worldAnchor)`.
+  - Spawn/enable a 3D crew avatar at the provided `worldAnchor` so the battlefield representation mirrors the HUD assignment. On pool/unassign, despawn or park the avatar at a neutral location.
+  - `CrewManager.RegisteredStations` and `CrewManager.TryGetStation(stationId, out CrewStation)` exist so authoring tools (or later mission scripts) can query the same data without digging into dictionaries.
+
+> **Quick sanity checklist**: before playtesting, make sure the HUD canvas has an EventSystem, the crew icon prefab has a `CanvasGroup`, the unassigned container allows `Raycast Target`, and every `CrewHUDStationSlot` references the correct `stationId`. If a station’s icon never lights up, toggle `CrewManager.debugLog` to watch assignment attempts in the Console.
 
 ---
 

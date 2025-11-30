@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
@@ -27,7 +27,7 @@ public class Projectile : MonoBehaviour
         
         FileLogger.Log($"{gameObject.name} hit {other.name} at {collision.contacts[0].point}", "Projectile");
 
-        // 1️⃣ Attempt to find the Health component on what we hit
+        // 1ï¸âƒ£ Attempt to find the Health component on what we hit
         Health targetHealth = other.GetComponent<Health>();
         if (targetHealth != null)
         {
@@ -39,14 +39,14 @@ public class Projectile : MonoBehaviour
             FileLogger.Log($"{gameObject.name} hit {other.name} but it has no Health component", "Projectile");
         }
 
-        // 2️⃣ Optional: Spawn impact effect at collision point
+        // 2ï¸âƒ£ Optional: Spawn impact effect at collision point
         if (hitEffectPrefab != null)
         {
             ContactPoint contact = collision.contacts.Length > 0 ? collision.contacts[0] : default;
             Instantiate(hitEffectPrefab, contact.point != Vector3.zero ? contact.point : transform.position, Quaternion.identity);
         }
 
-        // 3️⃣ Destroy the projectile after applying damage
+        // 3ï¸âƒ£ Destroy the projectile after applying damage
         FileLogger.Log($"{gameObject.name} destroying self after impact", "Projectile");
         Destroy(gameObject);
     }

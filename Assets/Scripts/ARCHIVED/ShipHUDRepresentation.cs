@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -38,7 +38,7 @@ public class ShipHUDRepresentation : MonoBehaviour
     [Tooltip("Markers to render over the ship icon. Choose coordinate mode per marker (Normalized or Pixels).")]
     public List<MountMarker> markers = new List<MountMarker>();
 
-    [Header("Type → Sprite Mapping (populated)")]
+    [Header("Type â†’ Sprite Mapping (populated)")]
     [Tooltip("Map weapon type keys (e.g., 'cannon') to sprites for populated mounts.")]
     public List<WeaponTypeSprite> typeSprites = new List<WeaponTypeSprite>();
 
@@ -67,7 +67,7 @@ public class MountMarker
     public Vector2 posPx = Vector2.zero;
     [Tooltip("Optional pixel size override (leave 0 for default)")] public Vector2 sizePx = Vector2.zero;
     [Tooltip("Optional sprite shown when this mount is empty (falls back to representation default)")] public Sprite emptySprite;
-    [Tooltip("Optional sprite shown when the mount is occupied; if not set, the Type→Sprite mapping is used.")]
+    [Tooltip("Optional sprite shown when the mount is occupied; if not set, the Typeâ†’Sprite mapping is used.")]
     public Sprite populatedSprite;
 }
 

@@ -1,6 +1,6 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-// Small wrapper around Unity's Input system to centralize controls — swap to new Input System later if desired
+// Small wrapper around Unity's Input system to centralize controls â€” swap to new Input System later if desired
 public static class InputManager
 {
     public static float GetRoll() => Input.GetAxis("Horizontal");

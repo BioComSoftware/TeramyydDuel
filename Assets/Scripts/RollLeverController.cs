@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 /// <summary>
 /// Roll control lever for ship attitude (visual orientation only).
-/// Vertical (0°) = wings level. Lever rotation directly maps to ship roll angle.
+/// Vertical (0Â°) = wings level. Lever rotation directly maps to ship roll angle.
 /// Does NOT affect ship velocity, lift, or trajectory - purely visual attitude.
 /// 
 /// Hermeneutic: Decoupling of appearance (attitude) from Being (velocity vector).
@@ -26,7 +26,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
     public float snapIncrement = 0f;
 
     [Header("Visual Feedback")]
-    [Tooltip("Lever color at wings level (0°).")]
+    [Tooltip("Lever color at wings level (0Â°).")]
     public Color levelColor = Color.white;
 
     [Tooltip("Lever color at maximum roll (left or right).")]
@@ -107,7 +107,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
             
             if (debugLog)
             {
-                FileLogger.Log($"Roll Lever controlling {targetShip.gameObject.name}, max roll: ±{_maxRollDegrees}° (synced from ShipCharacteristics)", "RollLever");
+                FileLogger.Log($"Roll Lever controlling {targetShip.gameObject.name}, max roll: Â±{_maxRollDegrees}Â° (synced from ShipCharacteristics)", "RollLever");
             }
         }
 
@@ -121,7 +121,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
 
         if (debugLog)
         {
-            FileLogger.Log($"Roll Lever drag start at {_currentLeverAngle:F1}°", "RollLever");
+            FileLogger.Log($"Roll Lever drag start at {_currentLeverAngle:F1}Â°", "RollLever");
         }
     }
 
@@ -139,7 +139,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
         Vector2 direction = eventData.position - leverScreenPos;
         float angle = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
 
-        // Clamp to ±maxRollDegrees
+        // Clamp to Â±maxRollDegrees
         angle = Mathf.Clamp(angle, -_maxRollDegrees, _maxRollDegrees);
 
         // Apply snapping if enabled
@@ -173,7 +173,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
 
         if (debugLog)
         {
-            FileLogger.Log($"Roll Lever drag end at {_currentLeverAngle:F1}°", "RollLever");
+            FileLogger.Log($"Roll Lever drag end at {_currentLeverAngle:F1}Â°", "RollLever");
         }
     }
 
@@ -210,8 +210,8 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
         if (debugLog && Mathf.Abs(_currentLeverAngle - lastLoggedAngle) >= 5f)
         {
             string status = IsWingsLevel ? "WINGS LEVEL" :
-                           IsRollingLeft ? $"ROLLING LEFT {Mathf.Abs(_currentLeverAngle):F1}°" :
-                           $"ROLLING RIGHT {_currentLeverAngle:F1}°";
+                           IsRollingLeft ? $"ROLLING LEFT {Mathf.Abs(_currentLeverAngle):F1}Â°" :
+                           $"ROLLING RIGHT {_currentLeverAngle:F1}Â°";
             FileLogger.Log($"Roll Lever: {status}", "RollLever");
             lastLoggedAngle = _currentLeverAngle;
         }
@@ -230,7 +230,7 @@ public class RollLeverController : MonoBehaviour, IBeginDragHandler, IDragHandle
     }
 
     /// <summary>
-    /// Reset lever to wings level (0°).
+    /// Reset lever to wings level (0Â°).
     /// </summary>
     public void ResetToWingsLevel()
     {

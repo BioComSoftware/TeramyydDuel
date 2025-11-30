@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Airspeed Indicator - Single rotating hand pointing to knots on gauge face.
@@ -22,7 +22,7 @@ public class AirspeedIndicator : MonoBehaviour
     [Tooltip("Knots per dial increment (default 10, so 10kt = '1', 20kt = '2', etc.). Needle rotates continuously for unlimited speed.")]
     public float knotsPerDialIncrement = 10f;
     
-    [Tooltip("Rotation at zero airspeed (0° = top/12 o'clock).")]
+    [Tooltip("Rotation at zero airspeed (0Â° = top/12 o'clock).")]
     public float zeroRotationDegrees = 0f;
     
     [Tooltip("Does the needle rotate clockwise (true) or counter-clockwise (false)?")]
@@ -77,9 +77,9 @@ public class AirspeedIndicator : MonoBehaviour
         // Calculate target rotation
         // Each dial number represents knotsPerDialIncrement (default 10 knots)
         // 10kt = '1', 20kt = '2', 30kt = '3', etc.
-        // The 0-9 dial has 10 positions, so 36° per position
+        // The 0-9 dial has 10 positions, so 36Â° per position
         float dialPosition = currentAirspeedKnots / knotsPerDialIncrement;
-        float rotationDegrees = dialPosition * 36f; // 36° per dial increment (360° / 10 positions)
+        float rotationDegrees = dialPosition * 36f; // 36Â° per dial increment (360Â° / 10 positions)
         
         if (rotateClockwise)
         {
@@ -105,7 +105,7 @@ public class AirspeedIndicator : MonoBehaviour
         
         if (debugLog && Time.frameCount % 60 == 0)
         {
-            FileLogger.Log($"[AirspeedIndicator] HorizontalSpeed: {currentAirspeedKnots:F2}kt, DialPosition: {dialPosition:F2}, TargetRot: {targetRotation:F1}°, CurrentRot: {currentRotation:F1}°", "AirspeedIndicator");
+            FileLogger.Log($"[AirspeedIndicator] HorizontalSpeed: {currentAirspeedKnots:F2}kt, DialPosition: {dialPosition:F2}, TargetRot: {targetRotation:F1}Â°, CurrentRot: {currentRotation:F1}Â°", "AirspeedIndicator");
         }
     }
     

@@ -1,9 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// RudderController: Manages airship turning via lateral force applied to nose.
 /// No physical rudder - uses "sideways thrust" at bow to pivot ship around center of mass.
-/// Maximum rudder angle: 45° (hard-coded, non-configurable for gameplay balance).
+/// Maximum rudder angle: 45Â° (hard-coded, non-configurable for gameplay balance).
 /// Force magnitude scales with rudder angle and forcePerDegree setting.
 /// Physics engine handles actual turn rate based on ship mass and inertia.
 /// </summary>
@@ -54,7 +54,7 @@ public class RudderController : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"RudderController initialized - MaxRudder: {MAX_RUDDER_ANGLE}°, ForcePerDegree: {forcePerDegree}N/°, NoseOffset: {noseOffset}m", "RudderController");
+            FileLogger.Log($"RudderController initialized - MaxRudder: {MAX_RUDDER_ANGLE}Â°, ForcePerDegree: {forcePerDegree}N/Â°, NoseOffset: {noseOffset}m", "RudderController");
         }
     }
     
@@ -106,7 +106,7 @@ public class RudderController : MonoBehaviour
         if (debugLog && Time.frameCount % 60 == 0)
         {
             string direction = _currentRudderAngle > 0f ? "STARBOARD" : "PORT";
-            FileLogger.Log($"Rudder: {_currentRudderAngle:F1}° {direction}, Force: {_appliedForceNewtons:F1}N at nose, AngularVel: {shipRigidbody.angularVelocity.y:F2} rad/s", "RudderController");
+            FileLogger.Log($"Rudder: {_currentRudderAngle:F1}Â° {direction}, Force: {_appliedForceNewtons:F1}N at nose, AngularVel: {shipRigidbody.angularVelocity.y:F2} rad/s", "RudderController");
         }
     }
     
@@ -120,13 +120,13 @@ public class RudderController : MonoBehaviour
         
         if (debugLog)
         {
-            FileLogger.Log($"Rudder commanded to {_targetRudderAngle:F1}° (input: {angleDegrees:F1}°)", "RudderController");
+            FileLogger.Log($"Rudder commanded to {_targetRudderAngle:F1}Â° (input: {angleDegrees:F1}Â°)", "RudderController");
         }
     }
     
     /// <summary>
     /// Set rudder as normalized value (-1.0 to +1.0)
-    /// -1.0 = Full Port (45° left), +1.0 = Full Starboard (45° right)
+    /// -1.0 = Full Port (45Â° left), +1.0 = Full Starboard (45Â° right)
     /// </summary>
     public void SetRudderNormalized(float normalizedValue)
     {
@@ -135,7 +135,7 @@ public class RudderController : MonoBehaviour
     }
     
     /// <summary>
-    /// Center rudder (return to 0°)
+    /// Center rudder (return to 0Â°)
     /// </summary>
     public void CenterRudder()
     {

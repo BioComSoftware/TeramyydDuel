@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Simple camera rotation and movement script using arrow keys
 // Attach to Main Camera or any camera object
@@ -137,7 +137,7 @@ public class CameraMove : MonoBehaviour
                 // Adjust relative 'up' pitch: UpArrow increases upward angle up to maxPitchRange,
                 // DownArrow returns toward baseline. We never go below the starting pitch.
                 relativePitch += (vertical) * rotationSpeed * Time.deltaTime;   // Up increases relative upward pitch
-                relativePitch = Mathf.Clamp(relativePitch, 0f, maxPitchRange);  // 0 = baseline, max = 90° up (default)
+                relativePitch = Mathf.Clamp(relativePitch, 0f, maxPitchRange);  // 0 = baseline, max = 90Â° up (default)
                 currentPitch = startPitch - relativePitch;                      // subtract to look up when relative increases
                 
                 if (orbitTarget != null)

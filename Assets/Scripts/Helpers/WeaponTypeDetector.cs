@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Utility to determine weapon type from mounted GameObject.
 // Used by ShipHUDDisplay to map weapons to HUD sprites.

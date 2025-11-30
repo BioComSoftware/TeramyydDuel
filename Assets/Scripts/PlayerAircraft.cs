@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
  
 // Basic player aircraft controller (starter)
 // Attach to the player GameObject. Configure speed/rotation and the fire point + projectile prefab in the Inspector.
@@ -38,7 +38,7 @@ public class PlayerAircraft : MonoBehaviour
         float v = Input.GetAxis("Vertical");   // pitch
         float yaw = 0f; // optional: map to separate axis or keys
 
-        // forward thrust constant for arcade feel — adjust in Inspector
+        // forward thrust constant for arcade feel â€” adjust in Inspector
         transform.Translate(Vector3.forward * forwardSpeed * Time.deltaTime);
 
         // rotations

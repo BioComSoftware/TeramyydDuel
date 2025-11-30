@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Cannon-specific component that reuses the generic ProjectileLauncher behavior.
 // Add this to cannon GameObjects and customize cannon-only settings here.

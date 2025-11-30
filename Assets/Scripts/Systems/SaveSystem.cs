@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using UnityEngine;
 
 // Minimal JSON save/load helper for PlayerProfile.

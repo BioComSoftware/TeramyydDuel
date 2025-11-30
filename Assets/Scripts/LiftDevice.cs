@@ -1,11 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
 /// Base lift device class representing the hermeneutic tension between weight (thrownness-to-earth) 
 /// and lift (projection-upward). Lift devices oppose gravity, creating vertical mobility.
 /// 
-/// Hermeneutic circle: Power consumption ↔ Altitude control ↔ Weight ↔ Tactical choice
+/// Hermeneutic circle: Power consumption â†” Altitude control â†” Weight â†” Tactical choice
 /// Temporal structure: Continuous power drain and damage accumulation over time
 /// </summary>
 [RequireComponent(typeof(Health))]
@@ -16,8 +16,8 @@ public abstract class LiftDevice : MonoBehaviour
     protected const float SEA_LEVEL_PRESSURE = 101325f; // Pa
     protected const float SEA_LEVEL_TEMPERATURE = 288.15f; // K
     protected const float TEMPERATURE_LAPSE_RATE = 0.0065f; // K/m
-    protected const float GAS_CONSTANT_AIR = 287.05f; // J/(kg·K)
-    protected const float STANDARD_GRAVITY = 9.80665f; // m/s²
+    protected const float GAS_CONSTANT_AIR = 287.05f; // J/(kgÂ·K)
+    protected const float STANDARD_GRAVITY = 9.80665f; // m/sÂ²
 
     [Tooltip("Power allocated to this lift device per second.")]
     [Range(0f, 1000f)]
@@ -57,7 +57,7 @@ public abstract class LiftDevice : MonoBehaviour
     [Tooltip("Crew station that operates this lift device. Auto-located or created at runtime if empty.")]
     public CrewStation crewStation;
     public bool autoCreateCrewStation = true;
-    public CrewRole defaultCrewRole = CrewRole.LiftEngineering;
+    public CrewSkill defaultCrewSkill = CrewSkill.LiftEngineering;
     [Range(1, 4)] public int defaultCrewRequired = 1;
     [Range(1, 4)] public int defaultCrewMax = 2;
     
@@ -388,7 +388,7 @@ public abstract class LiftDevice : MonoBehaviour
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = gameObject.name + " Lift Crew";
-            crewStation.requiredRole = defaultCrewRole;
+            crewStation.requiredRole = defaultCrewSkill;
             crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
             crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
             crewStation.allowGeneralists = true;

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Keeps this transform positioned at the geometric center of a model hierarchy
 // by computing the combined bounds of all child Renderers (or Colliders as a fallback).

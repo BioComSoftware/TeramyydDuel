@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -12,11 +12,11 @@ public class CrewMemberState
 {
     public string crewId;
     public string displayName;
-    public CrewRole specialization;
-    public int gunnery;
-    public int navigation;
-    public int driveEngineering;
-    public int liftEngineering;
+    public float gunnery = 1f;
+    public float navigation = 1f;
+    public float repair = 1f;
+    public float powerEngineering = 1f;
+    public float liftEngineering = 1f;
     public float maxHealth;
     public float currentHealth;
     public string assignedStationId;
@@ -123,6 +123,7 @@ public class CrewPersistenceManager : MonoBehaviour
         InitializeIfNeeded();
 
         var state = GetOrCreateState(crew);
+        ApplySkillState(crew, state);
         ApplyHealthState(crew, state);
         TrackHealth(crew.Health, state);
         return state;
@@ -170,10 +171,10 @@ public class CrewPersistenceManager : MonoBehaviour
             {
                 crewId = crew.crewId,
                 displayName = crew.displayName,
-                specialization = crew.specialization,
                 gunnery = crew.gunnery,
                 navigation = crew.navigation,
-                driveEngineering = crew.driveEngineering,
+                repair = crew.repair,
+                powerEngineering = crew.powerEngineering,
                 liftEngineering = crew.liftEngineering,
                 maxHealth = crew.Health != null ? crew.Health.maxHealth : 100f,
                 currentHealth = crew.Health != null ? crew.Health.currentHealth : 100f,
@@ -187,15 +188,27 @@ public class CrewPersistenceManager : MonoBehaviour
         {
             // Keep definitions in sync when designer tweaks ratings.
             state.displayName = crew.displayName;
-            state.specialization = crew.specialization;
             state.gunnery = crew.gunnery;
             state.navigation = crew.navigation;
-            state.driveEngineering = crew.driveEngineering;
+            state.repair = crew.repair;
+            state.powerEngineering = crew.powerEngineering;
             state.liftEngineering = crew.liftEngineering;
             state.maxHealth = crew.Health != null ? crew.Health.maxHealth : state.maxHealth;
         }
 
         return state;
+    }
+
+    void ApplySkillState(CrewMember crew, CrewMemberState state)
+    {
+        if (crew == null || state == null)
+            return;
+
+        crew.SetSkillLevel(CrewSkill.Gunnery, Mathf.Max(1f, state.gunnery));
+        crew.SetSkillLevel(CrewSkill.Navigation, Mathf.Max(1f, state.navigation));
+        crew.SetSkillLevel(CrewSkill.Repair, Mathf.Max(1f, state.repair));
+        crew.SetSkillLevel(CrewSkill.PowerEngineering, Mathf.Max(1f, state.powerEngineering));
+        crew.SetSkillLevel(CrewSkill.LiftEngineering, Mathf.Max(1f, state.liftEngineering));
     }
 
     void ApplyHealthState(CrewMember crew, CrewMemberState state)
@@ -306,6 +319,22 @@ public class CrewPersistenceManager : MonoBehaviour
         UnityEditor.AssetDatabase.Refresh();
 #endif
         _dirty = false;
+    }
+
+    public void UpdateCrewSkills(CrewMember crew)
+    {
+        if (crew == null)
+            return;
+
+        InitializeIfNeeded();
+
+        var state = GetOrCreateState(crew);
+        state.gunnery = crew.gunnery;
+        state.navigation = crew.navigation;
+        state.repair = crew.repair;
+        state.powerEngineering = crew.powerEngineering;
+        state.liftEngineering = crew.liftEngineering;
+        MarkDirty();
     }
 
     string GetResourceDiskPath()

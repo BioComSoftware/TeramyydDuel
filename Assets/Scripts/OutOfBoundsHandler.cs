@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Attach to player-controlled entities (e.g., Ship). Periodically checks if they remain
 // inside the GameFieldBounds. If they cross any boundary (x/z lateral walls, below ground, or above ceiling)

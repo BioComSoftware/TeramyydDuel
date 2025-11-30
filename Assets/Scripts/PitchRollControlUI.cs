@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
@@ -180,14 +180,14 @@ public class PitchRollControlUI : MonoBehaviour, IDragHandler, IBeginDragHandler
         {
             float pitch = attitudeController.CurrentPitch;
             string direction = pitch > 1f ? "UP" : pitch < -1f ? "DOWN" : "LEVEL";
-            pitchLabel.text = $"Pitch: {pitch:F0}° {direction}";
+            pitchLabel.text = $"Pitch: {pitch:F0}Â° {direction}";
         }
         
         if (rollLabel != null)
         {
             float roll = attitudeController.CurrentRoll;
             string direction = roll > 1f ? "STBD" : roll < -1f ? "PORT" : "LEVEL";
-            rollLabel.text = $"Roll: {roll:F0}° {direction}";
+            rollLabel.text = $"Roll: {roll:F0}Â° {direction}";
         }
     }
     

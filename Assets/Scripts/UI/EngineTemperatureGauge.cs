@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Slides the TemperatureReadout strip (UI Image) inside the masked viewport so the
@@ -12,12 +12,12 @@ public class EngineTemperatureGauge : MonoBehaviour
     [Tooltip("JetEngine component that exposes CurrentTemperature.")]
     public JetEngine targetEngine;
 
-    [Header("Temperature Range (°F)")]
+    [Header("Temperature Range (Â°F)")]
     [Tooltip("Minimum temperature mapped to the start of the strip (usually 0).")]
     public float minTemperature = 0f;
 
     [Header("Movement Scaling")]
-    [Tooltip("Degrees represented by a single pixel on the temperature strip.\nExample: 2 => every 2°F moves the strip 1px.")]
+    [Tooltip("Degrees represented by a single pixel on the temperature strip.\nExample: 2 => every 2Â°F moves the strip 1px.")]
     public float degreesPerPixel = 1f;
 
     [Tooltip("Optional final tweak after calibration.")]

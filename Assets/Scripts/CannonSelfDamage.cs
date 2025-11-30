@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Applies self-damage to the cannon each time it fires.
 // Attach this to the same GameObject as the Cannon component.

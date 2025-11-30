@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -148,7 +148,7 @@ public static class CreateHUD
         // Create gear icon text placeholder (can replace with sprite later)
         var gearTextGO = new GameObject("GearText");
         gearTextGO.transform.SetParent(settingsGO.transform, false);
-        Component gearTextComp = AddTextLikeComponent(gearTextGO, "⚙");
+        Component gearTextComp = AddTextLikeComponent(gearTextGO, "âš™");
         
         // Center the gear text in the button
         var gearRT = gearTextGO.AddComponent<RectTransform>();

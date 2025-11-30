@@ -1,9 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
 /// Base engine class: Hermeneutic integration of power generation, thrust, and lift coordination.
-/// Power (possibility) → Force (actuality) → Motion (being-in-the-world)
+/// Power (possibility) â†’ Force (actuality) â†’ Motion (being-in-the-world)
 /// 
 /// Ontological structure:
 /// - Engine generates power from fuel/burn (thrownness into energy)
@@ -59,7 +59,7 @@ public abstract class Engine : MonoBehaviour
     [Tooltip("Crew station responsible for operating this engine. Auto-located or created at runtime if empty.")]
     public CrewStation crewStation;
     public bool autoCreateCrewStation = true;
-    public CrewRole defaultCrewRole = CrewRole.DriveEngineering;
+    public CrewSkill defaultCrewSkill = CrewSkill.DriveEngineering;
     [Range(1, 4)] public int defaultCrewRequired = 1;
     [Range(1, 4)] public int defaultCrewMax = 2;
     
@@ -304,7 +304,7 @@ public abstract class Engine : MonoBehaviour
         // Aerodynamic drag force (0.5 * rho * Cd * Area * v^2)
         float aeroDragForce = CalculateAerodynamicDrag(effectiveSpeed);
         
-        // Unity's linear damping force behaves like F = damping × mass × velocity
+        // Unity's linear damping force behaves like F = damping Ã— mass Ã— velocity
         float linearDampingForce = 0f;
         if (shipRigidbody != null)
         {
@@ -539,7 +539,7 @@ public abstract class Engine : MonoBehaviour
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = gameObject.name + " Engine Crew";
-            crewStation.requiredRole = defaultCrewRole;
+            crewStation.requiredRole = defaultCrewSkill;
             crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
             crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
             crewStation.allowGeneralists = true;

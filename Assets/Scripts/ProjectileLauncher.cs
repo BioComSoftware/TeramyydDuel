@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Serialization;
 
 // Attach this to the Cannon parent GameObject (the empty one you rotate)
@@ -55,6 +55,7 @@ public class ProjectileLauncher : MonoBehaviour
     private float _cachedProjectileDrag;
     private float _cachedProjectileLinearDamping;
     private WeaponMount _owningMount;
+    private float _crewAccuracyScale = 1f;
 
     public event System.Action<ProjectileLauncher> ProjectileFired;
 
@@ -138,6 +139,14 @@ public class ProjectileLauncher : MonoBehaviour
     }
 
     /// <summary>
+    /// Scales spread/jitter errors by the provided factor (0 = perfect accuracy, 1 = default values).
+    /// </summary>
+    public void SetCrewAccuracyScale(float scale)
+    {
+        _crewAccuracyScale = Mathf.Clamp(scale, 0f, 1f);
+    }
+
+    /// <summary>
     /// Allows external callers (e.g., HUD buttons) to issue a fire command while honoring target lock rules.
     /// </summary>
     public void TriggerFireCommand()
@@ -204,7 +213,7 @@ public class ProjectileLauncher : MonoBehaviour
         Vector3 launchDirection = spawnPoint.up.normalized;
 
         // Apply angular spread (cone around the base direction)
-        float spread = disableAccuracyError ? 0f : Mathf.Max(0f, angleSpreadDegrees);
+        float spread = disableAccuracyError ? 0f : Mathf.Max(0f, angleSpreadDegrees * _crewAccuracyScale);
         if (spread > 0f)
         {
             // Build an orthonormal basis around the axis
@@ -221,7 +230,7 @@ public class ProjectileLauncher : MonoBehaviour
         }
 
         // Apply speed jitter (percent of launchSpeed)
-        float jitter = disableAccuracyError ? 0f : Mathf.Max(0f, speedJitterPercent) * 0.01f;
+        float jitter = disableAccuracyError ? 0f : Mathf.Max(0f, speedJitterPercent * _crewAccuracyScale) * 0.01f;
         float speedMul = (jitter > 0f) ? Random.Range(1f - jitter, 1f + jitter) : 1f;
         float baseSpeed = Mathf.Clamp(_runtimeLaunchSpeed, minimumLaunchSpeed, launchSpeed);
         float finalSpeed = Mathf.Clamp(baseSpeed * speedMul, minimumLaunchSpeed, launchSpeed);

@@ -1,11 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
 /// <summary>
 /// RudderWheelUI: Interactive ship's wheel for rudder control.
-/// Rotates based on drag input, controls rudder angle from 0° to 45° in each direction.
+/// Rotates based on drag input, controls rudder angle from 0Â° to 45Â° in each direction.
 /// Provides visual feedback of current rudder position.
 /// </summary>
 [AddComponentMenu("Teramyyd/HUD/Rudder Wheel UI")]
@@ -181,7 +181,7 @@ public class RudderWheelUI : MonoBehaviour, IDragHandler, IBeginDragHandler, IEn
             return;
         
         // Map wheel rotation to rudder angle
-        // Wheel rotation range (-maxWheelRotation to +maxWheelRotation) maps to rudder range (-45° to +45°)
+        // Wheel rotation range (-maxWheelRotation to +maxWheelRotation) maps to rudder range (-45Â° to +45Â°)
         float maxRudderAngle = RudderController.GetMaxRudderAngle();
         float rudderAngle = (currentWheelRotation / maxWheelRotation) * maxRudderAngle;
         
@@ -211,7 +211,7 @@ public class RudderWheelUI : MonoBehaviour, IDragHandler, IBeginDragHandler, IEn
                 direction = "PORT";
             }
             
-            angleLabel.text = $"{Mathf.Abs(rudderAngle):F0}° {direction}";
+            angleLabel.text = $"{Mathf.Abs(rudderAngle):F0}Â° {direction}";
         }
     }
     

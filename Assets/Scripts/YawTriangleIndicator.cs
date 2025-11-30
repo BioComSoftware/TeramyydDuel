@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
@@ -6,11 +6,11 @@ using UnityEngine.UI;
 /// Rotates to indicate the direction of actual movement relative to ship's heading.
 /// 
 /// Rotation:
-/// - 0° (pointing down) = Moving straight forward (no slip)
-/// - 90° (pointing right) = Moving 100% sideways to the right
-/// - 45° (pointing down-right) = Moving equally forward and right (45° slip)
-/// - -90° (pointing left) = Moving 100% sideways to the left
-/// - -45° (pointing down-left) = Moving equally forward and left (-45° slip)
+/// - 0Â° (pointing down) = Moving straight forward (no slip)
+/// - 90Â° (pointing right) = Moving 100% sideways to the right
+/// - 45Â° (pointing down-right) = Moving equally forward and right (45Â° slip)
+/// - -90Â° (pointing left) = Moving 100% sideways to the left
+/// - -45Â° (pointing down-left) = Moving equally forward and left (-45Â° slip)
 /// 
 /// Pivot: Top of triangle (0.5, 1) for rotation around top point.
 /// </summary>
@@ -105,9 +105,9 @@ public class YawTriangleIndicator : MonoBehaviour
             _currentSlipAngle = Mathf.Atan2(lateralVelocity, Mathf.Abs(forwardVelocity)) * Mathf.Rad2Deg;
             
             // Set rotation directly (no smoothing)
-            // 0° slip = 0° rotation (pointing down - no sideways drift)
-            // +90° slip (right) = +90° rotation (pointing right)
-            // -90° slip (left) = -90° rotation (pointing left)
+            // 0Â° slip = 0Â° rotation (pointing down - no sideways drift)
+            // +90Â° slip (right) = +90Â° rotation (pointing right)
+            // -90Â° slip (left) = -90Â° rotation (pointing left)
             _currentRotation = _currentSlipAngle;
         }
         else
@@ -125,7 +125,7 @@ public class YawTriangleIndicator : MonoBehaviour
             string slipDirection = _currentSlipAngle > 5f ? "RIGHT" :
                                   _currentSlipAngle < -5f ? "LEFT" :
                                   "STRAIGHT";
-            FileLogger.Log($"YawTriangle - Slip: {_currentSlipAngle:F1}°, Rotation: {_currentRotation:F1}°, Direction: {slipDirection}", "YawTriangle");
+            FileLogger.Log($"YawTriangle - Slip: {_currentSlipAngle:F1}Â°, Rotation: {_currentRotation:F1}Â°, Direction: {slipDirection}", "YawTriangle");
         }
     }
     

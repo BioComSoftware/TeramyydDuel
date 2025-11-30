@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Zooms the instrument panel while a zoom key is held, scaling and re-centering

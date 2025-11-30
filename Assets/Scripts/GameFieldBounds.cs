@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 // Defines a cubic playfield with ground at y=0 and ceiling at size.y.
 // Default size is 1000 x 1000 x 1000 units. The cube is centered around XZ origin
