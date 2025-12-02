@@ -3,8 +3,8 @@
   "lastSavedUtc": "2025-11-30T00:00:00.0000000Z",
   "crewMembers": [
     {
-      "crewId": "crew_default_quartermaster",
-      "displayName": "Quartermaster Ryn Calder",
+      "crewId": "crew_ryn_calder",
+      "displayName": "Ryn Calder",
       "gunnery": 4.5,
       "navigation": 6.2,
       "repair": 5.0,

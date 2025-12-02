@@ -59,7 +59,7 @@ public abstract class Engine : MonoBehaviour
     [Tooltip("Crew station responsible for operating this engine. Auto-located or created at runtime if empty.")]
     public CrewStation crewStation;
     public bool autoCreateCrewStation = true;
-    public CrewSkill defaultCrewSkill = CrewSkill.DriveEngineering;
+    public CrewSkill defaultCrewSkill = CrewSkill.PowerEngineering;
     [Range(1, 4)] public int defaultCrewRequired = 1;
     [Range(1, 4)] public int defaultCrewMax = 2;
     
@@ -539,10 +539,11 @@ public abstract class Engine : MonoBehaviour
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = gameObject.name + " Engine Crew";
-            crewStation.requiredRole = defaultCrewSkill;
+            crewStation.primarySkill = defaultCrewSkill;
+            crewStation.trainingSkill = CrewSkill.None;
+            crewStation.minimumSkillLevel = 1f;
             crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
             crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
-            crewStation.allowGeneralists = true;
             crewStation.enforceRequirements = true;
         }
 

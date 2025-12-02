@@ -388,10 +388,11 @@ public abstract class LiftDevice : MonoBehaviour
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = gameObject.name + " Lift Crew";
-            crewStation.requiredRole = defaultCrewSkill;
+            crewStation.primarySkill = defaultCrewSkill;
+            crewStation.trainingSkill = CrewSkill.None;
+            crewStation.minimumSkillLevel = 1f;
             crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
             crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
-            crewStation.allowGeneralists = true;
             crewStation.enforceRequirements = true;
         }
 

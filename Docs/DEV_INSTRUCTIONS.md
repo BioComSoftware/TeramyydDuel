@@ -402,8 +402,8 @@ Each entry under `crewMembers` mirrors `CrewMemberState` and must include:
   "lastSavedUtc": "2025-11-30T00:00:00.0000000Z",
   "crewMembers": [
     {
-      "crewId": "crew_default_quartermaster",
-      "displayName": "Quartermaster Ryn Calder",
+      "crewId": "crew_ryn_calder",
+      "displayName": "Ryn Calder",
       "gunnery": 4.5,
       "navigation": 6.2,
       "repair": 5.0,
@@ -428,40 +428,60 @@ Drop-in replacements should follow this structure; the persistence manager will 
 - **Extensibility hooks**: Skills are floats by design (defaults land between 1–10). Use `CrewSkillUtility` helpers (e.g., `EvaluateAccuracyScale`) when translating skills into modifiers so tuning stays consistent. `CrewStation.maximumCrewAllowed > minimumCrewRequired` still supports redundancy bonuses (e.g., second engineer adds a passive buff but is optional).
 
 ### HUD Roster & Drag/Drop Setup
-1. **Build the crew icon prefab** (Assets/UI/Prefabs/CrewHUDCrewIcon?):
-  1. UI → Image (100x100) = portrait background.
-  2. Add child Text for `nameLabel` (top), another Text for `specializationLabel` (bottom-right, shows the dominant skill + value), optional overlay Image/Text for `pendingBackground`/`pendingText` (hidden by default).
-  3. Add `CrewHUDCrewIcon` component, wire the references, assign optional role sprites (General/Gunnery/Navigation/Repair/Power/Lift icons).
-  4. Add `CanvasGroup` (required by script) and mark Raycast Target on Image true so dragging works.
+1. **Build the crew icon prefab** (stores in `Assets/UI/Prefabs/CrewHUDCrewIcon.prefab`):
+  1. In the **Hierarchy**, locate your HUD canvas (e.g., `ShipHUD`) and right-click it → **UI → Image**. This creates a child `Image` object in the scene hierarchy (name it `CrewHUDCrewIcon_Working`). Set its `RectTransform` size to `100 x 100`; this is the portrait background that you can style in the Inspector.
+  2. With `CrewHUDCrewIcon_Working` selected, right-click it in the **Hierarchy** → **UI → TextMeshPro → Text**. Rename the new child to `NameLabel`, anchor it to the top center, and assign this object to the `nameLabel` field later. (TMP components are required because the HUD scripts read `TMP_Text` fields.)
+  3. Repeat the previous step to add another TextMeshPro child named `SpecializationLabel`. Anchor it to the bottom-right corner and format it to show the dominant skill/value. Add optional children for `pendingBackground` (UI → Image) and `pendingText` (UI → TextMeshPro → Text) if you want the “waiting for station” overlay.
+  4. Still in the **Hierarchy**, select the root `CrewHUDCrewIcon_Working` object. In the Inspector click **Add Component** → search for `CrewHUDCrewIcon` and add it. Then click **Add Component** again and add a `CanvasGroup`. In the Image component, ensure **Raycast Target** remains checked so the icon can be dragged.
+  5. Drag `CrewHUDCrewIcon_Working` from the **Hierarchy** into `Assets/UI/Prefabs/` within the **Project** window to create the prefab asset. Rename the saved prefab to `CrewHUDCrewIcon`. You can now delete the temporary instance from the scene; the prefab asset is what you will spawn at runtime.
 2. **Create the tooltip panel**:
-  1. UI → Panel next to the ship outline, add `CrewHUDTooltip`.
-  2. Inside panel, add Text objects for Name, Skill Label, Stats (`Gun xx / Nav xx` line), Current Station, and Health; add an Image with Image Type = Filled for `healthFill`.
-  3. Assign these references on `CrewHUDTooltip`, drag the panel root into the `root` field, leave it disabled in the scene.
+  > **TMP required**: Every text element on the tooltip must be created via **UI → TextMeshPro → Text**. The `CrewHUDTooltip` script now exposes `TMP_Text` fields, so legacy Text components will not wire up.
+  1. **Hierarchy**: Expand `HUD_Canvas/HUD_Root`, right-click `ShipRepresentation` → **UI → Panel**. Rename the new child to `CrewHUDTooltip_Working` and position it beside `ShipOutline` using the RectTool so it overlays empty space (this will be the floating tooltip).
+  2. **Inspector (CrewHUDTooltip_Working)**: In the Panel’s Image component, set `Color` alpha to ~160 so it is semi-transparent, then click **Add Component** → search `CrewHUDTooltip` and add it.
+  3. **Hierarchy**: Right-click `CrewHUDTooltip_Working` → **UI → TextMeshPro → Text**. Rename this child `NameLabel`. In the Inspector set `Alignment = Upper Center`, anchor preset = top stretch (Alt+Shift+click top-center), and resize the RectTransform height to ~24. This text drives the crew name.
+  4. **Hierarchy**: Repeat the previous step four more times to create `SkillLabel`, `StatsLabel`, `CurrentStationLabel`, and `HealthLabel`. Place them in vertical order down the panel using RectTransform Y offsets of -24, -48, -72, and -96 respectively so they stack evenly.
+  5. **Hierarchy**: Create one more child by right-clicking `CrewHUDTooltip_Working` → **UI → Image** (make sure you pick the plain **Image**, not **Raw Image**). Rename it `HealthFill`. With the child selected, look for the **Image (Script)** component in the Inspector: first assign any sprite (a 1×1 white sprite works) so the control unlocks, then change **Type** from **Simple** to **Filled**, set **Fill Method = Horizontal**, **Fill Origin = Left**, and stretch it to width ~160 × height 10. This becomes the health bar graphic.
+  6. **Inspector (CrewHUDTooltip component)**: Drag each child into the matching serialized field: `nameLabel` ← `NameLabel`, `skillLabel` ← `SkillLabel`, `statsLabel` ← `StatsLabel`, `currentStationLabel` ← `CurrentStationLabel`, `healthLabel` ← `HealthLabel`, and `healthFillImage` ← `HealthFill`. Drag the root `CrewHUDTooltip_Working` object into the `root` field.
+  7. **Hierarchy**: Leave `CrewHUDTooltip_Working` disabled for runtime usage by unchecking its checkbox in the Inspector. Once everything is wired, drag `CrewHUDTooltip_Working` from the Hierarchy into `Assets/UI/Prefabs/` if you want it as a prefab, then delete the working instance from the scene and drag the prefab back under `ShipRepresentation` so the HUD references a clean asset.
 3. **Add `CrewHUDController` to the HUD canvas**:
-  1. Select the Ship HUD Canvas → Add Component → `CrewHUDController`.
-  2. Set `Unassigned Container` to a vertical layout group sitting beside the ship outline (these slots are the “crew pool”).
-  3. Add `CrewHUDUnassignedZone` to the same RectTransform so drops there unassign crew; point its `highlightImage` to a semi-transparent frame.
-  4. Assign the crew icon prefab to `Icon Prefab`, hook the tooltip, and (optionally) specify a dedicated drag canvas if your HUD uses nested canvases.
+  1. **Hierarchy**: Click the root `HUD_Canvas` object (Screen Space overlay). In the **Inspector**, scroll to the bottom and click **Add Component** → search for `CrewHUDController` → press Enter to add it.
+  2. **Hierarchy**: Under `HUD_Canvas/HUD_Root`, right-click in empty space → **UI → Empty Object**. Rename it `CrewPool`. With `CrewPool` selected, add a **Vertical Layout Group** (Add Component → search). Adjust `Child Alignment = Upper Left`, `Spacing = 10`, and set its RectTransform width to ~120 so it becomes the column that will host unassigned crew icons. This object becomes the “Unassigned Container”.
+  3. **Hierarchy (make the highlight Image)**: Right-click `CrewPool` → **UI → Image** to create a child named `HighlightFrame`. In its RectTransform, zero out the Pos X/Y, set width to match the pool (e.g., 120) and height ≈ the portrait size (110–120). In the Image (Script) component, assign any 1×1 sprite (the default `UISprite` works), set `Color` to a bright hue, then drop the alpha channel to ~80–120 so it becomes translucent. Leave **Raycast Target** enabled so pointer events still register through the CanvasGroup on the crew icons.
+  4. **Hierarchy (optional styling)**: To create an outline instead of a solid block, add a second Image child under `HighlightFrame`, shrink it by a few pixels, and set its alpha lower. Duplicate borders for top/bottom if you prefer a frame look. These children stay disabled by default; the zone script toggles them during hover.
+  5. **Inspector**: Re-select the root `CrewPool`, click **Add Component** → search `CrewHUDUnassignedZone` and add it. Drag `HighlightFrame` (or whichever Image you styled) into the `highlightImage` field so the drop zone flashes when hovered.
+  6. **Inspector (CrewHUDController on HUD_Canvas)**: Drag `HUD_Root/CrewPool` from the Hierarchy into the `Unassigned Container` field. Drag the same object into `Unassigned Drop Zone` (the script reads the `CrewHUDUnassignedZone` attached to it).
+  7. Still on the controller, drag your saved `CrewHUDCrewIcon` prefab from `Assets/UI/Prefabs/` into `Icon Prefab`. Drag the tooltip prefab/instance (`CrewHUDTooltip` from step 2) into `Tooltip`. If the HUD uses a dedicated drag canvas (e.g., `HUD_Canvas/DragLayer`), drag that object into `Drag Canvas`; otherwise leave blank.
 4. **Author ship-outline slots**:
-  1. For every subsystem that wants visible crew, duplicate a small square (`50x50`) next to the relevant element on the ship outline.
-  2. Add `CrewHUDStationSlot` to that square, drag its `iconAnchor` to the inner image (so the portrait scales inside), and point `highlightImage` to a subtle border.
-  3. Enter the actual `CrewStation` reference if the scene object is accessible; otherwise type the `stationIdOverride` string (e.g., `Mount_Bow_Crew`).
-  4. Optional: create an empty child under the 3D ship mesh, position it where the real crew should stand, and assign it to `worldAnchor`. This lets the game spawn live crew objects later using `CrewHUDController.OnVisualAnchorChanged`.
+  1. **Hierarchy**: Expand `HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline`. Right-click an existing square (e.g., `Bow_weapon_mount`) → **Duplicate**. Immediately rename the copy to match the subsystem (e.g., `Bow_weapon_mount_slot`). Before moving it, change the duplicated slot’s Image (Script) → **Source Image** to your blank-slot sprite (a neutral square that represents “empty crew”). The Bow mount icon shows a cannon silhouette; swapping the sprite now prevents empty stations from inheriting weapon art. After the sprite swap, use the RectTool to drag the slot beside the correct silhouette location; keep size around `50x50` for consistency.
+  2. If the duplicated square does not contain an inner image, right-click it → **UI → Image** to add a child named `IconAnchor`. Resize this child slightly smaller (e.g., `40x40`) and give it a faint background color; this child keeps the portrait ratio stable.
+  3. **Inspector (slot root)**: Click the duplicated slot object, then **Add Component** → `CrewHUDStationSlot`. Drag the inner image (either the existing child or the new `IconAnchor`) into the `iconAnchor` field. Drag the border/highlight Image (often the slot root) into `highlightImage`.
+    4. In the same component, set up identification: 
+      - If the relevant `CrewStation` is already placed in the scene (for example the runtime `Ship/Bow_weapon_mount`), drag the object that actually has the `CrewStation` component into the `station` field. The canonical setup is to add `CrewStation` directly to the subsystem’s serialized `Weapon_mount` child (`Ship/Bow_weapon_mount/Weapon_mount`). That component becomes the authoritative seat the HUD will reference. If the subsystem uses a different structure, add `CrewStation` to whichever child represents the interactive mount so a valid reference exists.
+      - If the station will be spawned later (prefab or auto-created), leave `station` empty and type the exact ID (e.g., `Mount_Bow_Crew`) into `stationIdOverride`.
+  5. **Optional world anchor**: In the 3D ship hierarchy (`Ship/Model/...`), right-click the subsystem and choose **Create Empty** to make a Transform positioned where the crew avatar should appear. Name it `Bow_weapon_mount_CrewAnchor`. Back on the slot’s Inspector, drag this Transform into `worldAnchor` so future 3D visuals know where to spawn.
 5. **Connect `CrewHUDController` fields**:
-  - `Unassigned Container`: the left/right column hosting free crew slots.
-  - `Unassigned Drop Zone`: the same RectTransform with `CrewHUDUnassignedZone` on it.
-  - `Ship Slots`: leave empty to auto-discover, or drag explicit `CrewHUDStationSlot` entries if you prefer manual ordering.
-  - `Tooltip`: drag the tooltip panel you made earlier.
+  1. **Inspector (HUD_Canvas with CrewHUDController)**: Scroll through the serialized fields.
+  2. Drag `HUD_Root/CrewPool` from the Hierarchy onto `Unassigned Container`. The same object should already contain `CrewHUDUnassignedZone`, so drag it again onto `Unassigned Drop Zone`.
+  3. For `Ship Slots`, choose one of two paths:
+     - Leave the list empty and click the **⋯** foldout to confirm it reads “Size 0” (the controller will auto-discover every `CrewHUDStationSlot` under `ShipRepresentation`).
+     - Or click the **+** icon to add elements, then drag each slot (e.g., `HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount`) from the Hierarchy into the list in the order you want them displayed.
+  4. Drag the tooltip asset/instance (e.g., `HUD_Root/ShipRepresentation/CrewHUDTooltip`) into `Tooltip`. If you saved it as a prefab earlier, drag the in-scene instance to keep references stable.
+  5. Confirm `Icon Prefab` still references `CrewHUDCrewIcon` and optional fields such as `Drag Canvas` or `debugLog` are set as desired, then press **Ctrl+S** to save the scene.
 6. **Playtest flow**:
-  1. Enter Play Mode → the controller instantiates one icon per `CrewManager.RegisteredCrew`.
-  2. Hover over any portrait to see stats, dominant skill label, current/pending station, and live health pulled from the `Health` component.
-  3. Drag a portrait from the pool onto a ship slot → the controller calls `CrewManager.TryAssignCrewToStation` and, on success, snaps the shrunken portrait into that slot.
-  4. Drag from a ship slot back to the pool → drops onto the unassigned zone, which calls `CrewManager.UnassignCrew` and frees the subsystem.
-  5. Pending stations (station exists later or is outside the HUD) tint the icon with the `pendingBackground` color and display “Waiting for <stationId>`.
+  1. **Scene**: Make sure `Ship`, crew prefabs, and HUD are active. Click **File → Save** so any prefab overrides are stored.
+  2. Hit the **Play** button. Watch the **Hierarchy** as `CrewHUDController` spawns one `CrewHUDCrewIcon` under `CrewPool` per entry in `CrewManager.RegisteredCrew` (check the Console for registration logs if nothing appears).
+  3. Move your mouse over a portrait in the pool. In the **Inspector**, you can confirm `CrewHUDTooltip/root` became active; on-screen you should see Name/Skill/Health populate from the hovered crew member.
+  4. Click and hold an icon, drag it onto a ship slot (e.g., `ShipOutline/Bow_weapon_mount`), and release when the slot highlight turns on. Watch the Console for `CrewManager.TryAssignCrewToStation` success messages and confirm the icon snaps into the slot.
+  5. To unassign, drag the icon back from the slot until it hovers over `CrewPool` (the `CrewHUDUnassignedZone` highlight turns on) and release. The icon returns to full size in the pool and the slot becomes empty.
+  6. For any crew assigned to stations that do not yet exist, look for icons tinted by `pendingBackground` with “Waiting for <stationId>” text. When you later add/register that station and re-enter Play Mode, the tint clears automatically.
 7. **3D crew hand-off (planning for later)**:
-  - Subscribe to `CrewHUDController.OnVisualAnchorChanged` to know when a crew member gains/loses a slot. The event passes `(CrewMember crew, CrewStation station, Transform worldAnchor)`.
-  - Spawn/enable a 3D crew avatar at the provided `worldAnchor` so the battlefield representation mirrors the HUD assignment. On pool/unassign, despawn or park the avatar at a neutral location.
-  - `CrewManager.RegisteredStations` and `CrewManager.TryGetStation(stationId, out CrewStation)` exist so authoring tools (or later mission scripts) can query the same data without digging into dictionaries.
+  1. **Project**: In `Assets/Scripts/UI/` (or another systems folder), create a new C# script named `CrewVisualBridge`. Open it and add a serialized reference to `CrewHUDController` plus a prefab for your 3D crew avatar.
+  2. **Script**: In `OnEnable`, subscribe to `controller.OnVisualAnchorChanged += HandleAnchorChanged;`. In `OnDisable`, unsubscribe. Implement `HandleAnchorChanged(CrewMember crew, CrewStation station, Transform worldAnchor)`.
+  3. **Runtime logic**:
+     - When `worldAnchor` is not null (crew seated at a slot with an anchor), either instantiate an avatar prefab at `worldAnchor.position/rotation` or move an existing pooled avatar there. Parent the avatar under `worldAnchor` so it follows ship motion.
+     - When `worldAnchor` is null (crew returned to pool), disable or park the avatar at a staging Transform (e.g., `Ship/CrewHoldingArea`).
+  4. **Inspector wiring**: Back in Unity, add `CrewVisualBridge` to a manager object (e.g., `Ship/CrewSystems`). Drag the `HUD_Canvas` → `CrewHUDController` component into the controller field, assign your avatar prefab, and populate any optional pools.
+  5. **Station lookup helpers**: If you need additional context (like finding the actual `CrewStation` GameObject), call `CrewManager.Instance.TryGetStation(station.stationId, out var resolvedStation)` inside your handler. Use `resolvedStation.transform` when the HUD slot did not specify a `worldAnchor`.
 
 > **Quick sanity checklist**: before playtesting, make sure the HUD canvas has an EventSystem, the crew icon prefab has a `CanvasGroup`, the unassigned container allows `Raycast Target`, and every `CrewHUDStationSlot` references the correct `stationId`. If a station’s icon never lights up, toggle `CrewManager.debugLog` to watch assignment attempts in the Console.
 

@@ -1,3 +1,24 @@
+## 2025-11-30 — Ship HUD Hierarchy Snapshot
+
+- Captured the current HUD structure so future instructions can reference exact parents when wiring prefabs/slots. User will provide more nodes over time; keep appending under this heading as additional sections arrive.
+- Present snapshot (partial, pending more detail):
+
+```
+Main
+├── Main Camera
+├── Directional Light
+└── Ship
+  ├── Model
+  │   └── (Etc.)
+  └── HUD_Canvas
+    └── HUD_Root
+      └── ShipRepresentation
+        └── ShipOutline
+          └── Bow_weapon_mount
+            └── (Etc.)
+```
+
+# 2025-11-29 — Fractional Health + Crew Infrastructure
 # 2025-11-29 — Fractional Health + Crew Infrastructure
 
 ### Highlights

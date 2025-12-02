@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using TMPro;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace Teramyyd.UI
@@ -10,11 +11,11 @@ namespace Teramyyd.UI
     public class CrewHUDTooltip : MonoBehaviour
     {
         public GameObject root;
-        public Text nameLabel;
-        public Text specializationLabel;
-        public Text statsLabel;
-        public Text stationLabel;
-        public Text healthLabel;
+        public TMP_Text nameLabel;
+        public TMP_Text specializationLabel;
+        public TMP_Text statsLabel;
+        public TMP_Text stationLabel;
+        public TMP_Text healthLabel;
         public Image healthFill;
         public Vector2 screenOffset = new Vector2(20f, -20f);
 
