@@ -50,6 +50,24 @@ public class CrewPersistenceManager : MonoBehaviour
         }
     }
 
+    public CrewPersistenceSnapshot CurrentSnapshot
+    {
+        get
+        {
+            InitializeIfNeeded();
+            return _snapshot;
+        }
+    }
+
+    public IReadOnlyList<CrewMemberState> CrewStates
+    {
+        get
+        {
+            InitializeIfNeeded();
+            return _snapshot?.crewMembers;
+        }
+    }
+
     [Header("Persistence")]
     public string resourceFileName = "CrewPersistence";
     public float saveIntervalSeconds = 30f;

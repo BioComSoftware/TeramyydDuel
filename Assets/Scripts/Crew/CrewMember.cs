@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Health))]
 [AddComponentMenu("Teramyyd/Crew/Crew Member")]
 public class CrewMember : MonoBehaviour
 {
+    static readonly Stack<CrewMemberState> _bootstrapStates = new Stack<CrewMemberState>();
+
     [Header("Identity")]
     public string crewId = string.Empty;
     public string displayName = "Crew Member";
@@ -35,6 +38,7 @@ public class CrewMember : MonoBehaviour
     void Awake()
     {
         Health = GetComponent<Health>();
+        ApplyBootstrapStateIfPresent();
         EnsureCrewId();
     }
 
@@ -74,6 +78,65 @@ public class CrewMember : MonoBehaviour
             return;
 
         crewId = $"crew_{Guid.NewGuid().ToString("N")}";
+    }
+
+    void ApplyBootstrapStateIfPresent()
+    {
+        CrewMemberState state = PopBootstrapState();
+        if (state == null)
+            return;
+
+        if (!string.IsNullOrEmpty(state.crewId))
+        {
+            crewId = state.crewId;
+        }
+
+        if (!string.IsNullOrEmpty(state.displayName))
+        {
+            displayName = state.displayName;
+        }
+
+        gunnery = Mathf.Max(1f, state.gunnery);
+        navigation = Mathf.Max(1f, state.navigation);
+        repair = Mathf.Max(1f, state.repair);
+        powerEngineering = Mathf.Max(1f, state.powerEngineering);
+        liftEngineering = Mathf.Max(1f, state.liftEngineering);
+        if (!string.IsNullOrEmpty(state.assignedStationId))
+        {
+            initialStationId = state.assignedStationId;
+        }
+
+        if (Health != null)
+        {
+            if (state.maxHealth > 0f)
+            {
+                Health.maxHealth = state.maxHealth;
+            }
+
+            float desiredHealth = state.currentHealth > 0f ? state.currentHealth : Health.maxHealth;
+            Health.SetHealth(Mathf.Clamp(desiredHealth, 0f, Health.maxHealth));
+        }
+    }
+
+    internal static void PushBootstrapState(CrewMemberState state)
+    {
+        if (state == null)
+            return;
+
+        _bootstrapStates.Push(state);
+    }
+
+    internal static void DiscardBootstrapState()
+    {
+        if (_bootstrapStates.Count > 0)
+        {
+            _bootstrapStates.Pop();
+        }
+    }
+
+    static CrewMemberState PopBootstrapState()
+    {
+        return _bootstrapStates.Count > 0 ? _bootstrapStates.Pop() : null;
     }
 
     public float GetSkillLevel(CrewSkill skill)

@@ -12,7 +12,7 @@
       "liftEngineering": 4.1,
       "maxHealth": 100.0,
       "currentHealth": 100.0,
-      "assignedStationId": ""
+      "assignedStationId": "Bow_weapon_mount"
     }, 
     {
       "crewId": "crew_jens_nordstrom",
@@ -25,7 +25,20 @@
       "maxHealth": 100.0,
       "currentHealth": 100.0,
       "assignedStationId": ""
+    }, 
+    {
+      "crewId": "crew_morgan_lee",
+      "displayName": "Morgan Lee",
+      "gunnery": 4.5,
+      "navigation": 6.2,
+      "repair": 5.0,
+      "powerEngineering": 3.8,
+      "liftEngineering": 4.1,
+      "maxHealth": 100.0,
+      "currentHealth": 100.0,
+      "assignedStationId": ""
     }
+
 
   ]
 }

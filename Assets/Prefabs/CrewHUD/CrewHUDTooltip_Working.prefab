@@ -149,6 +149,7 @@ GameObject:
   - component: {fileID: 8341285118636508916}
   - component: {fileID: 5669346171134028002}
   - component: {fileID: 9015845070230355299}
+  - component: {fileID: 154676621802862709}
   m_Layer: 0
   m_Name: CrewHUDTooltip_Working
   m_TagString: Untagged
@@ -209,7 +210,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 3807bd01baedbfd44abe368957ec94c0, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -259,6 +260,20 @@ MonoBehaviour:
   healthLabel: {fileID: 3734834885292777009}
   healthFill: {fileID: 7482566093672498119}
   screenOffset: {x: 20, y: -20}
+--- !u!114 &154676621802862709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5744350346051483071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce1b205b31c0e1049b236fc5eb8c0ee9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Teramyyd.UI.CrewHUDUnassignedZone
+  highlightImage: {fileID: 0}
+  hoverColor: {r: 1, g: 1, b: 1, a: 0.15}
 --- !u!1 &6078234784711218503
 GameObject:
   m_ObjectHideFlags: 0

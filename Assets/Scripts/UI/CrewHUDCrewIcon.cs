@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using TMPro;
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -13,19 +14,12 @@ namespace Teramyyd.UI
     {
         [Header("UI References")]
         public Image portraitImage;
-        public Text nameLabel;
-        public Text specializationLabel;
-        public Text statsLabel;
+        public TMP_Text nameLabel;
+        public TMP_Text specializationLabel;
+        public TMP_Text statsLabel;
         public Image pendingBackground;
-        public Text pendingText;
+        public TMP_Text pendingText;
 
-        [Header("Role Sprites (Optional)")]
-        public Sprite generalSprite;
-        public Sprite gunnerySprite;
-        public Sprite navigationSprite;
-        public Sprite repairSprite;
-        public Sprite powerSprite;
-        public Sprite liftSprite;
 
         public CrewMember Crew { get; private set; }
         public CrewHUDStationSlot CurrentSlot { get; private set; }
@@ -201,11 +195,6 @@ namespace Teramyyd.UI
                 specializationLabel.text = $"{label} {Crew.GetSkillLevel(topSkill):0.0}";
             }
 
-            if (portraitImage != null)
-            {
-                portraitImage.sprite = GetSpriteForSkill(topSkill);
-            }
-
             if (statsLabel != null)
             {
                 statsLabel.text = CrewSkillUtility.BuildStatSummary(Crew);
@@ -217,24 +206,5 @@ namespace Teramyyd.UI
             }
         }
 
-        Sprite GetSpriteForSkill(CrewSkill skill)
-        {
-            Sprite fallback = generalSprite;
-            switch (skill)
-            {
-                case CrewSkill.Gunnery:
-                    return gunnerySprite != null ? gunnerySprite : fallback;
-                case CrewSkill.Navigation:
-                    return navigationSprite != null ? navigationSprite : fallback;
-                case CrewSkill.Repair:
-                    return repairSprite != null ? repairSprite : fallback;
-                case CrewSkill.PowerEngineering:
-                    return powerSprite != null ? powerSprite : fallback;
-                case CrewSkill.LiftEngineering:
-                    return liftSprite != null ? liftSprite : fallback;
-                default:
-                    return fallback;
-            }
-        }
     }
 }
