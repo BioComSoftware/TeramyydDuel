@@ -33,6 +33,10 @@ namespace Teramyyd.UI
         public Image pendingBackground;
         public TMP_Text pendingText;
 
+        [Header("Tooltip")]
+        [Tooltip("Optional anchor used to position the tooltip at a fixed location.")]
+        public RectTransform tooltipAnchor;
+
         [Header("Debug")]
         [Tooltip("When enabled, pointer events log to both the Console and Logs/game_debug.log.")]
         public bool debugLog = false;
@@ -178,7 +182,7 @@ namespace Teramyyd.UI
             {
                 DebugMessage($"Pointer enter: {Crew.displayName} ({Crew.crewId})");
             }
-            _controller?.ShowTooltip(this, eventData.position);
+            _controller?.ShowTooltip(this);
         }
 
         public void OnPointerExit(PointerEventData eventData)

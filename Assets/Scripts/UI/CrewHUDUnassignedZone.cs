@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Teramyyd.UI
 {
@@ -10,20 +9,11 @@ namespace Teramyyd.UI
     [AddComponentMenu("Teramyyd/UI/Crew HUD Unassigned Zone")]
     public class CrewHUDUnassignedZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
     {
-        public Image highlightImage;
-        public Color hoverColor = new Color(1f, 1f, 1f, 0.15f);
-
         CrewHUDController _controller;
-        Color _defaultColor;
 
         public void Initialize(CrewHUDController controller)
         {
             _controller = controller;
-            if (highlightImage != null)
-            {
-                _defaultColor = highlightImage.color;
-                highlightImage.gameObject.SetActive(false);
-            }
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -37,20 +27,10 @@ namespace Teramyyd.UI
 
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (highlightImage == null)
-                return;
-
-            highlightImage.gameObject.SetActive(true);
-            highlightImage.color = hoverColor;
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (highlightImage == null)
-                return;
-
-            highlightImage.gameObject.SetActive(false);
-            highlightImage.color = _defaultColor;
         }
     }
 }

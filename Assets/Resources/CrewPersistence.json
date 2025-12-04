@@ -1,56 +1,54 @@
 {
-  "version": "1.0.0",
-  "lastSavedUtc": "2025-11-30T00:00:00.0000000Z",
-  "crewMembers": [
-    {
-      "crewId": "crew_ryn_calder",
-      "displayName": "Ryn Calder",
-      "gunnery": 4.5,
-      "navigation": 6.2,
-      "repair": 5.0,
-      "powerEngineering": 3.8,
-      "liftEngineering": 4.1,
-      "maxHealth": 100.0,
-      "currentHealth": 100.0,
-      "assignedStationId": "Bow_weapon_mount"
-    }, 
-    {
-      "crewId": "crew_jens_nordstrom",
-      "displayName": "Jens Nordstrom",
-      "gunnery": 4.5,
-      "navigation": 6.2,
-      "repair": 5.0,
-      "powerEngineering": 3.8,
-      "liftEngineering": 4.1,
-      "maxHealth": 100.0,
-      "currentHealth": 100.0,
-      "assignedStationId": ""
-    }, 
-    {
-      "crewId": "crew_morgan_lee",
-      "displayName": "Morgan Lee",
-      "gunnery": 4.5,
-      "navigation": 6.2,
-      "repair": 5.0,
-      "powerEngineering": 3.8,
-      "liftEngineering": 4.1,
-      "maxHealth": 100.0,
-      "currentHealth": 100.0,
-      "assignedStationId": ""
-    }, 
-    {
-      "crewId": "crew_serena_brasswolf",
-      "displayName": "Serena Brasswolf",
-      "gunnery": 4.5,
-      "navigation": 6.2,
-      "repair": 5.0,
-      "powerEngineering": 3.8,
-      "liftEngineering": 4.1,
-      "maxHealth": 100.0,
-      "currentHealth": 100.0,
-      "assignedStationId": ""
-    }
-
-
-  ]
+    "version": "1.0.0",
+    "lastSavedUtc": "2025-12-04T21:10:20.0069020Z",
+    "crewMembers": [
+        {
+            "crewId": "crew_ryn_calder",
+            "displayName": "Ryn Calder",
+            "gunnery": 4.618762493133545,
+            "navigation": 6.199999809265137,
+            "repair": 5.0,
+            "powerEngineering": 3.799999952316284,
+            "liftEngineering": 4.099999904632568,
+            "maxHealth": 100.0,
+            "currentHealth": 100.0,
+            "assignedStationId": "station_09f72eeb11bc42c2aaeff45c342d2950"
+        },
+        {
+            "crewId": "crew_jens_nordstrom",
+            "displayName": "Jens Nordstrom",
+            "gunnery": 4.645336627960205,
+            "navigation": 6.199999809265137,
+            "repair": 5.0,
+            "powerEngineering": 3.799999952316284,
+            "liftEngineering": 4.099999904632568,
+            "maxHealth": 100.0,
+            "currentHealth": 100.0,
+            "assignedStationId": "station_a641435dfe8344f1a00e33a1cc80bd2e"
+        },
+        {
+            "crewId": "crew_morgan_lee",
+            "displayName": "Morgan Lee",
+            "gunnery": 4.604524612426758,
+            "navigation": 6.199999809265137,
+            "repair": 5.0,
+            "powerEngineering": 3.799999952316284,
+            "liftEngineering": 4.099999904632568,
+            "maxHealth": 100.0,
+            "currentHealth": 100.0,
+            "assignedStationId": "station_2e83146968544030a283c1a5d924f0ff"
+        },
+        {
+            "crewId": "crew_serena_brasswolf",
+            "displayName": "Serena Brasswolf",
+            "gunnery": 4.587992191314697,
+            "navigation": 6.199999809265137,
+            "repair": 5.0,
+            "powerEngineering": 3.799999952316284,
+            "liftEngineering": 4.099999904632568,
+            "maxHealth": 100.0,
+            "currentHealth": 100.0,
+            "assignedStationId": "station_9a602794af0f4ad980937669d88e1818"
+        }
+    ]
 }

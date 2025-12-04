@@ -19,9 +19,15 @@ namespace Teramyyd.UI
         public Image healthFill;
         [Tooltip("Optional portrait shown on the tooltip. Leave null to skip portrait visuals.")]
         public Image portraitImage;
-        public Vector2 screenOffset = new Vector2(20f, -20f);
+        [Tooltip("Canvas-space offset applied after aligning to an anchor.")]
+        public Vector2 anchorOffset = Vector2.zero;
+        [Tooltip("When enabled the tooltip canvas group ignores raycasts so it never blocks the underlying icons.")]
+        public bool ignoreRaycasts = true;
 
         Canvas _canvas;
+        CanvasGroup _canvasGroup;
+        RectTransform _rect;
+        RectTransform _canvasRect;
 
         void Awake()
         {
@@ -30,13 +36,17 @@ namespace Teramyyd.UI
                 root = gameObject;
             }
 
+            _rect = root.GetComponent<RectTransform>();
             _canvas = GetComponentInParent<Canvas>();
+            _canvasRect = _canvas != null ? _canvas.transform as RectTransform : null;
+            _canvasGroup = root.GetComponent<CanvasGroup>();
+            ApplyRaycastSettings();
             HideImmediate();
         }
 
-        public void Show(CrewMember crew, CrewStation station, Vector2 screenPosition, Sprite portraitSprite)
+        public void Show(CrewMember crew, CrewStation station, RectTransform anchor, Sprite portraitSprite)
         {
-            if (crew == null)
+            if (crew == null || anchor == null)
             {
                 Hide(null);
                 return;
@@ -45,6 +55,12 @@ namespace Teramyyd.UI
             if (root != null && !root.activeSelf)
             {
                 root.SetActive(true);
+            }
+
+            if (!PositionTooltipAtAnchor(anchor))
+            {
+                Hide(null);
+                return;
             }
 
             ApplyPortrait(portraitSprite);
@@ -82,7 +98,6 @@ namespace Teramyyd.UI
             }
 
             ApplyHealthDetails(crew);
-            PositionTooltip(screenPosition + screenOffset);
         }
 
         public void Hide(object source)
@@ -98,6 +113,24 @@ namespace Teramyyd.UI
             if (root != null)
             {
                 root.SetActive(false);
+            }
+        }
+
+        void ApplyRaycastSettings()
+        {
+            if (!ignoreRaycasts)
+                return;
+
+            if (_canvasGroup == null && root != null)
+            {
+                _canvasGroup = root.AddComponent<CanvasGroup>();
+            }
+
+            if (_canvasGroup != null)
+            {
+                _canvasGroup.interactable = false;
+                _canvasGroup.blocksRaycasts = false;
+                _canvasGroup.ignoreParentGroups = true;
             }
         }
 
@@ -148,25 +181,52 @@ namespace Teramyyd.UI
             }
         }
 
-        void PositionTooltip(Vector2 screenPos)
+        bool PositionTooltipAtAnchor(RectTransform anchor)
         {
-            if (root == null)
-                return;
+            if (_rect == null || anchor == null || !EnsureCanvasReferences())
+                return false;
 
-            RectTransform rect = root.GetComponent<RectTransform>();
-            if (rect == null)
-                return;
+            Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
+            Vector3 worldCenter = anchor.TransformPoint(anchor.rect.center);
+            Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(cam, worldCenter);
 
-            Canvas canvas = _canvas != null ? _canvas : GetComponentInParent<Canvas>();
-            RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
-            if (canvasRect == null)
-                return;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_canvasRect, screenPos, cam, out var localPoint))
+                return false;
 
-            Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPos, cam, out var localPoint))
-            {
-                rect.anchoredPosition = localPoint;
-            }
+            localPoint += anchorOffset;
+            localPoint = ClampToCanvas(localPoint);
+            _rect.anchoredPosition = localPoint;
+            return true;
+        }
+
+        Vector2 ClampToCanvas(Vector2 desired)
+        {
+            if (_canvasRect == null || _rect == null)
+                return desired;
+
+            Vector2 canvasSize = _canvasRect.rect.size;
+            Vector2 tooltipSize = _rect.rect.size;
+            Vector2 pivot = _rect.pivot;
+
+            float minX = -canvasSize.x * 0.5f + tooltipSize.x * pivot.x;
+            float maxX = canvasSize.x * 0.5f - tooltipSize.x * (1f - pivot.x);
+            float minY = -canvasSize.y * 0.5f + tooltipSize.y * pivot.y;
+            float maxY = canvasSize.y * 0.5f - tooltipSize.y * (1f - pivot.y);
+
+            desired.x = Mathf.Clamp(desired.x, minX, maxX);
+            desired.y = Mathf.Clamp(desired.y, minY, maxY);
+
+            return desired;
+        }
+
+        bool EnsureCanvasReferences()
+        {
+            if (_canvas != null && _canvasRect != null)
+                return true;
+
+            _canvas = GetComponentInParent<Canvas>();
+            _canvasRect = _canvas != null ? _canvas.transform as RectTransform : null;
+            return _canvasRect != null;
         }
     }
 }

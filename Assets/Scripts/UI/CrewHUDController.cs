@@ -24,6 +24,8 @@ namespace Teramyyd.UI
         public CrewHUDCrewIcon iconPrefab;
         public Canvas dragCanvas;
         public CrewHUDTooltip tooltip;
+        [Tooltip("Optional RectTransform used for all crew tooltips when an icon does not specify its own anchor.")]
+        public RectTransform sharedTooltipAnchor;
 
         [Header("Discovery")]
         [Tooltip("When enabled, the controller scans its children every refresh for CrewHUDStationSlot components.")]
@@ -142,14 +144,22 @@ namespace Teramyyd.UI
             ForceRefresh();
         }
 
-        internal void ShowTooltip(CrewHUDCrewIcon icon, Vector2 screenPos)
+        internal void ShowTooltip(CrewHUDCrewIcon icon)
         {
             if (tooltip == null || icon == null)
                 return;
 
             CrewStation station = icon.CurrentSlot != null ? icon.CurrentSlot.Station : null;
             Sprite portrait = icon.portraitImage != null ? icon.portraitImage.sprite : null;
-            tooltip.Show(icon.Crew, station, screenPos, portrait);
+            RectTransform anchor = icon.tooltipAnchor != null ? icon.tooltipAnchor : sharedTooltipAnchor;
+            if (anchor == null)
+            {
+                Debug.LogWarning($"CrewHUD: Missing tooltip anchor for {icon.Crew?.crewId ?? "unknown crew"}. Tooltip will stay hidden.", icon);
+                tooltip.Hide(icon);
+                return;
+            }
+
+            tooltip.Show(icon.Crew, station, anchor, portrait);
         }
 
         internal void HideTooltip(CrewHUDCrewIcon icon)
