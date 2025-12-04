@@ -30,11 +30,12 @@ namespace Teramyyd.UI
 
         [Header("UI References")]
         public Image portraitImage;
-        public TMP_Text nameLabel;
-        public TMP_Text specializationLabel;
-        public TMP_Text statsLabel;
         public Image pendingBackground;
         public TMP_Text pendingText;
+
+        [Header("Debug")]
+        [Tooltip("When enabled, pointer events log to both the Console and Logs/game_debug.log.")]
+        public bool debugLog = false;
 
 
         public CrewMember Crew { get; private set; }
@@ -173,11 +174,19 @@ namespace Teramyyd.UI
 
         public void OnPointerEnter(PointerEventData eventData)
         {
+            if (Crew != null)
+            {
+                DebugMessage($"Pointer enter: {Crew.displayName} ({Crew.crewId})");
+            }
             _controller?.ShowTooltip(this, eventData.position);
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
+            if (Crew != null)
+            {
+                DebugMessage($"Pointer exit: {Crew.displayName} ({Crew.crewId})");
+            }
             _controller?.HideTooltip(this);
         }
 
@@ -203,23 +212,17 @@ namespace Teramyyd.UI
             if (Crew == null)
                 return;
 
-            CrewSkill topSkill = CrewSkillUtility.GetDominantSkill(Crew);
+            CrewSkillUtility.GetDominantSkill(Crew);
+        }
 
-            if (specializationLabel != null)
-            {
-                string label = CrewSkillUtility.GetShortLabel(topSkill);
-                specializationLabel.text = $"{label} {Crew.GetSkillLevel(topSkill):0.0}";
-            }
+        void DebugMessage(string message)
+        {
+            if (!debugLog)
+                return;
 
-            if (statsLabel != null)
-            {
-                statsLabel.text = CrewSkillUtility.BuildStatSummary(Crew);
-            }
-
-            if (nameLabel != null)
-            {
-                nameLabel.text = Crew.displayName;
-            }
+            string formatted = $"[CrewHUDCrewIcon] {message}";
+            Debug.Log(formatted, this);
+            FileLogger.Log(formatted, "CrewHUDCrewIcon");
         }
 
     }

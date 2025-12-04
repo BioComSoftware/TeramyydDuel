@@ -148,7 +148,8 @@ namespace Teramyyd.UI
                 return;
 
             CrewStation station = icon.CurrentSlot != null ? icon.CurrentSlot.Station : null;
-            tooltip.Show(icon.Crew, station, screenPos);
+            Sprite portrait = icon.portraitImage != null ? icon.portraitImage.sprite : null;
+            tooltip.Show(icon.Crew, station, screenPos, portrait);
         }
 
         internal void HideTooltip(CrewHUDCrewIcon icon)

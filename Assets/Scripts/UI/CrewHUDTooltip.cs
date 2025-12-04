@@ -17,6 +17,8 @@ namespace Teramyyd.UI
         public TMP_Text stationLabel;
         public TMP_Text healthLabel;
         public Image healthFill;
+        [Tooltip("Optional portrait shown on the tooltip. Leave null to skip portrait visuals.")]
+        public Image portraitImage;
         public Vector2 screenOffset = new Vector2(20f, -20f);
 
         Canvas _canvas;
@@ -32,7 +34,7 @@ namespace Teramyyd.UI
             HideImmediate();
         }
 
-        public void Show(CrewMember crew, CrewStation station, Vector2 screenPosition)
+        public void Show(CrewMember crew, CrewStation station, Vector2 screenPosition, Sprite portraitSprite)
         {
             if (crew == null)
             {
@@ -44,6 +46,8 @@ namespace Teramyyd.UI
             {
                 root.SetActive(true);
             }
+
+            ApplyPortrait(portraitSprite);
 
             if (nameLabel != null)
             {
@@ -125,6 +129,22 @@ namespace Teramyyd.UI
                 {
                     healthFill.fillAmount = 0f;
                 }
+            }
+        }
+
+        void ApplyPortrait(Sprite portrait)
+        {
+            if (portraitImage == null)
+                return;
+
+            if (portrait != null)
+            {
+                portraitImage.sprite = portrait;
+                portraitImage.enabled = true;
+            }
+            else
+            {
+                portraitImage.enabled = false;
             }
         }
 
