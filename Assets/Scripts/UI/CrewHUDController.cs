@@ -9,6 +9,13 @@ namespace Teramyyd.UI
     /// and coordinates drag/drop plus tooltip forwarding.
     /// </summary>
     [AddComponentMenu("Teramyyd/UI/Crew HUD Controller")]
+    [Serializable]
+    public struct CrewPortraitMapping
+    {
+        public string crewId;
+        public Sprite portrait;
+    }
+
     public class CrewHUDController : MonoBehaviour
     {
         [Header("References")]
@@ -28,11 +35,16 @@ namespace Teramyyd.UI
         public Vector2 assignedIconScale = new Vector2(0.65f, 0.65f);
         public Color pendingColor = new Color(1f, 0.9f, 0.4f, 1f);
 
+        [Header("Portrait Overrides")]
+        [Tooltip("Optional per-crew portraits. If no entry exists, the prefab's default sprite is used.")]
+        public CrewPortraitMapping[] portraitOverrides;
+
         [Header("Refresh")] public float refreshInterval = 0.4f;
 
         public event Action<CrewMember, CrewStation, Transform> OnVisualAnchorChanged;
 
         readonly Dictionary<string, CrewHUDCrewIcon> _iconsByCrewId = new Dictionary<string, CrewHUDCrewIcon>();
+        readonly Dictionary<string, Sprite> _portraitLookup = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         readonly HashSet<string> _scratchIds = new HashSet<string>();
         float _nextRefreshTime;
 
@@ -47,6 +59,13 @@ namespace Teramyyd.UI
             {
                 unassignedDropZone.Initialize(this);
             }
+
+            RebuildPortraitLookup();
+        }
+
+        void OnValidate()
+        {
+            RebuildPortraitLookup();
         }
 
         void OnEnable()
@@ -165,6 +184,7 @@ namespace Teramyyd.UI
 
                 _scratchIds.Add(crew.crewId);
                 CrewHUDCrewIcon icon = GetOrCreateIcon(crew);
+                ApplyPortrait(icon, crew);
                 ApplyCrewAssignment(icon, crew);
             }
 
@@ -237,6 +257,17 @@ namespace Teramyyd.UI
             return icon;
         }
 
+        void ApplyPortrait(CrewHUDCrewIcon icon, CrewMember crew)
+        {
+            if (icon == null || crew == null)
+                return;
+
+            if (TryResolvePortrait(crew.crewId, out var sprite))
+            {
+                icon.SetPortraitSprite(sprite);
+            }
+        }
+
         void AttachIconToSlot(CrewHUDCrewIcon icon, CrewHUDStationSlot slot)
         {
             if (icon == null || slot == null)
@@ -274,6 +305,32 @@ namespace Teramyyd.UI
             }
 
             _scratchIds.Clear();
+        }
+
+        void RebuildPortraitLookup()
+        {
+            _portraitLookup.Clear();
+            if (portraitOverrides == null)
+                return;
+
+            foreach (var entry in portraitOverrides)
+            {
+                if (string.IsNullOrWhiteSpace(entry.crewId) || entry.portrait == null)
+                    continue;
+
+                _portraitLookup[entry.crewId] = entry.portrait;
+            }
+        }
+
+        bool TryResolvePortrait(string crewId, out Sprite sprite)
+        {
+            if (string.IsNullOrEmpty(crewId))
+            {
+                sprite = null;
+                return false;
+            }
+
+            return _portraitLookup.TryGetValue(crewId, out sprite);
         }
     }
 }

@@ -12,6 +12,22 @@ namespace Teramyyd.UI
     [RequireComponent(typeof(CanvasGroup))]
     public class CrewHUDCrewIcon : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
     {
+        public void SetPortraitSprite(Sprite sprite)
+        {
+            if (portraitImage == null)
+                return;
+
+            if (sprite != null)
+            {
+                portraitImage.sprite = sprite;
+                portraitImage.enabled = true;
+            }
+            else
+            {
+                portraitImage.enabled = false;
+            }
+        }
+
         [Header("UI References")]
         public Image portraitImage;
         public TMP_Text nameLabel;
