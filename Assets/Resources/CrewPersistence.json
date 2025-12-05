@@ -1,54 +1,54 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-05T19:51:30.2172658Z",
+    "lastSavedUtc": "2025-12-05T20:32:30.0190518Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 6.113661766052246,
+            "gunnery": 6.913112163543701,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_edb646bee22a43058aa63f444b5e9d4f"
+            "assignedStationId": "station_3dbd75b1ecb24a8c89831f33fc52481d"
         },
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 4.737380027770996,
+            "gunnery": 4.762522220611572,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_4552c7d779c74a1191b56eac7946172f"
+            "assignedStationId": "station_fe4f084c5f1d4ba9889145672b9b8e51"
         },
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 4.604524612426758,
+            "gunnery": 5.195740699768066,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_2e83146968544030a283c1a5d924f0ff"
+            "assignedStationId": "station_00cef7cd7e94456c8ee2b3fd08f672d9"
         },
         {
             "crewId": "crew_serena_brasswolf",
             "displayName": "Serena Brasswolf",
-            "gunnery": 4.641194820404053,
+            "gunnery": 4.937042236328125,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_8b9c81510ce44f77a36ed8d49f5c2ea5"
+            "assignedStationId": "station_a013ce1222344bde82bf7dc5bcbe14ff"
         }
     ]
 }

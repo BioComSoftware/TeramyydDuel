@@ -284,7 +284,16 @@ namespace Teramyyd.UI
             if (icon == null || slot == null)
                 return;
 
-            RectTransform parent = slot.iconAnchor != null ? slot.iconAnchor : slot.transform as RectTransform;
+            if (icon.CurrentSlot != null && icon.CurrentSlot != slot)
+            {
+                icon.CurrentSlot.ReleaseIcon(icon);
+            }
+
+            RectTransform parent = slot.RequestAnchorFor(icon);
+            if (parent == null)
+            {
+                parent = slot.iconAnchor != null ? slot.iconAnchor : slot.transform as RectTransform;
+            }
             icon.SetAssignedSlot(slot);
             icon.AttachToParent(parent, assignedIconScale);
             OnVisualAnchorChanged?.Invoke(icon.Crew, slot.Station, slot.worldAnchor);
@@ -294,6 +303,11 @@ namespace Teramyyd.UI
         {
             if (icon == null)
                 return;
+
+            if (icon.CurrentSlot != null)
+            {
+                icon.CurrentSlot.ReleaseIcon(icon);
+            }
 
             icon.SetAssignedSlot(null);
             icon.AttachToParent(unassignedContainer, unassignedIconScale);
@@ -310,6 +324,7 @@ namespace Teramyyd.UI
 
                 if (_iconsByCrewId[id] != null)
                 {
+                    _iconsByCrewId[id].CurrentSlot?.ReleaseIcon(_iconsByCrewId[id]);
                     Destroy(_iconsByCrewId[id].gameObject);
                 }
                 _iconsByCrewId.Remove(id);
