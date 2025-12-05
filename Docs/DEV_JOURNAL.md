@@ -1,21 +1,273 @@
+## 2025-12-06 — Crew HUD Drag Pipeline Overhaul + Outstanding Return Bug
+
+### Summary of work since last entry
+- Reworked the Crew HUD drag/drop system so icons now resolve drops synchronously, with a one-frame safety coroutine that only returns icons to the pool if no target claimed them. Introduced `CrewHUDCrewIcon.NotifyDropHandled()` so `CrewHUDStationSlot` and `CrewHUDUnassignedZone` can explicitly mark a drag as processed.
+- Simplified `CrewHUDController` drop helpers to just mutate state and return a `bool`, leaving presentation decisions (snap back vs. keep position) inside the icon. `HandleStationDrop` now short-circuits when slots are missing station IDs or when `CrewManager` cannot satisfy the assignment.
+- Updated `CrewHUDStationSlot` and `CrewHUDUnassignedZone` to call `NotifyDropHandled()` and only invoke `SnapBackToLastParent()` when the controller reports failure, preventing double-processing between the slot and the icon’s fallback coroutine.
+- Audited `CrewHUDStationSlot.StationId`/`Station` resolution so `stationIdOverride` always wins, ensuring duplicated HUD slots no longer all point at `Bow_weapon_mount_slot`.
+
+### Crew HUD architecture (current snapshot)
+- **Hierarchy**: `HUD_Canvas/HUD_Root/ShipRepresentation` holds the `CrewHUDController` (usually on `HUD_Root/CrewHUD`). Unassigned anchors live under `HUD_Root/CrewHUD/CrewHUDUnassignedCrewSlots/Canvas` as `UnassignedIconAnchor0..N`. Ship slots live under `HUD_Root/ShipRepresentation/ShipOutline/<station>_slot` with a `CrewHUDStationSlot` component and optional `iconAnchor`/`additionalIconAnchors` RectTransforms.
+- **Core scripts**:
+  - `CrewHUDController`: owns icon prefab reference, arrays of unassigned anchors, tooltip wiring, lookup dictionaries for anchor occupancy, and `shipSlots` (auto-discovered). Responsible for spawning icons per `CrewMember`, applying portraits, binding to station slots, releasing anchors, and relaying drop requests to `CrewManager`.
+  - `CrewHUDCrewIcon`: prefab spawned per crew. Handles tooltips, drag lifecycle, remembers last parent/scale, and runs the deferred “ensure drop handled” coroutine. Calls into the controller or foreign drop zones as needed.
+  - `CrewHUDStationSlot`: drop target tied to a specific `CrewStation` via serialized reference or `stationIdOverride`. Manages highlight feedback plus per-slot anchor bookkeeping so multiple crew can share the same station.
+  - `CrewHUDUnassignedZone`: generic drop area (often an invisible Image covering the top slots). Forwards drops back to the controller’s pool handler.
+- **Backend systems**:
+  - `CrewManager`: central authority for assignments, pending queues, and persistence writes. `HandleStationDrop` ultimately calls `CrewManager.TryAssignCrewToStationId`, which updates the `CrewStation` plus persistence.
+  - `CrewPersistenceManager`: loads `Assets/Resources/CrewPersistence.json` on boot and feeds initial assignments to the manager. All HUD actions eventually write back via `UpdateCrewAssignment`.
+  - `CrewRuntimeSpawner`: optional bridge that listens to `CrewHUDController.OnVisualAnchorChanged` and moves 3D crew prefabs to the matching world anchors so in-game representations stay synced with HUD changes.
+
+### Unity wiring checklist
+1. **Crew data**: populate `Assets/Resources/CrewPersistence.json` with each crew member’s `crewId`, display name, stats, health, and `assignedStationId`. On startup the persistence manager registers these members with `CrewManager`, which immediately queues the proper assignment.
+2. **Station slots**: every ship slot in `ShipRepresentation/ShipOutline` needs `CrewHUDStationSlot`. If the HUD cannot drag a `CrewStation` reference in the inspector, set `stationIdOverride` to the canonical ID (e.g., `Bow_weapon_mount_crew`). Each slot should expose at least one `RectTransform` anchor for the icon.
+3. **Crew HUD controller**: assign the icon prefab, unassigned anchor array (`CrewHUDUnassignedCrewSlots.Canvas.UnassignedIconAnchor#`), tooltip reference, and optionally the shared tooltip anchor. Enable `autoDiscoverStationSlots` so the controller finds every slot under itself when Play Mode starts.
+4. **Unassigned zone**: add `CrewHUDUnassignedZone` to the parent covering the row of unassigned anchors. Point its `controller` field at the same `CrewHUDController`.
+5. **3D sync (optional)**: `CrewRuntimeSpawner` needs a mapping of station IDs to world anchors and a reference to the same HUD controller so it can react to `OnVisualAnchorChanged` events.
+
+### Crew HUD data flow expectations
+1. **Startup population**: When the scene loads, `CrewPersistenceManager` reads `CrewPersistence.json`. `CrewManager.RegisterCrew` uses `assignedStationId` (or `initialStationId`) to queue assignments before `CrewHUDController.ForceRefresh()` runs. Icons whose crew have a station assignment must appear immediately on the corresponding `ShipRepresentation` slot; everyone else should consume unassigned anchors under `CrewHUDUnassignedCrewSlots.Canvas.UnassignedIconAnchorX`.
+2. **Assigning from unassigned slots**: Dragging an unassigned icon onto a ship slot calls `CrewHUDController.HandleStationDrop` → `CrewManager.TryAssignCrewToStationId`. On success we place the icon at that slot’s anchor, update persistence, and `CrewRuntimeSpawner` moves the 3D crew member to the slot’s `worldAnchor`.
+3. **Station-to-station reassignment**: Dragging directly from one ship slot to another should re-run the same assignment path, evicting the icon from its previous slot, updating persistence, and re-snapping the world anchor.
+4. **Returning to unassigned**: Dragging anywhere that is *not* a valid station (empty canvas space, the dedicated unassigned zone, etc.) must call `HandleReturnToPool`, which unassigns the crew in `CrewManager`, clears their persistence entry, and reattaches the icon to the next available unassigned anchor. The latest refactor ensures we attempt this via the fallback coroutine even if the pointer release didn’t hit a registered drop zone.
+
+### Current problem (open)
+- Although the drop pipeline now resolves station drops cleanly, returning from ship slots remains broken: releasing an icon over the unassigned region briefly shows the portrait in the correct anchor before it jumps back to the previous station. This indicates either (a) `HandleReturnToPool` is being succeeded immediately by a second `HandleStationDrop` (likely because the icon re-enters the slot’s raycast zone while the coroutine is still running), or (b) persistence is reapplying the last station assignment before the HUD refresh consumes the unassigned state. Need to trace the exact order of events between `CrewHUDCrewIcon.EnsureDropHandled()`, `CrewManager.UnassignCrew`, and the next `CrewHUDController.RefreshAssignments()` pass.
+- Until this is fixed, requirement #4 above is unmet: returning to the top bar does not persist the unassignment, so the icon reverts to its previous slot as soon as the controller refreshes.
+
+1. At game start up, the crewpersistance.json file is to be read. Any crew member assigned a station should have the crewHUDcrewIcon popullated on the ShipRepresentation crew HUD slot. ALl othe rcrewHUDcrewIcons should end up assigned to the unassigned slots with the CrewHUDcrewIcon object appearing in the CrewHUDUnassignedCrewSlots.Canvas.UnassignedIconAnchorX slots. 
+
+2. An unassigned crew meber in the unassigned slots should be able to be dragged toa specific assigned shiprepresentation crew <station>_slot. This should affect the crewpersistance.json file annotating wher e the crew member is assigned.  Other game factors (such as positioning a 3D in game crew object in the approopriate ship station should happen as well. 
+
+3. A crewHUDcrewIcon should be able to be dragged from  the ShipRepresentaion HUD assigned station slot to another ShipRepresentaion HUD assigned station slot directly - reassigning the crew member, and affecting all the other code locations that need to be updated (such as the 3D game workd ship representation fo the crew member. ) 
+
+4. 3. A crewHUDcrewIcon should be able to be dragged from the ShipRepresentaion HUD to anywhere that is not a ShipRepresentation assigne crew slot (such as the generic game field or the unsassigned crew slot area.) This shoudl unassign the crew member from the assigned slot in the crewpersistance.json file, and retun the CrewHUDCrewIcon to the unassigned slots anchors. 
+
 ## 2025-11-30 — Ship HUD Hierarchy Snapshot
 
-- Captured the current HUD structure so future instructions can reference exact parents when wiring prefabs/slots. User will provide more nodes over time; keep appending under this heading as additional sections arrive.
-- Present snapshot (partial, pending more detail):
+- Captured the current UNity hierarchy so future instructions can reference exact parents when wiring prefabs/slots. User will provide more nodes over time; keep appending under this heading as additional sections arrive.
 
 ```
-Main
-├── Main Camera
-├── Directional Light
-└── Ship
-  ├── Model
-  │   └── (Etc.)
-  └── HUD_Canvas
-    └── HUD_Root
-      └── ShipRepresentation
-        └── ShipOutline
-          └── Bow_weapon_mount
-            └── (Etc.)
+- Main Camera
+- Directional Light
+- Ship
+  - Model
+    - Bridge
+      - Cube
+    - Hull_Forward_Port
+      - Cube
+    - Hull_Forward_Starboard
+      - Cube
+    - Hull_Central_Port
+      - Cube
+    - Hull_Central_Starboard
+      - Cube
+    - Hull_Aft
+      - Cube
+    - Hull_Rear_Port
+      - Cube
+    - Hull_Rear_Starboard
+      - Cube
+    - Bottom
+      - 3D shape
+        - default
+    - Deck
+      - 3D shape
+        - default
+    - Hull_Armor_Forward_Starboard
+    - Hull_Armor_Forward_Port
+    - Hull_Armor_Central_Starboard
+    - Hull_Armor_Central_Port
+    - Hull_Armor_Rear_Starboard
+    - Hull_Armor_Rear_Port
+    - Hull_Armor_Aft
+    - Hull_Armor_Bow
+    - Internal
+      - Starboard_mount_1
+      - Starboard_mount_2
+      - Starboard_mount_3
+      - Port_mount_1
+      - Port_mount_2
+      - Port_mount_3
+      - Aft_mount
+      - Bow_mount
+      - Propulsion
+      - Lift
+    - LiftDevice
+      - AntiGravityDevice
+        - Sphere
+    - Engine
+      - SteamJetEngine
+        - Engine
+        - Jet
+  - BridgeCameraMount
+  - FollowCameraMount
+  - FollowCameraFocalPoint
+  - OverheadCameraMount
+  - Bow_weapon_mount
+    - Bow_weapon_mount_actual
+      - PitchBarrel
+    - Bow_weapon_mount_CrewAnchor
+  - Aft_weapon_mount
+    - Aft_weapon_mount_actual
+      - PitchBarrel
+    - Aft_weapon_mount_CrewAnchor
+  - Starboard_forward_hull_weapon_mount
+    - Starboard_forward_hull_weapon_mount_actual
+      - PitchBarrel
+    - Starboard_forward_hull_weapon_mount_CrewAnchor
+  - Port_forward_hull_weapon_mount
+    - Port_forward_hull_weapon_mount_actual
+      - PitchBarrel
+    - Port_forward_hull_weapon_mount_CrewAnchor
+  - Port_rear_hull_weapon_mount
+    - Port_rear_hull_weapon_mount_actual
+      - PitchBarrel
+    - Port_rear_hull_weapon_mount_CrewAnchor
+  - Starboard_rear_hull_weapon_mount
+    - Starboard_rear_hull_weapon_mount_actual
+      - PitchBarrel
+    - Starboard_rear_hull_weapon_mount_CrewAnchor
+- Ground
+  - Plane
+- EventSystem
+- HUD_Canvas
+  - HUD_Root
+    - SettingsButton
+    - BridgeViewButton
+    - FollowViewButton
+    - OverheadViewButton
+    - HUD
+    - DashboardBackground
+    - InstrumentPanel_Background
+      - Airspeed_Indicator
+        - Airspeed_Needle
+      - Altimeter_Indicator
+        - Altimeter_Thousands
+        - Altimeter_Hundreds
+        - Altimeter_Tens
+      - VerticalSpeed_Indicator
+        - VSI_Needle
+      - Attitude_Indicator
+        - YawTriangle
+        - Wingleveler
+      - ShipWheel_Container
+        - ShipWheel
+      - Chadburn_Container
+        - Chadburn_Background
+        - Chadburn_Handle
+      - Lift_chadburn_Container
+        - Lift_chadburn_Background
+        - Chadburn_Handle
+      - Roll Lever Container
+        - Roll Lever Background
+        - Roll Lever Handle
+      - Pitch Lever Container
+        - Pitch Lever Background
+        - Pitch Lever Handle
+      - Compass
+        - CompassBackground
+        - CompassViewport
+          - CompassReadout
+      - Temperature
+        - TemperatureBackground
+          - EnginePlacard
+          - LiftPlacard
+        - TemperatureViewport
+          - EngineTemperatureReadout
+          - LiftdeviceTemperatureReadout
+    - ShipRepresentation
+      - ShipOutline
+        - Bow_weapon_mount
+          - TargetNotAcquired
+          - Healthbar
+          - FIRE
+          - ReadyIndicators
+            - GreenStoplight
+            - RedStoplight
+        - Bow_weapon_mount_slot
+          - Bow_weapon_mount_slot_Icon_Anchor1
+          - Bow_weapon_mount_slotIcon_Anchor2
+        - Aft_weapon_mount
+          - TargetNotAcquired
+          - Healthbar
+          - FIRE
+          - ReadyIndicators
+            - GreenStoplight
+            - RedStoplight
+        - Aft_weapon_mount_slot
+          - Aft_weapon_mount_slot_IconAnchor1
+          - Aft_weapon_mount_slot_IconAnchor2
+        - Starboard_forward_hull_weapon_mount
+          - TargetNotAcquired
+          - Healthbar
+          - FIRE
+          - ReadyIndicators
+            - GreenStoplight
+            - RedStoplight
+        - Starboard_forward_hull_weapon_mount_slot
+          - Starboard_forward_hull_weapon_mount_slot_IconAnchor1
+          - Starboard_forward_hull_weapon_mount_slot_IconAnchor2
+        - Starboard_rear_hull_weapon_mount
+          - TargetNotAcquired
+          - Healthbar
+          - FIRE
+          - ReadyIndicators
+            - GreenStoplight
+            - RedStoplight
+        - Starboard_rear_hull_weapon_mount_slot
+          - Starboard_rear_hull_weapon_mount_slot_IconAnchor1
+          - Starboard_rear_hull_weapon_mount_slot_IconAnchor2
+        - Port_forward_hull_weapon_mount
+          - TargetNotAcquired
+          - Healthbar
+          - FIRE
+          - ReadyIndicators
+            - GreenStoplight
+            - RedStoplight
+        - Port_forward_hull_weapon_mount_slot
+          - Port_forward_hull_weapon_mount_slot_IconAnchor1
+          - Port_forward_hull_weapon_mount_slot_IconAnchor2
+        - Port_rear_hull_weapon_mount
+          - TargetNotAcquired
+          - Healthbar
+          - FIRE
+          - ReadyIndicators
+            - GreenStoplight
+            - RedStoplight
+        - Port_rear_hull_weapon_mount_slot
+          - Port_rear_hull_weapon_mount_slot_IconAnchor1
+          - Port_rear_hull_weapon_mount_slot_IconAnchor2
+      - FireAtWill
+      - CrewHUDUnassignedCrewSlots
+        - Canvas
+          - UnassignedIconAnchor1
+          - UnassignedIconAnchor2
+          - UnassignedIconAnchor3
+          - UnassignedIconAnchor4
+          - UnassignedIconAnchor5
+          - UnassignedIconAnchor6
+          - UnassignedIconAnchor7
+          - UnassignedIconAnchor8
+          - UnassignedIconAnchor9
+          - UnassignedIconAnchor10
+  - TargetingOverlay
+  - CrewHUDCrewIconTooltipAnchor
+- CrewHUDCrewIcon
+- CrewHUDTooltip_Working
+  - NameLabel
+  - SkillLabel
+  - StatsLabel
+  - currentStationLabel
+  - HealthLabel
+  - HealthFill
+  - TooltipPortrait
+- Target
+  - Sphere
+- WeaponPersistenceManager
+- CrewSystems
+  - CrewRuntimeSpawner 
+
 ```
 
 # 2025-11-29 — Fractional Health + Crew Infrastructure

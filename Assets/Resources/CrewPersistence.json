@@ -1,54 +1,55 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-05T20:32:30.0190518Z",
+    "lastSavedUtc": "2025-12-05T22:20:10.9906335Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 6.913112163543701,
+            "gunnery": 8.070043563842774,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_3dbd75b1ecb24a8c89831f33fc52481d"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 4.762522220611572,
+            "gunnery": 4.9310302734375,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_fe4f084c5f1d4ba9889145672b9b8e51"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 5.195740699768066,
+            "gunnery": 5.265210151672363,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_00cef7cd7e94456c8ee2b3fd08f672d9"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_serena_brasswolf",
             "displayName": "Serena Brasswolf",
-            "gunnery": 4.937042236328125,
+            "gunnery": 5.153923511505127,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_a013ce1222344bde82bf7dc5bcbe14ff"
+            "assignedStationId": ""
         }
+        
     ]
 }

@@ -31,21 +31,33 @@ namespace Teramyyd.UI
         readonly Dictionary<CrewHUDCrewIcon, RectTransform> _iconToAnchor = new Dictionary<CrewHUDCrewIcon, RectTransform>();
         readonly Dictionary<RectTransform, CrewHUDCrewIcon> _anchorToIcon = new Dictionary<RectTransform, CrewHUDCrewIcon>();
 
-        public string StationId => Station != null ? Station.stationId : stationIdOverride;
+        public string StationId
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(stationIdOverride))
+                    return stationIdOverride;
+
+                return Station != null ? Station.stationId : string.Empty;
+            }
+        }
 
         public CrewStation Station
         {
             get
             {
-                if (station != null)
-                    return station;
-
-                if (!string.IsNullOrEmpty(stationIdOverride) && CrewManager.HasInstance)
+                if (!string.IsNullOrEmpty(stationIdOverride))
                 {
-                    if (CrewManager.Instance.TryGetStation(stationIdOverride, out var found))
+                    if (station != null && station.stationId == stationIdOverride)
+                        return station;
+
+                    if (CrewManager.HasInstance && CrewManager.Instance.TryGetStation(stationIdOverride, out var overrideStation))
                     {
-                        station = found;
+                        station = overrideStation;
+                        return station;
                     }
+
+                    return null;
                 }
 
                 return station;
@@ -65,10 +77,16 @@ namespace Teramyyd.UI
         public void OnDrop(PointerEventData eventData)
         {
             var icon = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<CrewHUDCrewIcon>() : null;
-            if (icon == null)
+            if (icon == null || _controller == null)
                 return;
 
-            _controller?.HandleStationDrop(this, icon);
+            bool success = _controller.HandleStationDrop(this, icon);
+            icon.NotifyDropHandled();
+
+            if (!success)
+            {
+                icon.SnapBackToLastParent();
+            }
         }
 
         public void OnPointerEnter(PointerEventData eventData)

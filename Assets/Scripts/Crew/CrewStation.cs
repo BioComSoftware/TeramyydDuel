@@ -106,7 +106,7 @@ public class CrewStation : MonoBehaviour
             {
                 member.AssignedStation = null;
             }
-            member.PendingStationId = stationId;
+            member.PendingStationId = string.Empty;
         }
     }
 

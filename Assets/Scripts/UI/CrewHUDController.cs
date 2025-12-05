@@ -19,11 +19,12 @@ namespace Teramyyd.UI
     public class CrewHUDController : MonoBehaviour
     {
         [Header("References")]
-        public RectTransform unassignedContainer;
-        public CrewHUDUnassignedZone unassignedDropZone;
         public CrewHUDCrewIcon iconPrefab;
         public Canvas dragCanvas;
         public CrewHUDTooltip tooltip;
+        [Header("Unassigned Crew Slots")]
+        [Tooltip("Ordered list of anchors used to display unassigned crew across the HUD.")]
+        public RectTransform[] unassignedCrewSlotAnchors;
         [Tooltip("Optional RectTransform used for all crew tooltips when an icon does not specify its own anchor.")]
         public RectTransform sharedTooltipAnchor;
 
@@ -35,6 +36,8 @@ namespace Teramyyd.UI
         [Header("Appearance")]
         public Vector2 unassignedIconScale = Vector2.one;
         public Vector2 assignedIconScale = new Vector2(0.65f, 0.65f);
+        [Tooltip("Scale applied when icons occupy the top-level crew slot anchors.")]
+        public Vector2 crewSlotIconScale = new Vector2(0.5f, 0.5f);
         public Color pendingColor = new Color(1f, 0.9f, 0.4f, 1f);
 
         [Header("Portrait Overrides")]
@@ -48,6 +51,8 @@ namespace Teramyyd.UI
         readonly Dictionary<string, CrewHUDCrewIcon> _iconsByCrewId = new Dictionary<string, CrewHUDCrewIcon>();
         readonly Dictionary<string, Sprite> _portraitLookup = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         readonly HashSet<string> _scratchIds = new HashSet<string>();
+        readonly Dictionary<CrewHUDCrewIcon, RectTransform> _crewIconToAnchor = new Dictionary<CrewHUDCrewIcon, RectTransform>();
+        readonly Dictionary<RectTransform, CrewHUDCrewIcon> _anchorToCrewIcon = new Dictionary<RectTransform, CrewHUDCrewIcon>();
         float _nextRefreshTime;
 
         void Awake()
@@ -55,11 +60,6 @@ namespace Teramyyd.UI
             if (dragCanvas == null)
             {
                 dragCanvas = GetComponentInParent<Canvas>();
-            }
-
-            if (unassignedDropZone != null)
-            {
-                unassignedDropZone.Initialize(this);
             }
 
             RebuildPortraitLookup();
@@ -91,39 +91,42 @@ namespace Teramyyd.UI
             RefreshAssignments();
         }
 
-        public void HandleStationDrop(CrewHUDStationSlot slot, CrewHUDCrewIcon icon)
+        public bool HandleStationDrop(CrewHUDStationSlot slot, CrewHUDCrewIcon icon)
         {
             if (slot == null || icon == null)
-                return;
+                return false;
 
-            CrewStation station = slot.Station;
-            if (station == null)
+            string stationId = slot.StationId;
+            if (string.IsNullOrEmpty(stationId))
             {
-                icon.SnapBackToLastParent();
-                return;
+                return false;
             }
 
             var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
             if (manager == null)
             {
-                icon.SnapBackToLastParent();
-                return;
+                return false;
             }
 
-            if (!manager.TryAssignCrewToStation(icon.Crew, station))
+            if (!manager.TryAssignCrewToStationId(icon.Crew, stationId))
             {
-                icon.SnapBackToLastParent();
-                return;
+                return false;
+            }
+
+            CrewStation station = slot.Station;
+            if (station == null)
+            {
+                manager.TryGetStation(stationId, out station);
             }
 
             AttachIconToSlot(icon, slot);
-            icon.MarkDropAccepted();
+            return true;
         }
 
-        public void HandleReturnToPool(CrewHUDCrewIcon icon)
+        public bool HandleReturnToPool(CrewHUDCrewIcon icon)
         {
             if (icon == null)
-                return;
+                return false;
 
             var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
             if (manager != null)
@@ -132,7 +135,7 @@ namespace Teramyyd.UI
             }
 
             AttachIconToPool(icon);
-            icon.MarkDropAccepted();
+            return true;
         }
 
         public void RegisterStationSlot(CrewHUDStationSlot slot)
@@ -175,7 +178,7 @@ namespace Teramyyd.UI
             _nextRefreshTime = Time.unscaledTime + Mathf.Max(0.1f, refreshInterval);
 
             var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
-            if (manager == null || iconPrefab == null || unassignedContainer == null)
+            if (manager == null || iconPrefab == null)
                 return;
 
             if (autoDiscoverStationSlots)
@@ -262,8 +265,8 @@ namespace Teramyyd.UI
             if (_iconsByCrewId.TryGetValue(crew.crewId, out var existing) && existing != null)
                 return existing;
 
-            CrewHUDCrewIcon icon = Instantiate(iconPrefab, unassignedContainer);
-            icon.Initialize(this, crew, unassignedIconScale);
+            CrewHUDCrewIcon icon = Instantiate(iconPrefab, transform);
+            icon.Initialize(this, crew);
             _iconsByCrewId[crew.crewId] = icon;
             return icon;
         }
@@ -284,6 +287,7 @@ namespace Teramyyd.UI
             if (icon == null || slot == null)
                 return;
 
+            ReleaseCrewSlotAnchor(icon);
             if (icon.CurrentSlot != null && icon.CurrentSlot != slot)
             {
                 icon.CurrentSlot.ReleaseIcon(icon);
@@ -310,7 +314,17 @@ namespace Teramyyd.UI
             }
 
             icon.SetAssignedSlot(null);
-            icon.AttachToParent(unassignedContainer, unassignedIconScale);
+            RectTransform parent = RequestCrewSlotAnchor(icon);
+            if (parent == null)
+            {
+                string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
+                string message = $"CrewHUD: No available unassigned crew slot anchors for {crewName}.";
+                Debug.LogError(message, icon);
+                throw new InvalidOperationException(message);
+            }
+
+            Vector2 scale = crewSlotIconScale;
+            icon.AttachToParent(parent, scale);
             OnVisualAnchorChanged?.Invoke(icon.Crew, null, null);
         }
 
@@ -325,6 +339,7 @@ namespace Teramyyd.UI
                 if (_iconsByCrewId[id] != null)
                 {
                     _iconsByCrewId[id].CurrentSlot?.ReleaseIcon(_iconsByCrewId[id]);
+                    ReleaseCrewSlotAnchor(_iconsByCrewId[id]);
                     Destroy(_iconsByCrewId[id].gameObject);
                 }
                 _iconsByCrewId.Remove(id);
@@ -357,6 +372,49 @@ namespace Teramyyd.UI
             }
 
             return _portraitLookup.TryGetValue(crewId, out sprite);
+        }
+
+        RectTransform RequestCrewSlotAnchor(CrewHUDCrewIcon icon)
+        {
+            if (icon == null)
+                return null;
+
+            if (_crewIconToAnchor.TryGetValue(icon, out var existing) && existing != null)
+                return existing;
+
+            if (unassignedCrewSlotAnchors == null)
+                return null;
+
+            for (int i = 0; i < unassignedCrewSlotAnchors.Length; i++)
+            {
+                var anchor = unassignedCrewSlotAnchors[i];
+                if (anchor == null)
+                    continue;
+
+                if (!_anchorToCrewIcon.TryGetValue(anchor, out var occupant) || occupant == null)
+                {
+                    _anchorToCrewIcon[anchor] = icon;
+                    _crewIconToAnchor[icon] = anchor;
+                    return anchor;
+                }
+            }
+
+            return null;
+        }
+
+        void ReleaseCrewSlotAnchor(CrewHUDCrewIcon icon)
+        {
+            if (icon == null)
+                return;
+
+            if (_crewIconToAnchor.TryGetValue(icon, out var anchor))
+            {
+                _crewIconToAnchor.Remove(icon);
+                if (anchor != null && _anchorToCrewIcon.TryGetValue(anchor, out var occupant) && occupant == icon)
+                {
+                    _anchorToCrewIcon.Remove(anchor);
+                }
+            }
         }
     }
 }

@@ -4,16 +4,20 @@ using UnityEngine.EventSystems;
 namespace Teramyyd.UI
 {
     /// <summary>
-    /// Drop target that accepts crew icons to move them back into the unassigned pool.
+    /// Drop target that accepts crew icons to move them back into the unassigned HUD slots.
     /// </summary>
     [AddComponentMenu("Teramyyd/UI/Crew HUD Unassigned Zone")]
-    public class CrewHUDUnassignedZone : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
+    public class CrewHUDUnassignedZone : MonoBehaviour, IDropHandler
     {
-        CrewHUDController _controller;
+        [Tooltip("Controller that manages crew HUD icons. If left null the component searches its parents on Awake.")]
+        public CrewHUDController controller;
 
-        public void Initialize(CrewHUDController controller)
+        void Awake()
         {
-            _controller = controller;
+            if (controller == null)
+            {
+                controller = GetComponentInParent<CrewHUDController>();
+            }
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -22,15 +26,20 @@ namespace Teramyyd.UI
             if (icon == null)
                 return;
 
-            _controller?.HandleReturnToPool(icon);
+            if (controller == null)
+            {
+                Debug.LogWarning("CrewHUDUnassignedZone has no controller assigned and cannot process drops.", this);
+                return;
+            }
+
+            bool success = controller.HandleReturnToPool(icon);
+            icon.NotifyDropHandled();
+
+            if (!success)
+            {
+                icon.SnapBackToLastParent();
+            }
         }
 
-        public void OnPointerEnter(PointerEventData eventData)
-        {
-        }
-
-        public void OnPointerExit(PointerEventData eventData)
-        {
-        }
     }
 }

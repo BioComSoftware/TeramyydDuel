@@ -57,9 +57,7 @@ public class CrewManager : MonoBehaviour
         _crewById[crew.crewId] = crew;
 
         var state = CrewPersistenceManager.Instance.RegisterCrewMember(crew);
-        string targetStationId = !string.IsNullOrEmpty(state?.assignedStationId)
-            ? state.assignedStationId
-            : crew.initialStationId;
+        string targetStationId = state != null ? state.assignedStationId : crew.initialStationId;
 
         if (!string.IsNullOrEmpty(targetStationId))
         {

@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -51,7 +52,8 @@ namespace Teramyyd.UI
         RectTransform _lastParent;
         int _lastSiblingIndex;
         Vector2 _lastScale = Vector2.one;
-        bool _dropAccepted;
+        bool _dropHandled;
+        Coroutine _pendingDropRoutine;
 
         void Awake()
         {
@@ -59,13 +61,21 @@ namespace Teramyyd.UI
             _canvasGroup = GetComponent<CanvasGroup>();
         }
 
-        public void Initialize(CrewHUDController controller, CrewMember crew, Vector2 initialScale)
+        public void Initialize(CrewHUDController controller, CrewMember crew)
         {
             _controller = controller;
             Crew = crew;
             UpdateVisuals();
             ClearPendingState();
-            AttachToParent(controller != null ? controller.unassignedContainer : null, initialScale);
+        }
+
+        void OnDisable()
+        {
+            if (_pendingDropRoutine != null)
+            {
+                StopCoroutine(_pendingDropRoutine);
+                _pendingDropRoutine = null;
+            }
         }
 
         public void AttachToParent(RectTransform parent, Vector2 scale)
@@ -117,11 +127,6 @@ namespace Teramyyd.UI
             }
         }
 
-        public void MarkDropAccepted()
-        {
-            _dropAccepted = true;
-        }
-
         public void SnapBackToLastParent()
         {
             if (_lastParent == null)
@@ -137,7 +142,13 @@ namespace Teramyyd.UI
             if (Crew == null)
                 return;
 
-            _dropAccepted = false;
+            if (_pendingDropRoutine != null)
+            {
+                StopCoroutine(_pendingDropRoutine);
+                _pendingDropRoutine = null;
+            }
+
+            _dropHandled = false;
             _controller?.HideTooltip(this);
             _lastParent = _rectTransform.parent as RectTransform;
             _lastSiblingIndex = _rectTransform.GetSiblingIndex();
@@ -171,12 +182,11 @@ namespace Teramyyd.UI
                 _canvasGroup.alpha = 1f;
             }
 
-            if (!_dropAccepted)
+            if (_pendingDropRoutine != null)
             {
-                SnapBackToLastParent();
+                StopCoroutine(_pendingDropRoutine);
             }
-
-            _dropAccepted = false;
+            _pendingDropRoutine = StartCoroutine(EnsureDropHandled());
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -195,6 +205,16 @@ namespace Teramyyd.UI
                 DebugMessage($"Pointer exit: {Crew.displayName} ({Crew.crewId})");
             }
             _controller?.HideTooltip(this);
+        }
+
+        public void NotifyDropHandled()
+        {
+            _dropHandled = true;
+            if (_pendingDropRoutine != null)
+            {
+                StopCoroutine(_pendingDropRoutine);
+                _pendingDropRoutine = null;
+            }
         }
 
         void UpdateDragPosition(PointerEventData eventData, Canvas canvas)
@@ -220,6 +240,19 @@ namespace Teramyyd.UI
                 return;
 
             CrewSkillUtility.GetDominantSkill(Crew);
+        }
+
+        IEnumerator EnsureDropHandled()
+        {
+            yield return null;
+
+            if (!_dropHandled)
+            {
+                _controller?.HandleReturnToPool(this);
+                _dropHandled = true;
+            }
+
+            _pendingDropRoutine = null;
         }
 
         void DebugMessage(string message)

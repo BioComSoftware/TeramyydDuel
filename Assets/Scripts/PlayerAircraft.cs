@@ -5,7 +5,7 @@
 public class PlayerAircraft : MonoBehaviour
 { 
     [Header("Flight")]
-    public float forwardSpeed = 80f;
+    public float forwardSpeed = 80f; 
     public float pitchSpeed = 45f;
     public float yawSpeed = 30f;
     public float rollSpeed = 60f;
