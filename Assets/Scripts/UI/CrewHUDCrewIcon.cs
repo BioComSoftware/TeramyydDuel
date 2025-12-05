@@ -74,6 +74,9 @@ namespace Teramyyd.UI
                 return;
 
             _rectTransform.SetParent(parent, worldPositionStays: false);
+            _rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            _rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            _rectTransform.pivot = new Vector2(0.5f, 0.5f);
             _rectTransform.localScale = new Vector3(scale.x, scale.y, 1f);
             _rectTransform.anchoredPosition = Vector2.zero;
             _rectTransform.SetAsLastSibling();
