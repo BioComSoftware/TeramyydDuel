@@ -1,23 +1,23 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-06T00:10:56.5710274Z",
+    "lastSavedUtc": "2025-12-06T21:40:20.4454406Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 8.323263168334961,
+            "gunnery": 9.14623737335205,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Starboard_forward_hull_weapon_mount_actual_crew_slot"
+            "assignedStationId": "Port_rear_hull_weapon_mount_actual_crew_slot"
         },
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 5.218094825744629,
+            "gunnery": 8.060393333435059,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
@@ -29,26 +29,26 @@
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 5.6335554122924809,
+            "gunnery": 8.446137428283692,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Port_forward_hull_weapon_mount_actual_crew_slot"
+            "assignedStationId": "Starboard_forward_hull_weapon_mount_actual_crew_slot"
         },
         {
             "crewId": "crew_serena_brasswolf",
             "displayName": "Serena Brasswolf",
-            "gunnery": 5.548162937164307,
+            "gunnery": 6.264337539672852,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Port_rear_hull_weapon_mount_actual_crew_slot"
+            "assignedStationId": ""
         }
     ]
 }

@@ -219,15 +219,37 @@ namespace Teramyyd.UI
 
         internal void ShowTooltip(CrewHUDCrewIcon icon)
         {
-            if (tooltip == null || icon == null)
+            string crewName = icon?.Crew?.displayName ?? "Unknown";
+            
+            if (tooltip == null)
+            {
+                string msg = $"[CrewHUD] ShowTooltip: tooltip is null for {crewName}";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "CrewHUD");
                 return;
+            }
+            
+            if (icon == null)
+            {
+                string msg = "[CrewHUD] ShowTooltip: icon is null";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "CrewHUD");
+                return;
+            }
 
             CrewStation station = icon.CurrentSlot != null ? icon.CurrentSlot.Station : null;
             Sprite portrait = icon.portraitImage != null ? icon.portraitImage.sprite : null;
             RectTransform anchor = icon.tooltipAnchor != null ? icon.tooltipAnchor : sharedTooltipAnchor;
+            
+            string msg1 = $"[CrewHUD] ShowTooltip: {crewName}, anchor={anchor != null}, station={station != null}, portrait={portrait != null}";
+            Debug.Log(msg1);
+            FileLogger.Log(msg1, "CrewHUD");
+            
             if (anchor == null)
             {
-                Debug.LogWarning($"CrewHUD: Missing tooltip anchor for {icon.Crew?.crewId ?? "unknown crew"}. Tooltip will stay hidden.", icon);
+                string msg2 = $"[CrewHUD] ShowTooltip: Missing tooltip anchor for {icon.Crew?.crewId ?? "unknown crew"}. icon.tooltipAnchor={icon.tooltipAnchor != null}, sharedTooltipAnchor={sharedTooltipAnchor != null}";
+                Debug.LogWarning(msg2, icon);
+                FileLogger.Log(msg2, "CrewHUD");
                 tooltip.Hide(icon);
                 return;
             }

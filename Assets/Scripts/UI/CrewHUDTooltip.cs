@@ -46,22 +46,48 @@ namespace Teramyyd.UI
 
         public void Show(CrewMember crew, CrewStation station, RectTransform anchor, Sprite portraitSprite)
         {
+            string msg1 = $"[CrewHUDTooltip] Show called: crew={crew?.displayName ?? "null"}, anchor={anchor != null}, portrait={portraitSprite != null}";
+            Debug.Log(msg1);
+            FileLogger.Log(msg1, "CrewHUD");
+            
             if (crew == null || anchor == null)
             {
+                string msg2 = $"[CrewHUDTooltip] Show: crew or anchor is null, hiding";
+                Debug.LogWarning(msg2);
+                FileLogger.Log(msg2, "CrewHUD");
                 Hide(null);
                 return;
             }
 
             if (root != null && !root.activeSelf)
             {
+                string msg3 = $"[CrewHUDTooltip] Activating root GameObject";
+                Debug.Log(msg3);
+                FileLogger.Log(msg3, "CrewHUD");
                 root.SetActive(true);
+            }
+            
+            // Move tooltip to last sibling (render on top)
+            if (root != null)
+            {
+                root.transform.SetAsLastSibling();
+                string msg3b = $"[CrewHUDTooltip] Set tooltip as last sibling, new index={root.transform.GetSiblingIndex()}";
+                Debug.Log(msg3b);
+                FileLogger.Log(msg3b, "CrewHUD");
             }
 
             if (!PositionTooltipAtAnchor(anchor))
             {
+                string msg4 = $"[CrewHUDTooltip] PositionTooltipAtAnchor failed, hiding";
+                Debug.LogWarning(msg4);
+                FileLogger.Log(msg4, "CrewHUD");
                 Hide(null);
                 return;
             }
+            
+            string msg5 = $"[CrewHUDTooltip] Tooltip positioned successfully, populating data";
+            Debug.Log(msg5);
+            FileLogger.Log(msg5, "CrewHUD");
 
             ApplyPortrait(portraitSprite);
 
@@ -102,6 +128,10 @@ namespace Teramyyd.UI
 
         public void Hide(object source)
         {
+            string msg = $"[CrewHUDTooltip] Hide called from {source?.GetType().Name ?? "null"}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
+            
             if (root != null)
             {
                 root.SetActive(false);
@@ -183,19 +213,101 @@ namespace Teramyyd.UI
 
         bool PositionTooltipAtAnchor(RectTransform anchor)
         {
-            if (_rect == null || anchor == null || !EnsureCanvasReferences())
+            string msg1 = $"[CrewHUDTooltip] PositionTooltipAtAnchor: _rect={_rect != null}, anchor={anchor != null}, canvas refs check...";
+            Debug.Log(msg1);
+            FileLogger.Log(msg1, "CrewHUD");
+            
+            if (_rect == null)
+            {
+                string msg2 = "[CrewHUDTooltip] PositionTooltipAtAnchor: _rect is null";
+                Debug.LogWarning(msg2);
+                FileLogger.Log(msg2, "CrewHUD");
                 return false;
-
-            Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
-            Vector3 worldCenter = anchor.TransformPoint(anchor.rect.center);
-            Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(cam, worldCenter);
-
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_canvasRect, screenPos, cam, out var localPoint))
+            }
+            
+            if (anchor == null)
+            {
+                string msg3 = "[CrewHUDTooltip] PositionTooltipAtAnchor: anchor is null";
+                Debug.LogWarning(msg3);
+                FileLogger.Log(msg3, "CrewHUD");
                 return false;
+            }
+            
+            if (!EnsureCanvasReferences())
+            {
+                string msg4 = $"[CrewHUDTooltip] PositionTooltipAtAnchor: EnsureCanvasReferences failed - _canvas={_canvas != null}, _canvasRect={_canvasRect != null}";
+                Debug.LogWarning(msg4);
+                FileLogger.Log(msg4, "CrewHUD");
+                return false;
+            }
 
-            localPoint += anchorOffset;
-            localPoint = ClampToCanvas(localPoint);
-            _rect.anchoredPosition = localPoint;
+            // Convert anchor world position to tooltip's parent local space
+            RectTransform tooltipParent = _rect.parent as RectTransform;
+            if (tooltipParent == null)
+            {
+                Debug.LogError("[CrewHUDTooltip] Tooltip parent is not a RectTransform!");
+                return false;
+            }
+            
+            string parentInfo = $"[CrewHUDTooltip] Parent={tooltipParent.name}, anchoredPos={tooltipParent.anchoredPosition}, " +
+                               $"localPos={tooltipParent.localPosition}, pivot={tooltipParent.pivot}, anchorMin={tooltipParent.anchorMin}, anchorMax={tooltipParent.anchorMax}";
+            Debug.Log(parentInfo);
+            FileLogger.Log(parentInfo, "CrewHUD");
+            
+            string anchorInfo = $"[CrewHUDTooltip] Anchor={anchor.name}, anchoredPos={anchor.anchoredPosition}, " +
+                               $"pivot={anchor.pivot}, anchorMin={anchor.anchorMin}, anchorMax={anchor.anchorMax}";
+            Debug.Log(anchorInfo);
+            FileLogger.Log(anchorInfo, "CrewHUD");
+            
+            // Get anchor's world position
+            Vector3 anchorWorldPos = anchor.position;
+            
+            // Match the tooltip's anchor mode to the anchor's anchor mode
+            _rect.anchorMin = anchor.anchorMin;
+            _rect.anchorMax = anchor.anchorMax;
+            
+            // Also match the pivot so positions align correctly
+            _rect.pivot = anchor.pivot;
+            
+            // Now we can directly copy the anchored position since they use the same anchor mode and pivot
+            Vector2 finalPos = anchor.anchoredPosition + anchorOffset;
+            _rect.anchoredPosition = finalPos;
+            
+            string msg5 = $"[CrewHUDTooltip] Matched anchor mode (min={anchor.anchorMin}, max={anchor.anchorMax}), pivot={anchor.pivot}, " +
+                         $"copied anchoredPos={anchor.anchoredPosition} + offset={anchorOffset} = final={finalPos}";
+            Debug.Log(msg5);
+            FileLogger.Log(msg5, "CrewHUD");
+            
+            string msg7 = $"[CrewHUDTooltip] PositionTooltipAtAnchor: SUCCESS - positioned at {finalPos}";
+            Debug.Log(msg7);
+            FileLogger.Log(msg7, "CrewHUD");
+            
+            // Additional diagnostics
+            string msg8 = $"[CrewHUDTooltip] Root active={root.activeSelf}, scale={root.transform.localScale}, " +
+                         $"canvasGroup={((_canvasGroup != null) ? $"alpha={_canvasGroup.alpha}, interactable={_canvasGroup.interactable}" : "null")}";
+            Debug.Log(msg8);
+            FileLogger.Log(msg8, "CrewHUD");
+            
+            string msg9 = $"[CrewHUDTooltip] Canvas size={_canvasRect.rect.size}, tooltip size={_rect.rect.size}, " +
+                         $"tooltip pivot={_rect.pivot}, sibling index={root.transform.GetSiblingIndex()}";
+            Debug.Log(msg9);
+            FileLogger.Log(msg9, "CrewHUD");
+            
+            // Check for background Image component
+            Image bgImage = root.GetComponent<Image>();
+            string msg10 = $"[CrewHUDTooltip] Root Image={bgImage != null}, " +
+                          (bgImage != null ? $"sprite={bgImage.sprite != null}, color={bgImage.color}, enabled={bgImage.enabled}" : "N/A");
+            Debug.Log(msg10);
+            FileLogger.Log(msg10, "CrewHUD");
+            
+            // Final check: world position and screen rect
+            Vector3[] worldCorners = new Vector3[4];
+            _rect.GetWorldCorners(worldCorners);
+            string msg11 = $"[CrewHUDTooltip] World corners: BL={worldCorners[0]}, TR={worldCorners[2]}, " +
+                          $"Root world pos={root.transform.position}, localScale={root.transform.localScale}";
+            Debug.Log(msg11);
+            FileLogger.Log(msg11, "CrewHUD");
+            
             return true;
         }
 
