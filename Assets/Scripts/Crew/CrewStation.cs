@@ -48,7 +48,18 @@ public class CrewStation : MonoBehaviour
 
     void OnEnable()
     {
-        CrewManager.Instance.RegisterStation(this);
+        string msg = $"[CrewStation] OnEnable: {stationId} ({displayName})";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "CrewStation");
+        
+        if (CrewManager.HasInstance)
+        {
+            CrewManager.Instance.RegisterStation(this);
+        }
+        else
+        {
+            Debug.LogWarning($"[CrewStation] OnEnable: CrewManager not available for {stationId}");
+        }
     }
 
     void OnDisable()

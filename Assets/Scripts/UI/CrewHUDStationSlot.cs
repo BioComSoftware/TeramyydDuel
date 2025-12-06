@@ -13,8 +13,6 @@ namespace Teramyyd.UI
     {
         [Header("Station Binding")]
         public CrewStation station;
-        [Tooltip("Optional explicit stationId if the HUD cannot reference the CrewStation component directly.")]
-        public string stationIdOverride;
         [Tooltip("Primary RectTransform the first crew portrait snaps to.")]
         public RectTransform iconAnchor;
         [Tooltip("Optional extra anchors for additional crew assigned to the same station.")]
@@ -35,10 +33,7 @@ namespace Teramyyd.UI
         {
             get
             {
-                if (!string.IsNullOrEmpty(stationIdOverride))
-                    return stationIdOverride;
-
-                return Station != null ? Station.stationId : string.Empty;
+                return station != null ? station.stationId : string.Empty;
             }
         }
 
@@ -46,20 +41,6 @@ namespace Teramyyd.UI
         {
             get
             {
-                if (!string.IsNullOrEmpty(stationIdOverride))
-                {
-                    if (station != null && station.stationId == stationIdOverride)
-                        return station;
-
-                    if (CrewManager.HasInstance && CrewManager.Instance.TryGetStation(stationIdOverride, out var overrideStation))
-                    {
-                        station = overrideStation;
-                        return station;
-                    }
-
-                    return null;
-                }
-
                 return station;
             }
         }
@@ -76,12 +57,29 @@ namespace Teramyyd.UI
 
         public void OnDrop(PointerEventData eventData)
         {
+            string msg1 = $"[CrewHUDStationSlot] OnDrop called for station {StationId}";
+            Debug.Log(msg1);
+            FileLogger.Log(msg1, "CrewHUD");
+            
             var icon = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<CrewHUDCrewIcon>() : null;
             if (icon == null || _controller == null)
+            {
+                string msg2 = $"[CrewHUDStationSlot] OnDrop failed: icon={icon != null}, controller={_controller != null}";
+                Debug.LogWarning(msg2);
+                FileLogger.Log(msg2, "CrewHUD");
                 return;
+            }
+
+            string msg3 = $"[CrewHUDStationSlot] OnDrop: Crew {icon.Crew?.displayName ?? "null"} dropped on station {StationId}";
+            Debug.Log(msg3);
+            FileLogger.Log(msg3, "CrewHUD");
 
             bool success = _controller.HandleStationDrop(this, icon);
             icon.NotifyDropHandled();
+
+            string msg4 = $"[CrewHUDStationSlot] OnDrop: HandleStationDrop returned {success}";
+            Debug.Log(msg4);
+            FileLogger.Log(msg4, "CrewHUD");
 
             if (!success)
             {

@@ -54,9 +54,14 @@ namespace Teramyyd.UI
         readonly Dictionary<CrewHUDCrewIcon, RectTransform> _crewIconToAnchor = new Dictionary<CrewHUDCrewIcon, RectTransform>();
         readonly Dictionary<RectTransform, CrewHUDCrewIcon> _anchorToCrewIcon = new Dictionary<RectTransform, CrewHUDCrewIcon>();
         float _nextRefreshTime;
+        float _suppressRefreshUntil;
 
         void Awake()
         {
+            string msg = "[CrewHUD] Awake called";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
+            
             if (dragCanvas == null)
             {
                 dragCanvas = GetComponentInParent<Canvas>();
@@ -72,6 +77,9 @@ namespace Teramyyd.UI
 
         void OnEnable()
         {
+            string msg = "[CrewHUD] OnEnable called, forcing refresh";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
             ForceRefresh();
         }
 
@@ -93,23 +101,60 @@ namespace Teramyyd.UI
 
         public bool HandleStationDrop(CrewHUDStationSlot slot, CrewHUDCrewIcon icon)
         {
+            string crewName = icon?.Crew?.displayName ?? "Unknown";
+            string slotId = slot?.StationId ?? "null";
+            
+            string msg1 = $"[CrewHUD] HandleStationDrop: {crewName} -> {slotId}";
+            Debug.Log(msg1);
+            FileLogger.Log(msg1, "CrewHUD");
+            
             if (slot == null || icon == null)
+            {
+                string msg2 = "[CrewHUD] HandleStationDrop: slot or icon is null, returning false";
+                Debug.LogWarning(msg2);
+                FileLogger.Log(msg2, "CrewHUD");
                 return false;
+            }
 
             string stationId = slot.StationId;
             if (string.IsNullOrEmpty(stationId))
             {
+                string msg3 = "[CrewHUD] HandleStationDrop: stationId is empty, returning false";
+                Debug.LogWarning(msg3);
+                FileLogger.Log(msg3, "CrewHUD");
                 return false;
             }
 
             var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
             if (manager == null)
             {
+                string msg4 = "[CrewHUD] HandleStationDrop: CrewManager not available, returning false";
+                Debug.LogWarning(msg4);
+                FileLogger.Log(msg4, "CrewHUD");
                 return false;
             }
 
-            if (!manager.TryAssignCrewToStationId(icon.Crew, stationId))
+            string beforeAssignment = icon.Crew?.AssignedStation?.stationId ?? "null";
+            string msg5 = $"[CrewHUD] HandleStationDrop: Before assignment, {crewName}.AssignedStation = {beforeAssignment}";
+            Debug.Log(msg5);
+            FileLogger.Log(msg5, "CrewHUD");
+
+            // Pre-emptively attach icon to prevent race with refresh
+            AttachIconToSlot(icon, slot);
+
+            bool assignSuccess = manager.TryAssignCrewToStationId(icon.Crew, stationId);
+            string afterAssignment = icon.Crew?.AssignedStation?.stationId ?? "null";
+            string msg6 = $"[CrewHUD] HandleStationDrop: Assignment {(assignSuccess ? "SUCCESS" : "FAILED")}, {crewName}.AssignedStation now = {afterAssignment}";
+            Debug.Log(msg6);
+            FileLogger.Log(msg6, "CrewHUD");
+            
+            if (!assignSuccess)
             {
+                // Assignment failed, return to pool
+                string msg7 = $"[CrewHUD] HandleStationDrop: Assignment failed for {crewName}, returning to pool";
+                Debug.LogWarning(msg7);
+                FileLogger.Log(msg7, "CrewHUD");
+                AttachIconToPool(icon);
                 return false;
             }
 
@@ -119,7 +164,16 @@ namespace Teramyyd.UI
                 manager.TryGetStation(stationId, out station);
             }
 
+            // Re-attach to ensure correct anchor and fire events
             AttachIconToSlot(icon, slot);
+            
+            // Suppress refresh briefly to prevent double-processing
+            _suppressRefreshUntil = Time.unscaledTime + 0.5f;
+            
+            string msg8 = $"[CrewHUD] HandleStationDrop: Complete for {crewName} at {stationId}";
+            Debug.Log(msg8);
+            FileLogger.Log(msg8, "CrewHUD");
+            
             return true;
         }
 
@@ -128,13 +182,29 @@ namespace Teramyyd.UI
             if (icon == null)
                 return false;
 
+            string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
+            string beforeState = icon.Crew?.AssignedStation?.stationId ?? "null";
+            string msg = $"[CrewHUD] HandleReturnToPool: {crewName}, AssignedStation before unassign: {beforeState}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
+
+            // Immediately move icon to pool visually to prevent race with refresh
+            AttachIconToPool(icon);
+
             var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
             if (manager != null)
             {
                 manager.UnassignCrew(icon.Crew);
             }
 
-            AttachIconToPool(icon);
+            string afterState = icon.Crew?.AssignedStation?.stationId ?? "null";
+            string msg2 = $"[CrewHUD] HandleReturnToPool: {crewName}, AssignedStation after unassign: {afterState}";
+            Debug.Log(msg2);
+            FileLogger.Log(msg2, "CrewHUD");
+
+            // Suppress refresh for longer to ensure it skips the next refresh cycle
+            _suppressRefreshUntil = Time.unscaledTime + 0.5f;
+
             return true;
         }
 
@@ -177,9 +247,35 @@ namespace Teramyyd.UI
         {
             _nextRefreshTime = Time.unscaledTime + Mathf.Max(0.1f, refreshInterval);
 
-            var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
-            if (manager == null || iconPrefab == null)
+            string startMsg = $"[CrewHUD] RefreshAssignments called at {Time.unscaledTime:F2}";
+            Debug.Log(startMsg);
+            FileLogger.Log(startMsg, "CrewHUD");
+
+            // Skip refresh if suppressed (during manual drag/drop operations)
+            if (Time.unscaledTime < _suppressRefreshUntil)
+            {
+                string msg = $"[CrewHUD] RefreshAssignments suppressed until {_suppressRefreshUntil:F2} (current: {Time.unscaledTime:F2})";
+                Debug.Log(msg);
+                FileLogger.Log(msg, "CrewHUD");
                 return;
+            }
+
+            var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
+            if (manager == null)
+            {
+                string msg = "[CrewHUD] RefreshAssignments: CrewManager not available";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "CrewHUD");
+                return;
+            }
+            
+            if (iconPrefab == null)
+            {
+                string msg = "[CrewHUD] RefreshAssignments: iconPrefab is null";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "CrewHUD");
+                return;
+            }
 
             if (autoDiscoverStationSlots)
             {
@@ -191,16 +287,36 @@ namespace Teramyyd.UI
             }
 
             _scratchIds.Clear();
+            int crewCount = 0;
             foreach (var crew in manager.RegisteredCrew)
             {
+                crewCount++;
                 if (crew == null || string.IsNullOrEmpty(crew.crewId))
+                {
+                    string msg = $"[CrewHUD] Skipping null or invalid crew (index {crewCount})";
+                    Debug.LogWarning(msg);
+                    FileLogger.Log(msg, "CrewHUD");
                     continue;
+                }
 
                 _scratchIds.Add(crew.crewId);
                 CrewHUDCrewIcon icon = GetOrCreateIcon(crew);
+                
+                string iconMsg = $"[CrewHUD] Processing crew: {crew.displayName} ({crew.crewId}), icon exists: {icon != null}";
+                Debug.Log(iconMsg);
+                FileLogger.Log(iconMsg, "CrewHUD");
+                
+                // Skip refresh for icons being actively dragged
+                if (icon.IsDragging)
+                    continue;
+                    
                 ApplyPortrait(icon, crew);
                 ApplyCrewAssignment(icon, crew);
             }
+
+            string summaryMsg = $"[CrewHUD] RefreshAssignments complete: processed {crewCount} crew members";
+            Debug.Log(summaryMsg);
+            FileLogger.Log(summaryMsg, "CrewHUD");
 
             RemoveMissingIcons();
         }
@@ -211,13 +327,28 @@ namespace Teramyyd.UI
                 return;
 
             CrewStation assigned = crew.AssignedStation;
+            string crewName = crew != null ? crew.displayName : "Unknown";
+            string assignedId = assigned != null ? assigned.stationId : "null";
+            string currentSlotId = icon.CurrentSlot != null ? icon.CurrentSlot.StationId : "pool";
+            
+            string msg = $"[CrewHUD] ApplyCrewAssignment: {crewName}, AssignedStation={assignedId}, CurrentSlot={currentSlotId}, IsDragging={icon.IsDragging}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
+            
             if (assigned != null)
             {
                 CrewHUDStationSlot slot = FindSlotForStation(assigned.stationId);
                 if (slot != null)
                 {
-                    icon.ClearPendingState();
-                    AttachIconToSlot(icon, slot);
+                    // Only reattach if icon isn't already at this slot
+                    if (icon.CurrentSlot != slot)
+                    {
+                        string msg2 = $"[CrewHUD] Re-attaching {crewName} to slot {assigned.stationId}";
+                        Debug.Log(msg2);
+                        FileLogger.Log(msg2, "CrewHUD");
+                        icon.ClearPendingState();
+                        AttachIconToSlot(icon, slot);
+                    }
                     return;
                 }
             }
@@ -227,19 +358,51 @@ namespace Teramyyd.UI
                 CrewHUDStationSlot pendingSlot = FindSlotForStation(crew.PendingStationId);
                 if (pendingSlot != null)
                 {
-                    icon.ClearPendingState();
-                    AttachIconToSlot(icon, pendingSlot);
+                    if (icon.CurrentSlot != pendingSlot)
+                    {
+                        icon.ClearPendingState();
+                        AttachIconToSlot(icon, pendingSlot);
+                    }
                     return;
                 }
 
                 icon.SetPendingState($"Waiting for {crew.PendingStationId}", pendingColor);
+                // Still attach to pool while waiting for station
+                AttachIconToPool(icon);
             }
             else
             {
                 icon.ClearPendingState();
+                // No assignment and no pending - ensure icon is in pool
+                // But only move it if it's not already there
+                if (icon.CurrentSlot != null)
+                {
+                    string poolMsg = $"[CrewHUD] Moving {crew.displayName} to pool (was at {icon.CurrentSlot.StationId})";
+                    Debug.Log(poolMsg);
+                    FileLogger.Log(poolMsg, "CrewHUD");
+                    AttachIconToPool(icon);
+                }
+                else
+                {
+                    string alreadyMsg = $"[CrewHUD] {crew.displayName} already in pool (CurrentSlot is null)";
+                    Debug.Log(alreadyMsg);
+                    FileLogger.Log(alreadyMsg, "CrewHUD");
+                    // Icon thinks it's in pool, but make sure it's actually positioned and visible
+                    // This handles the case where icon was just created
+                    RectTransform poolAnchor = RequestCrewSlotAnchor(icon);
+                    if (poolAnchor != null)
+                    {
+                        icon.AttachToParent(poolAnchor, crewSlotIconScale);
+                        if (!icon.gameObject.activeSelf)
+                        {
+                            string enableMsg = $"[CrewHUD] Enabling newly created icon for {crew.displayName}";
+                            Debug.Log(enableMsg);
+                            FileLogger.Log(enableMsg, "CrewHUD");
+                            icon.gameObject.SetActive(true);
+                        }
+                    }
+                }
             }
-
-            AttachIconToPool(icon);
         }
 
         CrewHUDStationSlot FindSlotForStation(string stationId)
@@ -265,9 +428,18 @@ namespace Teramyyd.UI
             if (_iconsByCrewId.TryGetValue(crew.crewId, out var existing) && existing != null)
                 return existing;
 
+            string msg = $"[CrewHUD] Creating new icon for {crew.displayName}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
+
             CrewHUDCrewIcon icon = Instantiate(iconPrefab, transform);
             icon.Initialize(this, crew);
             _iconsByCrewId[crew.crewId] = icon;
+            
+            string msg2 = $"[CrewHUD] New icon created for {crew.displayName}, will be positioned by ApplyCrewAssignment";
+            Debug.Log(msg2);
+            FileLogger.Log(msg2, "CrewHUD");
+            
             return icon;
         }
 
@@ -300,6 +472,16 @@ namespace Teramyyd.UI
             }
             icon.SetAssignedSlot(slot);
             icon.AttachToParent(parent, assignedIconScale);
+            
+            string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
+            if (!icon.gameObject.activeSelf)
+            {
+                string msg = $"[CrewHUD] Enabling icon for {crewName} at slot {slot.StationId}";
+                Debug.Log(msg);
+                FileLogger.Log(msg, "CrewHUD");
+                icon.gameObject.SetActive(true);
+            }
+            
             OnVisualAnchorChanged?.Invoke(icon.Crew, slot.Station, slot.worldAnchor);
         }
 
@@ -307,6 +489,11 @@ namespace Teramyyd.UI
         {
             if (icon == null)
                 return;
+
+            string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
+            string msg1 = $"[CrewHUD] AttachIconToPool: {crewName}, starting attachment";
+            Debug.Log(msg1);
+            FileLogger.Log(msg1, "CrewHUD");
 
             if (icon.CurrentSlot != null)
             {
@@ -317,14 +504,27 @@ namespace Teramyyd.UI
             RectTransform parent = RequestCrewSlotAnchor(icon);
             if (parent == null)
             {
-                string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
-                string message = $"CrewHUD: No available unassigned crew slot anchors for {crewName}.";
+                string message = $"[CrewHUD] ERROR: No available unassigned crew slot anchors for {crewName}. Total anchors: {unassignedCrewSlotAnchors?.Length ?? 0}";
                 Debug.LogError(message, icon);
+                FileLogger.Log(message, "CrewHUD");
                 throw new InvalidOperationException(message);
             }
 
             Vector2 scale = crewSlotIconScale;
+            string msg2 = $"[CrewHUD] AttachIconToPool: {crewName} attached to anchor {parent.name}, scale={scale}";
+            Debug.Log(msg2);
+            FileLogger.Log(msg2, "CrewHUD");
+            
             icon.AttachToParent(parent, scale);
+            
+            if (!icon.gameObject.activeSelf)
+            {
+                string msg3 = $"[CrewHUD] Enabling icon for {crewName}";
+                Debug.Log(msg3);
+                FileLogger.Log(msg3, "CrewHUD");
+                icon.gameObject.SetActive(true);
+            }
+            
             OnVisualAnchorChanged?.Invoke(icon.Crew, null, null);
         }
 

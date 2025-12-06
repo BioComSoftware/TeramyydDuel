@@ -396,9 +396,23 @@ public class WeaponMount : MonoBehaviour
             crewStation.enforceRequirements = true;
         }
 
-        if (crewStation != null && string.IsNullOrEmpty(crewStation.stationId))
+        if (crewStation != null)
         {
-            crewStation.stationId = string.IsNullOrEmpty(mountId) ? $"station_{name}" : mountId + "_Crew";
+            // Use GameObject name to ensure uniqueness (mounts often share the same mountId like "Mount_01")
+            // This ensures each weapon mount gets a unique station ID
+            string expectedId = $"{gameObject.name}_crew_slot";
+            
+            if (crewStation.stationId != expectedId)
+            {
+                string oldId = crewStation.stationId;
+                crewStation.stationId = expectedId;
+                
+                // If station was already registered under old ID, re-register it
+                if (CrewManager.HasInstance && !string.IsNullOrEmpty(oldId))
+                {
+                    CrewManager.Instance.RegisterStation(crewStation);
+                }
+            }
         }
     }
 

@@ -165,7 +165,7 @@ public class CrewPersistenceManager : MonoBehaviour
         }
     }
 
-    public void UpdateCrewAssignment(string crewId, string stationId)
+    public void UpdateCrewAssignment(string crewId, string stationId, bool forceSave = false)
     {
         if (string.IsNullOrEmpty(crewId))
             return;
@@ -177,6 +177,12 @@ public class CrewPersistenceManager : MonoBehaviour
             {
                 state.assignedStationId = newValue;
                 MarkDirty();
+                
+                // Immediately save when force flag is set to prevent race conditions
+                if (forceSave)
+                {
+                    SaveSnapshot();
+                }
             }
         }
     }

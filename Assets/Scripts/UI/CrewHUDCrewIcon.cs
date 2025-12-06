@@ -45,6 +45,7 @@ namespace Teramyyd.UI
 
         public CrewMember Crew { get; private set; }
         public CrewHUDStationSlot CurrentSlot { get; private set; }
+        public bool IsDragging { get; private set; }
 
         RectTransform _rectTransform;
         CanvasGroup _canvasGroup;
@@ -142,6 +143,8 @@ namespace Teramyyd.UI
             if (Crew == null)
                 return;
 
+            IsDragging = true;
+
             if (_pendingDropRoutine != null)
             {
                 StopCoroutine(_pendingDropRoutine);
@@ -176,6 +179,8 @@ namespace Teramyyd.UI
 
         public void OnEndDrag(PointerEventData eventData)
         {
+            IsDragging = false;
+
             if (_canvasGroup != null)
             {
                 _canvasGroup.blocksRaycasts = true;
@@ -244,7 +249,8 @@ namespace Teramyyd.UI
 
         IEnumerator EnsureDropHandled()
         {
-            yield return null;
+            // Wait for end of frame to ensure all OnDrop events have been processed
+            yield return new WaitForEndOfFrame();
 
             if (!_dropHandled)
             {

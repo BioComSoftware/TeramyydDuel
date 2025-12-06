@@ -49,6 +49,27 @@ public class CrewManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    void Start()
+    {
+        // Find and register all CrewStation components in the scene
+        var stations = FindObjectsOfType<CrewStation>(true); // Include inactive
+        string msg = $"[CrewManager] Start: Found {stations.Length} CrewStation components in scene";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "CrewManager");
+        
+        foreach (var station in stations)
+        {
+            if (station != null && station.gameObject.activeInHierarchy)
+            {
+                RegisterStation(station);
+            }
+        }
+        
+        string msg2 = $"[CrewManager] Start: Registered {_stationsById.Count} stations";
+        Debug.Log(msg2);
+        FileLogger.Log(msg2, "CrewManager");
+    }
+
     public void RegisterCrew(CrewMember crew)
     {
         if (crew == null)
@@ -90,13 +111,33 @@ public class CrewManager : MonoBehaviour
     public void RegisterStation(CrewStation station)
     {
         if (station == null)
+        {
+            Debug.LogWarning("[CrewManager] RegisterStation: station is null");
             return;
+        }
 
         station.EnsureStationId();
+        
+        string msg = $"[CrewManager] RegisterStation: {station.stationId} ({station.displayName}) on GameObject '{station.gameObject.name}'";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "CrewManager");
+        
+        // Warn if we're overwriting an existing station with the same ID
+        if (_stationsById.ContainsKey(station.stationId) && _stationsById[station.stationId] != station)
+        {
+            string warnMsg = $"[CrewManager] WARNING: Station ID '{station.stationId}' is already registered to '{_stationsById[station.stationId].gameObject.name}'. Overwriting with '{station.gameObject.name}'. Ensure all stations have unique IDs!";
+            Debug.LogWarning(warnMsg);
+            FileLogger.Log(warnMsg, "CrewManager");
+        }
+        
         _stationsById[station.stationId] = station;
 
         if (_pendingByStation.TryGetValue(station.stationId, out var pendingList))
         {
+            string pendingMsg = $"[CrewManager] RegisterStation: Processing {pendingList.Count} pending assignments for {station.stationId}";
+            Debug.Log(pendingMsg);
+            FileLogger.Log(pendingMsg, "CrewManager");
+            
             var copy = pendingList.ToArray();
             foreach (var crew in copy)
             {
@@ -127,31 +168,94 @@ public class CrewManager : MonoBehaviour
     public bool TryAssignCrewToStation(CrewMember crew, CrewStation station)
     {
         if (crew == null || station == null)
+        {
+            Debug.LogWarning("[CrewManager] TryAssignCrewToStation: crew or station is null");
             return false;
+        }
+
+        string msg1 = $"[CrewManager] TryAssignCrewToStation: {crew.displayName} -> {station.stationId}";
+        Debug.Log(msg1);
+        FileLogger.Log(msg1, "CrewManager");
 
         if (!station.CanAssign(crew))
         {
+            string msg2 = $"[CrewManager] TryAssignCrewToStation: Station {station.stationId} cannot assign {crew.displayName}, queuing";
+            Debug.LogWarning(msg2);
+            FileLogger.Log(msg2, "CrewManager");
             QueuePendingAssignment(crew, station.stationId);
             return false;
         }
 
+        string beforeStation = crew.AssignedStation?.stationId ?? "null";
+        string msg3 = $"[CrewManager] TryAssignCrewToStation: Before assignment - crew.AssignedStation = {beforeStation}";
+        Debug.Log(msg3);
+        FileLogger.Log(msg3, "CrewManager");
+
         RemoveFromCurrentStation(crew);
         station.AddCrewInternal(crew);
         _pendingCrewTargets.Remove(crew);
+        
+        string afterStation = crew.AssignedStation?.stationId ?? "null";
+        string msg4 = $"[CrewManager] TryAssignCrewToStation: After AddCrewInternal - crew.AssignedStation = {afterStation}";
+        Debug.Log(msg4);
+        FileLogger.Log(msg4, "CrewManager");
+        
         CrewPersistenceManager.Instance.UpdateCrewAssignment(crew.crewId, station.stationId);
+        
+        string msg5 = $"[CrewManager] TryAssignCrewToStation: SUCCESS - {crew.displayName} assigned to {station.stationId}";
+        Debug.Log(msg5);
+        FileLogger.Log(msg5, "CrewManager");
         return true;
     }
 
     public bool TryAssignCrewToStationId(CrewMember crew, string stationId)
     {
         if (crew == null || string.IsNullOrEmpty(stationId))
-            return false;
-
-        if (_stationsById.TryGetValue(stationId, out var station))
         {
-            return TryAssignCrewToStation(crew, station);
+            Debug.LogWarning($"[CrewManager] TryAssignCrewToStationId: crew or stationId is null/empty");
+            return false;
         }
 
+        string msg = $"[CrewManager] TryAssignCrewToStationId: {crew.displayName} -> {stationId}";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "CrewManager");
+
+        CrewStation station = null;
+        if (_stationsById.TryGetValue(stationId, out station))
+        {
+            bool result = TryAssignCrewToStation(crew, station);
+            string resultMsg = $"[CrewManager] TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}";
+            Debug.Log(resultMsg);
+            FileLogger.Log(resultMsg, "CrewManager");
+            return result;
+        }
+
+        // Station not registered, try to find it in the scene
+        string searchMsg = $"[CrewManager] Station {stationId} not registered, searching scene...";
+        Debug.LogWarning(searchMsg);
+        FileLogger.Log(searchMsg, "CrewManager");
+        
+        var allStations = FindObjectsOfType<CrewStation>(true);
+        foreach (var st in allStations)
+        {
+            if (st.stationId == stationId)
+            {
+                string foundMsg = $"[CrewManager] Found station {stationId} in scene, registering it now";
+                Debug.Log(foundMsg);
+                FileLogger.Log(foundMsg, "CrewManager");
+                RegisterStation(st);
+                
+                bool result = TryAssignCrewToStation(crew, st);
+                string resultMsg = $"[CrewManager] TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}";
+                Debug.Log(resultMsg);
+                FileLogger.Log(resultMsg, "CrewManager");
+                return result;
+            }
+        }
+
+        string queueMsg = $"[CrewManager] Station {stationId} not found anywhere, queuing pending assignment for {crew.displayName}";
+        Debug.LogWarning(queueMsg);
+        FileLogger.Log(queueMsg, "CrewManager");
         QueuePendingAssignment(crew, stationId);
         return false;
     }
@@ -161,8 +265,20 @@ public class CrewManager : MonoBehaviour
         if (crew == null)
             return;
 
+        string beforeStation = crew.AssignedStation?.stationId ?? "null";
+        string msg = $"[CrewManager] UnassignCrew: {crew.displayName}, AssignedStation before = {beforeStation}";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "CrewManager");
+
         RemoveFromCurrentStation(crew);
-        CrewPersistenceManager.Instance.UpdateCrewAssignment(crew.crewId, string.Empty);
+        
+        string afterStation = crew.AssignedStation?.stationId ?? "null";
+        string msg2 = $"[CrewManager] UnassignCrew: {crew.displayName}, AssignedStation after = {afterStation}";
+        Debug.Log(msg2);
+        FileLogger.Log(msg2, "CrewManager");
+        
+        // Force immediate save to prevent race conditions with UI refresh
+        CrewPersistenceManager.Instance.UpdateCrewAssignment(crew.crewId, string.Empty, forceSave: true);
     }
 
     void RemoveFromCurrentStation(CrewMember crew)
