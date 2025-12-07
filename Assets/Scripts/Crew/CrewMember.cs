@@ -18,6 +18,7 @@ public class CrewMember : MonoBehaviour
     [Tooltip("Power / drive engineering skill level.")]
     [Min(1f)] public float powerEngineering = 1f;
     [Min(1f)] public float liftEngineering = 1f;
+    [Min(1f)] public float fighting = 1f;
 
     [Header("Progression")]
     [Tooltip("Hard cap for any skill level.")]

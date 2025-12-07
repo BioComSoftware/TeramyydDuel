@@ -12,10 +12,12 @@ namespace Teramyyd.UI
     {
         public GameObject root;
         public TMP_Text nameLabel;
-        public TMP_Text specializationLabel;
-        public TMP_Text statsLabel;
-        public TMP_Text stationLabel;
-        public TMP_Text healthLabel;
+        public TMP_Text gunneryLabel;
+        public TMP_Text navigationLabel;
+        public TMP_Text repairLabel;
+        public TMP_Text engineLabel;
+        public TMP_Text liftLabel;
+        public TMP_Text fightingLabel;
         public Image healthFill;
         [Tooltip("Optional portrait shown on the tooltip. Leave null to skip portrait visuals.")]
         public Image portraitImage;
@@ -96,31 +98,35 @@ namespace Teramyyd.UI
                 nameLabel.text = crew.displayName;
             }
 
-            if (specializationLabel != null)
+            // Populate individual stat fields
+            if (gunneryLabel != null)
             {
-                CrewSkill topSkill = CrewSkillUtility.GetDominantSkill(crew);
-                specializationLabel.text = $"Focus: {CrewSkillUtility.GetShortLabel(topSkill)}";
+                gunneryLabel.text = $"Gunnery: {crew.gunnery:0.0}";
             }
-
-            if (statsLabel != null)
+            
+            if (navigationLabel != null)
             {
-                statsLabel.text = CrewSkillUtility.BuildStatSummary(crew);
+                navigationLabel.text = $"Navigation: {crew.navigation:0.0}";
             }
-
-            if (stationLabel != null)
+            
+            if (repairLabel != null)
             {
-                if (station != null)
-                {
-                    stationLabel.text = $"Assigned: {station.displayName}";
-                }
-                else if (!string.IsNullOrEmpty(crew.PendingStationId))
-                {
-                    stationLabel.text = $"Pending: {crew.PendingStationId}";
-                }
-                else
-                {
-                    stationLabel.text = "Unassigned";
-                }
+                repairLabel.text = $"Repair: {crew.repair:0.0}";
+            }
+            
+            if (engineLabel != null)
+            {
+                engineLabel.text = $"Power Eng: {crew.powerEngineering:0.0}";
+            }
+            
+            if (liftLabel != null)
+            {
+                liftLabel.text = $"Lift Eng: {crew.liftEngineering:0.0}";
+            }
+            
+            if (fightingLabel != null)
+            {
+                fightingLabel.text = $"Fighting: {crew.fighting:0.0}";
             }
 
             ApplyHealthDetails(crew);
@@ -169,29 +175,23 @@ namespace Teramyyd.UI
             Health health = crew != null ? crew.Health : null;
             float current = health != null ? health.currentHealth : 0f;
             float max = health != null ? health.maxHealth : 0f;
+            float healthPercent = (health != null && max > 0f) ? Mathf.Clamp01(current / max) : 0f;
 
-            if (healthLabel != null)
-            {
-                if (health != null)
-                {
-                    healthLabel.text = $"Health {current:0}/{max:0}";
-                }
-                else
-                {
-                    healthLabel.text = "Health N/A";
-                }
-            }
+            string msg = $"[CrewHUDTooltip] ApplyHealthDetails: current={current}, max={max}, percent={healthPercent}, healthFill={(healthFill != null ? "assigned" : "NULL")}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewHUD");
 
+            // Update health bar with green-to-red gradient
             if (healthFill != null)
             {
-                if (health != null && health.maxHealth > 0f)
-                {
-                    healthFill.fillAmount = Mathf.Clamp01(current / max);
-                }
-                else
-                {
-                    healthFill.fillAmount = 0f;
-                }
+                healthFill.fillAmount = healthPercent;
+                
+                // Interpolate from green (100% health) to red (0% health)
+                healthFill.color = Color.Lerp(Color.red, Color.green, healthPercent);
+                
+                string msg2 = $"[CrewHUDTooltip] HealthFill updated: fillAmount={healthPercent}, color={healthFill.color}, type={healthFill.type}";
+                Debug.Log(msg2);
+                FileLogger.Log(msg2, "CrewHUD");
             }
         }
 
