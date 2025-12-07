@@ -30,6 +30,14 @@ public class CrewMember : MonoBehaviour
     [Tooltip("Optional initial station identifier. CrewManager will try to attach this crew to the matching station when the scene loads.")]
     public string initialStationId = string.Empty;
 
+    [Header("Visual Representation")]
+    [Tooltip("Optional renderer to color based on health status. Leave null to skip health coloring.")]
+    public Renderer healthIndicatorRenderer;
+    [Tooltip("Material property name to modify for health color (default is _Color).")]
+    public string healthColorProperty = "_Color";
+
+    Material _healthMaterialInstance;
+
     public Health Health { get; private set; }
     public CrewStation AssignedStation { get; internal set; }
     internal string PendingStationId { get; set; } = string.Empty;
@@ -41,6 +49,21 @@ public class CrewMember : MonoBehaviour
         Health = GetComponent<Health>();
         ApplyBootstrapStateIfPresent();
         EnsureCrewId();
+        InitializeHealthMaterial();
+    }
+    
+    void InitializeHealthMaterial()
+    {
+        if (healthIndicatorRenderer != null && healthIndicatorRenderer.material != null)
+        {
+            // Create a unique material instance for this crew member
+            _healthMaterialInstance = new Material(healthIndicatorRenderer.material);
+            healthIndicatorRenderer.material = _healthMaterialInstance;
+            
+            string msg = $"[CrewMember] {displayName}: Created health material instance";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "Crew");
+        }
     }
 
     void OnEnable()
@@ -58,6 +81,9 @@ public class CrewMember : MonoBehaviour
 
     void Update()
     {
+        // Update health color indicator
+        UpdateHealthColor();
+
         if (AssignedStation == null)
             return;
 
@@ -194,6 +220,50 @@ public class CrewMember : MonoBehaviour
         if (CrewPersistenceManager.Instance != null)
         {
             CrewPersistenceManager.Instance.UpdateCrewSkills(this);
+        }
+    }
+
+    void UpdateHealthColor()
+    {
+        if (_healthMaterialInstance == null || Health == null)
+            return;
+
+        float healthPercent = Health.maxHealth > 0f 
+            ? Mathf.Clamp01(Health.currentHealth / Health.maxHealth) 
+            : 1f;
+
+        // Two-stage gradient: Green (100%) → Yellow (50%) → Red (0%)
+        Color healthColor;
+        if (healthPercent > 0.5f)
+        {
+            // 100% to 50%: Green → Yellow
+            healthColor = Color.Lerp(Color.yellow, Color.green, (healthPercent - 0.5f) * 2f);
+        }
+        else
+        {
+            // 50% to 0%: Yellow → Red
+            healthColor = Color.Lerp(Color.red, Color.yellow, healthPercent * 2f);
+        }
+
+        // Apply color to material instance
+        // Try both URP (_BaseColor) and Standard (_Color) properties
+        if (_healthMaterialInstance.HasProperty("_BaseColor"))
+        {
+            _healthMaterialInstance.SetColor("_BaseColor", healthColor);
+        }
+        else if (_healthMaterialInstance.HasProperty(healthColorProperty))
+        {
+            _healthMaterialInstance.SetColor(healthColorProperty, healthColor);
+        }
+        else
+        {
+            // Log once when material doesn't have the property
+            if (Time.frameCount % 300 == 0) // Log every ~5 seconds
+            {
+                string msg = $"[CrewMember] {displayName}: Material doesn't have _BaseColor or {healthColorProperty} property";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "Crew");
+            }
         }
     }
 }

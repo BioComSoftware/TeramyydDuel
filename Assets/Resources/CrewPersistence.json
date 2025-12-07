@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-07T18:41:10.1647240Z",
+    "lastSavedUtc": "2025-12-07T19:47:27.8667385Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
@@ -41,14 +41,14 @@
         {
             "crewId": "crew_serena_brasswolf",
             "displayName": "Serena Brasswolf",
-            "gunnery": 6.264337539672852,
+            "gunnery": 7.540560722351074,
             "navigation": 6.199999809265137,
             "repair": 5.0,
             "powerEngineering": 3.799999952316284,
             "liftEngineering": 4.099999904632568,
             "maxHealth": 100.0,
-            "currentHealth": 56.0,
-            "assignedStationId": ""
+            "currentHealth": 22.0,
+            "assignedStationId": "Bow_weapon_mount_actual_crew_slot"
         }
     ]
 }

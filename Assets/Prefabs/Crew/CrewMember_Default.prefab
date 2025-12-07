@@ -60,6 +60,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7635826562936255635, guid: d54e59271deff9842a7acbb662730bed, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: d7a9ce9b62b61b24ba6bd24628ab2ca7, type: 2}
     - target: {fileID: 919132149155446097, guid: d54e59271deff9842a7acbb662730bed, type: 3}
       propertyPath: m_Name
       value: CrewMember_Default
@@ -144,6 +148,14 @@ MonoBehaviour:
   repair: 1
   powerEngineering: 1
   liftEngineering: 1
+  fighting: 1
   maxSkillLevel: 10
   secondsPerSkillPoint: 180
   initialStationId: 
+  healthIndicatorRenderer: {fileID: 3831951605107851706}
+  healthColorProperty: _Color
+--- !u!23 &3831951605107851706 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7635826562936255635, guid: d54e59271deff9842a7acbb662730bed, type: 3}
+  m_PrefabInstance: {fileID: 2532654237133851351}
+  m_PrefabAsset: {fileID: 0}
