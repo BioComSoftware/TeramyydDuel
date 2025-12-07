@@ -122,6 +122,19 @@ public class WeaponMount : MonoBehaviour
             return false;
 
         currentLauncher.TriggerFireCommand();
+        
+        // Grant gunnery XP to all crew members assigned to this weapon
+        if (crewStation != null && crewStation.AssignedCrew != null)
+        {
+            foreach (var crew in crewStation.AssignedCrew)
+            {
+                if (crew != null)
+                {
+                    crew.OnWeaponFired();
+                }
+            }
+        }
+        
         return true;
     }
 

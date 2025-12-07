@@ -5,5 +5,6 @@
     Navigation = 2,
     Repair = 3,
     PowerEngineering = 4,
-    LiftEngineering = 5
+    LiftEngineering = 5,
+    Fighting = 6
 }

@@ -23,8 +23,20 @@ public class CrewMember : MonoBehaviour
     [Header("Progression")]
     [Tooltip("Hard cap for any skill level.")]
     public float maxSkillLevel = 10f;
-    [Tooltip("Seconds of active duty required to gain 1 skill level (before multipliers).")]
-    public float secondsPerSkillPoint = 180f;
+    
+    [Header("Skill Progression Rates")]
+    [Tooltip("Cannon shots needed to go from level 1 to 10 in Gunnery.")]
+    public int gunneryActionsFor1to10 = 200;
+    [Tooltip("Seconds at station to go from level 1 to 10 in Navigation.")]
+    public float navigationSecondsFor1to10 = 2000f;
+    [Tooltip("Seconds at station to go from level 1 to 10 in Repair.")]
+    public float repairSecondsFor1to10 = 2000f;
+    [Tooltip("Seconds at engine station to go from level 1 to 10 in Power Engineering.")]
+    public float powerEngineeringSecondsFor1to10 = 2000f;
+    [Tooltip("Seconds at lift station to go from level 1 to 10 in Lift Engineering.")]
+    public float liftEngineeringSecondsFor1to10 = 2000f;
+    [Tooltip("Seconds in boarding combat to go from level 1 to 10 in Fighting.")]
+    public float fightingSecondsFor1to10 = 200f;
 
     [Header("Assignment (Runtime)")]
     [Tooltip("Optional initial station identifier. CrewManager will try to attach this crew to the matching station when the scene loads.")]
@@ -91,12 +103,33 @@ public class CrewMember : MonoBehaviour
             ? AssignedStation.trainingSkill
             : AssignedStation.primarySkill;
 
-        if (skill == CrewSkill.None)
+        if (skill == CrewSkill.None || skill == CrewSkill.Gunnery)
+            return; // Gunnery trains on weapon fire, not station time
+
+        // Calculate XP gain based on skill-specific progression rate
+        float secondsFor1to10 = GetSecondsFor1to10(skill);
+        if (secondsFor1to10 <= 0f)
             return;
 
-        float gain = Time.deltaTime / Mathf.Max(1f, secondsPerSkillPoint);
+        // 9 skill points needed to go from 1 to 10
+        float skillPointsPerSecond = 9f / secondsFor1to10;
+        float gain = Time.deltaTime * skillPointsPerSecond;
         gain *= Mathf.Max(0.1f, AssignedStation.skillGainMultiplier);
+        
         AddSkillProgress(skill, gain);
+    }
+    
+    float GetSecondsFor1to10(CrewSkill skill)
+    {
+        switch (skill)
+        {
+            case CrewSkill.Navigation: return navigationSecondsFor1to10;
+            case CrewSkill.Repair: return repairSecondsFor1to10;
+            case CrewSkill.PowerEngineering: return powerEngineeringSecondsFor1to10;
+            case CrewSkill.LiftEngineering: return liftEngineeringSecondsFor1to10;
+            case CrewSkill.Fighting: return fightingSecondsFor1to10;
+            default: return 2000f;
+        }
     }
 
     void EnsureCrewId()
@@ -221,6 +254,20 @@ public class CrewMember : MonoBehaviour
         {
             CrewPersistenceManager.Instance.UpdateCrewSkills(this);
         }
+    }
+    
+    /// <summary>
+    /// Called by weapon systems when this crew member fires a weapon.
+    /// Grants gunnery XP based on configured progression rate.
+    /// </summary>
+    public void OnWeaponFired()
+    {
+        if (gunnery >= maxSkillLevel)
+            return;
+        
+        // 9 skill points needed to go from 1 to 10
+        float skillPointsPerShot = 9f / Mathf.Max(1f, gunneryActionsFor1to10);
+        AddSkillProgress(CrewSkill.Gunnery, skillPointsPerShot);
     }
 
     void UpdateHealthColor()
