@@ -17,8 +17,10 @@ namespace Teramyyd.UI
         public RectTransform iconAnchor;
         [Tooltip("Optional extra anchors for additional crew assigned to the same station.")]
         public RectTransform[] additionalIconAnchors;
-        [Tooltip("World-space anchor for spawning future 3D crew representations.")]
+        [Tooltip("World-space anchor for the first crew portrait (used to place 3D crew).")]
         public Transform worldAnchor;
+        [Tooltip("Optional extra world anchors so multiple crew members at this station each have a unique position in the world.")]
+        public Transform[] additionalWorldAnchors;
 
         [Header("Visual Feedback")]
         public Image highlightImage;
@@ -28,6 +30,8 @@ namespace Teramyyd.UI
         Color _defaultHighlight;
         readonly Dictionary<CrewHUDCrewIcon, RectTransform> _iconToAnchor = new Dictionary<CrewHUDCrewIcon, RectTransform>();
         readonly Dictionary<RectTransform, CrewHUDCrewIcon> _anchorToIcon = new Dictionary<RectTransform, CrewHUDCrewIcon>();
+        readonly Dictionary<CrewHUDCrewIcon, Transform> _iconToWorldAnchor = new Dictionary<CrewHUDCrewIcon, Transform>();
+        readonly Dictionary<Transform, CrewHUDCrewIcon> _worldAnchorToIcon = new Dictionary<Transform, CrewHUDCrewIcon>();
 
         public string StationId
         {
@@ -142,6 +146,15 @@ namespace Teramyyd.UI
                     _anchorToIcon.Remove(anchor);
                 }
             }
+
+            if (_iconToWorldAnchor.TryGetValue(icon, out var worldAnchorRef))
+            {
+                _iconToWorldAnchor.Remove(icon);
+                if (worldAnchorRef != null && _worldAnchorToIcon.TryGetValue(worldAnchorRef, out var occupant) && occupant == icon)
+                {
+                    _worldAnchorToIcon.Remove(worldAnchorRef);
+                }
+            }
         }
 
         IEnumerable<RectTransform> EnumerateAnchors()
@@ -155,6 +168,46 @@ namespace Teramyyd.UI
             for (int i = 0; i < additionalIconAnchors.Length; i++)
             {
                 var anchor = additionalIconAnchors[i];
+                if (anchor != null)
+                    yield return anchor;
+            }
+        }
+
+        public Transform RequestWorldAnchorFor(CrewHUDCrewIcon icon)
+        {
+            if (icon == null)
+                return worldAnchor;
+
+            if (_iconToWorldAnchor.TryGetValue(icon, out var existing) && existing != null)
+                return existing;
+
+            foreach (var candidate in EnumerateWorldAnchors())
+            {
+                if (candidate == null)
+                    continue;
+
+                if (!_worldAnchorToIcon.TryGetValue(candidate, out var occupant) || occupant == null)
+                {
+                    _worldAnchorToIcon[candidate] = icon;
+                    _iconToWorldAnchor[icon] = candidate;
+                    return candidate;
+                }
+            }
+
+            return worldAnchor;
+        }
+
+        IEnumerable<Transform> EnumerateWorldAnchors()
+        {
+            if (worldAnchor != null)
+                yield return worldAnchor;
+
+            if (additionalWorldAnchors == null)
+                yield break;
+
+            for (int i = 0; i < additionalWorldAnchors.Length; i++)
+            {
+                var anchor = additionalWorldAnchors[i];
                 if (anchor != null)
                     yield return anchor;
             }

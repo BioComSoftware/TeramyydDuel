@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-07T20:11:12.3861974Z",
+    "lastSavedUtc": "2025-12-08T13:33:44.4237967Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
@@ -12,19 +12,19 @@
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Port_rear_hull_weapon_mount_actual_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 1.0,
+            "gunnery": 1.0449999570846558,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Aft_weapon_mount_actual_crew_slot"
+            "assignedStationId": "Port_rear_hull_weapon_mount_actual_crew_slot"
         },
         {
             "crewId": "crew_morgan_lee",
@@ -36,7 +36,7 @@
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Port_forward_hull_weapon_mount_actual_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_serena_brasswolf",

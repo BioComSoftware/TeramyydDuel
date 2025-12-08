@@ -16,6 +16,8 @@ public class CrewRuntimeSpawner : MonoBehaviour
         [Tooltip("CrewStation.stationId this anchor represents (case-sensitive).")]
         public string stationId;
         public Transform anchor;
+        [Tooltip("Optional extra anchors for stations that support more than one crew member.")]
+        public Transform[] additionalAnchors;
     }
 
     [Header("Setup")]
@@ -34,7 +36,8 @@ public class CrewRuntimeSpawner : MonoBehaviour
     [Tooltip("When assigned, uses HUD drag/drop feedback to reposition crew visuals in realtime.")]
     [SerializeField] CrewHUDController hudController;
 
-    readonly Dictionary<string, Transform> _anchorLookup = new Dictionary<string, Transform>(StringComparer.Ordinal);
+    readonly Dictionary<string, List<Transform>> _anchorLookup = new Dictionary<string, List<Transform>>(StringComparer.Ordinal);
+    readonly Dictionary<string, int> _stationAnchorNextIndex = new Dictionary<string, int>(StringComparer.Ordinal);
     readonly Dictionary<string, CrewMember> _spawnedCrewById = new Dictionary<string, CrewMember>(StringComparer.Ordinal);
     readonly Dictionary<CrewMember, Renderer[]> _rendererCache = new Dictionary<CrewMember, Renderer[]>();
 
@@ -72,15 +75,31 @@ public class CrewRuntimeSpawner : MonoBehaviour
     void RebuildAnchorLookup()
     {
         _anchorLookup.Clear();
+        _stationAnchorNextIndex.Clear();
         if (stationAnchors == null)
             return;
 
         foreach (var binding in stationAnchors)
         {
-            if (binding.anchor == null || string.IsNullOrWhiteSpace(binding.stationId))
+            if (string.IsNullOrWhiteSpace(binding.stationId))
                 continue;
 
-            _anchorLookup[binding.stationId] = binding.anchor;
+            foreach (var anchor in EnumerateAnchors(binding))
+            {
+                if (anchor == null)
+                    continue;
+
+                if (!_anchorLookup.TryGetValue(binding.stationId, out var list))
+                {
+                    list = new List<Transform>();
+                    _anchorLookup[binding.stationId] = list;
+                }
+
+                if (!list.Contains(anchor))
+                {
+                    list.Add(anchor);
+                }
+            }
         }
     }
 
@@ -154,7 +173,7 @@ public class CrewRuntimeSpawner : MonoBehaviour
         if (crew == null)
             return;
 
-        if (!string.IsNullOrEmpty(stationId) && TryGetAnchor(stationId, out var anchor) && anchor != null)
+        if (!string.IsNullOrEmpty(stationId) && TryGetNextAnchor(stationId, out var anchor) && anchor != null)
         {
             crew.transform.SetPositionAndRotation(anchor.position, anchor.rotation);
             SetCrewVisualActive(crew, true);
@@ -170,7 +189,42 @@ public class CrewRuntimeSpawner : MonoBehaviour
 
     bool TryGetAnchor(string stationId, out Transform anchor)
     {
-        return _anchorLookup.TryGetValue(stationId, out anchor);
+        return TryGetAnchor(stationId, 0, out anchor);
+    }
+
+    bool TryGetAnchor(string stationId, int slotIndex, out Transform anchor)
+    {
+        anchor = null;
+        if (!_anchorLookup.TryGetValue(stationId, out var list) || list == null || list.Count == 0)
+            return false;
+
+        int index = Mathf.Clamp(slotIndex, 0, list.Count - 1);
+        if (slotIndex > 0 && list.Count > 1)
+        {
+            index = slotIndex % list.Count;
+        }
+
+        anchor = list[index];
+        return anchor != null;
+    }
+
+    bool TryGetNextAnchor(string stationId, out Transform anchor)
+    {
+        int slotIndex = 0;
+        if (!string.IsNullOrEmpty(stationId))
+        {
+            if (!_stationAnchorNextIndex.TryGetValue(stationId, out slotIndex))
+            {
+                _stationAnchorNextIndex[stationId] = 1;
+                slotIndex = 0;
+            }
+            else
+            {
+                _stationAnchorNextIndex[stationId] = slotIndex + 1;
+            }
+        }
+
+        return TryGetAnchor(stationId, slotIndex, out anchor);
     }
 
     void HandleVisualAnchorChanged(CrewMember crew, CrewStation station, Transform worldAnchor)
@@ -188,16 +242,70 @@ public class CrewRuntimeSpawner : MonoBehaviour
             return;
         }
 
-        if (station != null && TryGetAnchor(station.stationId, out var anchor) && anchor != null)
+        if (station != null)
         {
-            trackedCrew.transform.SetPositionAndRotation(anchor.position, anchor.rotation);
-            SetCrewVisualActive(trackedCrew, true);
+            Transform chosenAnchor = null;
+            int slotIndex = GetCrewSlotIndex(crew, station);
+            if (slotIndex >= 0 && TryGetAnchor(station.stationId, slotIndex, out var indexedAnchor))
+            {
+                chosenAnchor = indexedAnchor;
+            }
+            else if (TryGetAnchor(station.stationId, out var fallbackAnchor))
+            {
+                chosenAnchor = fallbackAnchor;
+            }
+
+            if (chosenAnchor != null)
+            {
+                trackedCrew.transform.SetPositionAndRotation(chosenAnchor.position, chosenAnchor.rotation);
+                SetCrewVisualActive(trackedCrew, true);
+                return;
+            }
+        }
+
+        if (station == null && hideUnassignedVisuals)
+        {
+            SetCrewVisualActive(trackedCrew, false);
             return;
         }
 
         if (hideUnassignedVisuals)
         {
             SetCrewVisualActive(trackedCrew, false);
+        }
+    }
+
+    int GetCrewSlotIndex(CrewMember crew, CrewStation station)
+    {
+        if (crew == null || station == null)
+            return -1;
+
+        var assignedCrew = station.AssignedCrew;
+        if (assignedCrew == null)
+            return -1;
+
+        for (int i = 0; i < assignedCrew.Count; i++)
+        {
+            if (assignedCrew[i] == crew)
+                return i;
+        }
+
+        return -1;
+    }
+
+    IEnumerable<Transform> EnumerateAnchors(StationAnchorBinding binding)
+    {
+        if (binding.anchor != null)
+            yield return binding.anchor;
+
+        if (binding.additionalAnchors == null)
+            yield break;
+
+        for (int i = 0; i < binding.additionalAnchors.Length; i++)
+        {
+            var extra = binding.additionalAnchors[i];
+            if (extra != null)
+                yield return extra;
         }
     }
 

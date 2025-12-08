@@ -504,7 +504,8 @@ namespace Teramyyd.UI
                 icon.gameObject.SetActive(true);
             }
             
-            OnVisualAnchorChanged?.Invoke(icon.Crew, slot.Station, slot.worldAnchor);
+            Transform slotWorldAnchor = slot.RequestWorldAnchorFor(icon);
+            OnVisualAnchorChanged?.Invoke(icon.Crew, slot.Station, slotWorldAnchor);
         }
 
         void AttachIconToPool(CrewHUDCrewIcon icon)
