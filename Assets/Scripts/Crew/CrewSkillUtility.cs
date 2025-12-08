@@ -24,6 +24,16 @@ public static class CrewSkillUtility
         return Mathf.Lerp(1f, 0.5f, lowT);
     }
 
+    public static float EvaluateReloadScale(float skillLevel)
+    {
+        if (skillLevel <= 1f)
+            return 1.25f;
+
+        float clamped = Mathf.Clamp(skillLevel, 1f, 10f);
+        float t = (clamped - 1f) / 9f; // 1 → 0, 10 → 1
+        return Mathf.Lerp(1.25f, 0.55f, t);
+    }
+
     public static CrewSkill GetDominantSkill(CrewMember crew)
     {
         if (crew == null)

@@ -53,12 +53,15 @@ MonoBehaviour:
   launchSpeed: 50
   minimumLaunchSpeed: 1
   spawnOffset: 1
-  angleSpreadDegrees: 0
-  speedJitterPercent: 0
-  disableAccuracyError: 1
-  reloadTime: 2
+  angleSpreadDegrees: 5
+  speedJitterPercent: 5
+  disableAccuracyError: 0
+  projectileDragOverride: -1
+  projectileLinearDampingOverride: -1
+  reloadTime: 10
   startReady: 1
   debugLog: 0
+  requireValidMountTargetLock: 1
 --- !u!1 &7202491767298042434
 GameObject:
   m_ObjectHideFlags: 0

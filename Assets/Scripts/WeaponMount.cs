@@ -10,8 +10,6 @@ public class WeaponMount : MonoBehaviour
     [Header("Pivots")]
     [Tooltip("Yaw pivot (left/right) rotates around local Y")] public Transform yawBase;
     [Tooltip("Pitch pivot (up/down) rotates around local X; weapon is parented here")] public Transform pitchBarrel;
-
-    [Header("Limits (degrees)")]
     [Tooltip("Total left+right arc; yaw clamped to +/- (yawLimitDeg/2)")] public float yawLimitDeg = 60f;
     [Tooltip("Max elevation above center")] public float pitchUpDeg = 15f;
     [Tooltip("Max depression below center")] public float pitchDownDeg = 15f;
@@ -94,6 +92,7 @@ public class WeaponMount : MonoBehaviour
     Collider _lastLoggedSensorCollider;
     bool _loggedCrewWarning;
     float _lastAccuracyScale = -1f;
+    float _lastReloadScale = -1f;
 
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
@@ -202,7 +201,7 @@ public class WeaponMount : MonoBehaviour
         EnsureCrewStation();
 
         bool hasCrew = HasOperationalCrew();
-        UpdateCrewAccuracyBonus(hasCrew);
+        UpdateCrewPerformanceBonuses(hasCrew);
 
         if (!hasCrew)
         {
@@ -404,13 +403,13 @@ public class WeaponMount : MonoBehaviour
             crewStation.displayName = string.IsNullOrEmpty(mountId) ? name + " Crew" : mountId + " Crew";
             crewStation.primarySkill = defaultCrewSkill;
             crewStation.trainingSkill = CrewSkill.None;
-            crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
-            crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
+            ApplyCrewLimitsToStation(crewStation);
             crewStation.enforceRequirements = true;
         }
 
         if (crewStation != null)
         {
+            ApplyCrewLimitsToStation(crewStation);
             // Use GameObject name to ensure uniqueness (mounts often share the same mountId like "Mount_01")
             // This ensures each weapon mount gets a unique station ID
             string expectedId = $"{gameObject.name}_crew_slot";
@@ -427,6 +426,16 @@ public class WeaponMount : MonoBehaviour
                 }
             }
         }
+    }
+
+    void ApplyCrewLimitsToStation(CrewStation station)
+    {
+        if (station == null)
+            return;
+
+        int minRequired = Mathf.Max(0, defaultCrewRequired);
+        int maxAllowed = Mathf.Max(minRequired, defaultCrewMax);
+        station.SetCrewLimits(minRequired, maxAllowed);
     }
 
     bool HasOperationalCrew()
@@ -594,6 +603,7 @@ public class WeaponMount : MonoBehaviour
         {
             currentLauncher.BindOwningMount(this);
             currentLauncher.SetCrewAccuracyScale(1f);
+            currentLauncher.SetCrewReloadScale(1f);
         }
         if (enableDebugLogging) LogDebug($"Mounting {weaponPrefab.name} -> created {mountedWeapon.name}, launcher={currentLauncher}");
         TryResolveTargetAcquisitionCollider();
@@ -623,7 +633,8 @@ public class WeaponMount : MonoBehaviour
         if (enableDebugLogging) LogDebug($"Mount complete, isOccupied={isOccupied}, health={weaponHealth}");
         SyncAimTargetsToCurrentPose();
         _lastAccuracyScale = -1f;
-        UpdateCrewAccuracyBonus(HasOperationalCrew());
+        _lastReloadScale = -1f;
+        UpdateCrewPerformanceBonuses(HasOperationalCrew());
         return true;
     }
 
@@ -640,6 +651,7 @@ public class WeaponMount : MonoBehaviour
         {
             currentLauncher.BindOwningMount(null);
             currentLauncher.SetCrewAccuracyScale(1f);
+            currentLauncher.SetCrewReloadScale(1f);
         }
         currentLauncher = null;
         isOccupied = false;
@@ -647,6 +659,7 @@ public class WeaponMount : MonoBehaviour
         WeaponPersistenceManager.Instance.UnregisterMountedWeapon(this);
         weapon.transform.SetParent(null);
         _lastAccuracyScale = -1f;
+        _lastReloadScale = -1f;
         return weapon;
     }
 
@@ -675,26 +688,61 @@ public class WeaponMount : MonoBehaviour
         if (pitchBarrel != null) pitchBarrel.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
     }
 
-    void UpdateCrewAccuracyBonus(bool hasCrew)
+    void UpdateCrewPerformanceBonuses(bool hasCrew)
     {
         if (currentLauncher == null)
             return;
 
-        float desiredScale = 1f;
-        if (hasCrew && crewStation != null)
+        float staffingCoverage = 0f;
+        float crewRatio = 0f;
+        float bestSkill = 0f;
+
+        if (crewStation != null)
         {
-            float skill = crewStation.GetBestSkillLevel();
-            if (skill > 0f)
+            staffingCoverage = crewStation.GetStaffingRatio();
+            crewRatio = crewStation.GetCrewRatio();
+            if (crewStation.HasAnyCrew)
             {
-                desiredScale = CrewSkillUtility.EvaluateAccuracyScale(skill);
+                bestSkill = crewStation.GetBestSkillLevel();
             }
         }
+        else if (hasCrew)
+        {
+            staffingCoverage = 1f;
+            crewRatio = 1f;
+        }
 
+        float baseAccuracy = bestSkill > 0f
+            ? CrewSkillUtility.EvaluateAccuracyScale(bestSkill)
+            : 1f;
+        float desiredAccuracyScale = Mathf.Lerp(1f, baseAccuracy, staffingCoverage);
+        ApplyAccuracyScale(desiredAccuracyScale);
+
+        float baseReload = bestSkill > 0f
+            ? CrewSkillUtility.EvaluateReloadScale(bestSkill)
+            : 1f;
+        float reloadAfterCoverage = Mathf.Lerp(1.5f, baseReload, staffingCoverage);
+        float effectiveCrewDepth = crewRatio > 1f ? crewRatio : 1f;
+        float desiredReloadScale = reloadAfterCoverage / effectiveCrewDepth;
+        ApplyReloadScale(desiredReloadScale);
+    }
+
+    void ApplyAccuracyScale(float desiredScale)
+    {
         if (_lastAccuracyScale >= 0f && Mathf.Approximately(desiredScale, _lastAccuracyScale))
             return;
 
         currentLauncher.SetCrewAccuracyScale(desiredScale);
         _lastAccuracyScale = desiredScale;
+    }
+
+    void ApplyReloadScale(float desiredScale)
+    {
+        if (_lastReloadScale >= 0f && Mathf.Approximately(desiredScale, _lastReloadScale))
+            return;
+
+        currentLauncher.SetCrewReloadScale(desiredScale);
+        _lastReloadScale = desiredScale;
     }
 
     void FinalizeAcquisitionState(bool inside, Health target, Collider targetCollider, string reason)

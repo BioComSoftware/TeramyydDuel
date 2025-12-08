@@ -1769,7 +1769,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 635aaf384d5402144b5954d3ca7cace3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CrewManager
-  enforceCrewRequirements: 0
+  enforceCrewRequirements: 1
 --- !u!4 &174892790
 Transform:
   m_ObjectHideFlags: 0
@@ -10852,7 +10852,7 @@ MonoBehaviour:
   primarySkill: 1
   minimumSkillLevel: 1
   minimumCrewRequired: 1
-  maximumCrewAllowed: 1
+  maximumCrewAllowed: 2
   trainingSkill: 0
   skillGainMultiplier: 1
   enforceRequirements: 1

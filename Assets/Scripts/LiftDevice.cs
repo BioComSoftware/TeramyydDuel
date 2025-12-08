@@ -391,8 +391,7 @@ public abstract class LiftDevice : MonoBehaviour
             crewStation.primarySkill = defaultCrewSkill;
             crewStation.trainingSkill = CrewSkill.None;
             crewStation.minimumSkillLevel = 1f;
-            crewStation.minimumCrewRequired = Mathf.Clamp(defaultCrewRequired, 1, defaultCrewMax);
-            crewStation.maximumCrewAllowed = Mathf.Max(defaultCrewRequired, defaultCrewMax);
+            ApplyCrewLimitsToStation();
             crewStation.enforceRequirements = true;
         }
 
@@ -400,6 +399,18 @@ public abstract class LiftDevice : MonoBehaviour
         {
             crewStation.stationId = gameObject.name + "_LiftCrew";
         }
+
+        ApplyCrewLimitsToStation();
+    }
+
+    void ApplyCrewLimitsToStation()
+    {
+        if (crewStation == null)
+            return;
+
+        int minRequired = Mathf.Max(0, defaultCrewRequired);
+        int maxAllowed = Mathf.Max(minRequired, defaultCrewMax);
+        crewStation.SetCrewLimits(minRequired, maxAllowed);
     }
 
     protected bool HasOperationalCrew()

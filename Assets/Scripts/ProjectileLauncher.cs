@@ -36,7 +36,7 @@ public class ProjectileLauncher : MonoBehaviour
 
     [Header("Reload Settings")]
     [Tooltip("Time in seconds before weapon can fire again after firing")]
-    public float reloadTime = 2f;
+    [Min(0.05f)] public float reloadTime = 2f;
     
     [Tooltip("Can this weapon fire immediately at start, or does it need to reload first?")]
     public bool startReady = true;
@@ -56,6 +56,7 @@ public class ProjectileLauncher : MonoBehaviour
     private float _cachedProjectileLinearDamping;
     private WeaponMount _owningMount;
     private float _crewAccuracyScale = 1f;
+    private float _crewReloadScale = 1f;
 
     public event System.Action<ProjectileLauncher> ProjectileFired;
 
@@ -91,7 +92,7 @@ public class ProjectileLauncher : MonoBehaviour
         // If weapon doesn't start ready, set initial reload time
         if (!startReady)
         {
-            _nextFireTime = Time.time + reloadTime;
+            _nextFireTime = Time.time + GetScaledReloadDuration();
         }
 
         _runtimeLaunchSpeed = Mathf.Clamp(launchSpeed, minimumLaunchSpeed, launchSpeed);
@@ -144,6 +145,36 @@ public class ProjectileLauncher : MonoBehaviour
     public void SetCrewAccuracyScale(float scale)
     {
         _crewAccuracyScale = Mathf.Clamp(scale, 0f, 1f);
+    }
+
+    /// <summary>
+    /// Scales reload duration (values &lt; 1 speed up, values &gt; 1 slow down).
+    /// </summary>
+    public void SetCrewReloadScale(float scale)
+    {
+        float clamped = Mathf.Clamp(scale, 0.25f, 4f);
+        if (Mathf.Approximately(clamped, _crewReloadScale))
+            return;
+
+        float previousDuration = GetScaledReloadDuration();
+        float remaining = IsReadyToFire() ? 0f : Mathf.Clamp(_nextFireTime - Time.time, 0f, previousDuration);
+        float progress = previousDuration > 0.0001f
+            ? Mathf.Clamp01((previousDuration - remaining) / previousDuration)
+            : 1f;
+
+        _crewReloadScale = clamped;
+
+        if (remaining > 0f)
+        {
+            float newDuration = GetScaledReloadDuration();
+            float newRemaining = Mathf.Max(0f, newDuration * (1f - progress));
+            _nextFireTime = Time.time + newRemaining;
+        }
+    }
+
+    float GetScaledReloadDuration()
+    {
+        return Mathf.Max(0.05f, reloadTime * _crewReloadScale);
     }
 
     /// <summary>
@@ -273,7 +304,7 @@ public class ProjectileLauncher : MonoBehaviour
         }
 
         // Set reload time
-        _nextFireTime = Time.time + reloadTime;
+        _nextFireTime = Time.time + GetScaledReloadDuration();
 
         ProjectileFired?.Invoke(this);
 

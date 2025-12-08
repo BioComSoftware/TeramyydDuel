@@ -14,8 +14,8 @@ public class CrewStation : MonoBehaviour
     public CrewSkill primarySkill = CrewSkill.Gunnery;
     [Tooltip("Minimum skill level required to accept an assignment.")]
     [Min(1f)] public float minimumSkillLevel = 1f;
-    [Range(0, 4)] public int minimumCrewRequired = 1;
-    [Range(1, 4)] public int maximumCrewAllowed = 1;
+    [SerializeField, HideInInspector] int _minimumCrewRequired = 1;
+    [SerializeField, HideInInspector] int _maximumCrewAllowed = 1;
 
     [Header("Training")]
     [Tooltip("Skill used for progression when someone operates this station. Defaults to Primary Skill.")]
@@ -27,7 +27,13 @@ public class CrewStation : MonoBehaviour
 
     readonly List<CrewMember> _assignedCrew = new List<CrewMember>();
     public IReadOnlyList<CrewMember> AssignedCrew => _assignedCrew;
+    public int AssignedCrewCount => _assignedCrew.Count;
+    public bool HasAnyCrew => _assignedCrew.Count > 0;
+    public bool IsUnderstaffed => enforceRequirements && _assignedCrew.Count > 0 && GetCrewRatio() < 1f;
 
+    public int MinimumCrewRequired => _minimumCrewRequired;
+    public int MaximumCrewAllowed => _maximumCrewAllowed;
+    
     public bool HasRequiredCrew
     {
         get
@@ -35,15 +41,23 @@ public class CrewStation : MonoBehaviour
             if (!enforceRequirements)
                 return true;
 
-            int minRequired = Mathf.Max(0, minimumCrewRequired);
+            int minRequired = Mathf.Max(0, _minimumCrewRequired);
             return _assignedCrew.Count >= minRequired;
         }
     }
 
+    public float GetCrewRatio()
+    {
+        int required = Mathf.Max(1, _minimumCrewRequired);
+        return _assignedCrew.Count / (float)required;
+    }
+
+    public float GetStaffingRatio() => Mathf.Clamp01(GetCrewRatio());
+
     void Awake()
     {
         EnsureStationId();
-        maximumCrewAllowed = Mathf.Max(minimumCrewRequired, maximumCrewAllowed);
+        ClampCrewLimits();
     }
 
     void OnEnable()
@@ -72,10 +86,7 @@ public class CrewStation : MonoBehaviour
 
     void OnValidate()
     {
-        if (maximumCrewAllowed < minimumCrewRequired)
-        {
-            maximumCrewAllowed = Mathf.Max(minimumCrewRequired, 1);
-        }
+        ClampCrewLimits();
     }
 
     internal bool CanAssign(CrewMember member)
@@ -86,7 +97,7 @@ public class CrewStation : MonoBehaviour
         if (_assignedCrew.Contains(member))
             return true;
 
-        if (_assignedCrew.Count >= maximumCrewAllowed)
+        if (_assignedCrew.Count >= _maximumCrewAllowed)
             return false;
 
         CrewSkill skill = primarySkill;
@@ -127,6 +138,19 @@ public class CrewStation : MonoBehaviour
             return;
 
         stationId = $"station_{Guid.NewGuid().ToString("N")}";
+    }
+
+    public void SetCrewLimits(int minimumRequired, int maximumAllowed)
+    {
+        _minimumCrewRequired = Mathf.Max(0, minimumRequired);
+        _maximumCrewAllowed = Mathf.Max(_minimumCrewRequired, maximumAllowed);
+        ClampCrewLimits();
+    }
+
+    void ClampCrewLimits()
+    {
+        _minimumCrewRequired = Mathf.Max(0, _minimumCrewRequired);
+        _maximumCrewAllowed = Mathf.Max(_minimumCrewRequired, _maximumCrewAllowed);
     }
 
     public float GetBestSkillLevel()

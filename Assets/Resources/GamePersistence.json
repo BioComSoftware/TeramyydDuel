@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-08T13:33:36.4644840Z",
+    "lastSavedUtc": "2025-12-08T14:21:17.6770922Z",
     "mountedCannons": [
         {
             "persistenceKey": "Mount_01|Ship/Aft_weapon_mount/Weapon_mount",
@@ -80,8 +80,8 @@
             "hierarchyPath": "Ship/Bow_weapon_mount/Bow_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 99.5999984741211,
-            "damageTaken": 0.4000000059604645
+            "currentHealth": 99.3499984741211,
+            "damageTaken": 0.6499999761581421
         },
         {
             "persistenceKey": "Mount_01|Ship/Port_forward_hull_weapon_mount/Port_forward_hull_weapon_mount_actual",
@@ -89,8 +89,8 @@
             "hierarchyPath": "Ship/Port_forward_hull_weapon_mount/Port_forward_hull_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 99.6500015258789,
-            "damageTaken": 0.3499999940395355
+            "currentHealth": 97.69999694824219,
+            "damageTaken": 2.299999952316284
         },
         {
             "persistenceKey": "Mount_01|Ship/Port_rear_hull_weapon_mount/Port_rear_hull_weapon_mount_actual",
@@ -98,8 +98,8 @@
             "hierarchyPath": "Ship/Port_rear_hull_weapon_mount/Port_rear_hull_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 99.6500015258789,
-            "damageTaken": 0.3499999940395355
+            "currentHealth": 98.6500015258789,
+            "damageTaken": 1.350000023841858
         },
         {
             "persistenceKey": "Mount_01|Ship/Starboard_rear_hull_weapon_mount/Starboard_rear_hull_weapon_mount_actual",
