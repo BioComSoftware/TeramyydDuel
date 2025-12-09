@@ -101,6 +101,7 @@ public class WeaponMount : MonoBehaviour
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
     public bool HasTargetLock => HasSelectedTarget;
+    public bool IsTargetFullyAcquired => HasSelectedTarget && _targetColliderInsideSensor && _hasBallisticInterceptSolution;
     public bool CanFireAtCurrentTarget => HasTargetLock;
     public bool HasCrewReady => HasOperationalCrew();
     public Health MountedWeaponHealth => weaponHealth;
@@ -125,7 +126,7 @@ public class WeaponMount : MonoBehaviour
         if (!currentLauncher.IsReady)
             return false;
 
-        if (!ignoreTargetLock && !HasTargetLock)
+        if (!ignoreTargetLock && !IsTargetFullyAcquired)
             return false;
 
         currentLauncher.TriggerFireCommand(ignoreTargetLock);

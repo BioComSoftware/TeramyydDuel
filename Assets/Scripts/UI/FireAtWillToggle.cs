@@ -143,15 +143,15 @@ public class FireAtWillToggle : MonoBehaviour
             bool crewReady = mount.HasCrewReady;
             var launcher = mount.currentLauncher;
             bool launcherReady = launcher != null && launcher.IsReady;
-            bool hasTargetLock = mount.HasTargetLock;
+            bool acquired = mount.IsTargetFullyAcquired;
 
-            if (crewReady && launcherReady && hasTargetLock)
+            if (crewReady && launcherReady && acquired)
             {
                 mount.TryFire();
             }
             else if (debugLog)
             {
-                LogDebug($"{mount.mountId}: not auto-firing (crew={crewReady}, launcherReady={launcherReady}, targetLock={hasTargetLock})");
+                LogDebug($"{mount.mountId}: not auto-firing (crew={crewReady}, launcherReady={launcherReady}, targetAcquired={acquired})");
             }
         }
     }
