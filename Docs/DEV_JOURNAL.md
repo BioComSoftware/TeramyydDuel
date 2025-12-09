@@ -360,7 +360,7 @@ All crew operations log to both Debug.Log (console) and FileLogger (Logs/game_de
 
 ### Code Changes
 - **Health.cs + dependents**
-  - `currentHealth`, `maxHealth`, `TakeDamage/Heal/SetHealth` now use `float`. All damage sources (`Projectile`, `CannonBall`, `SimpleShrapnel`, `CannonSelfDamage`, `LiftDevice`, `Engine`, `JetEngine`, `AntiGravityDevice`, etc.) pass floats, and HUD listeners (`ShipComponent`, `HUDController`, `ShipHUDDisplay`) subscribe to the float UnityEvent.
+  - `currentHealth`, `maxHealth`, `TakeDamage/Heal/SetHealth` now use `float`. All damage sources (`Projectile`, `CannonBall`, `SimpleShrapnel`, cannon self-wear, `LiftDevice`, `Engine`, `JetEngine`, `AntiGravityDevice`, etc.) pass floats, and HUD listeners (`ShipComponent`, `HUDController`, `ShipHUDDisplay`) subscribe to the float UnityEvent.
   - Persistence (`WeaponPersistenceManager`) clamps/serializes floats, rounding to two decimals when saving so files stay readable.
 - **Crew system (new)**
   - `Assets/Scripts/Crew/` now contains `CrewRole`, `CrewMember`, `CrewStation`, and `CrewManager`. Stations declare required specialization + min/max crew; crew auto-registers, keeps Health attached, and remembers pending assignment IDs for later binding.
@@ -750,7 +750,7 @@ Changes
   - Applied at fire: builds orthonormal basis around spawnPoint.up, rotates by random tilt ≤ spread and random azimuth; speed scaled by Random[1−jitter, 1+jitter].
   - Velocity set via Rigidbody.linearVelocity if available, else Rigidbody.velocity.
 - Cannon/Cannonball pipeline maintained:
-  - Cannon inherits variance; audio child node follows muzzle; health lives on 3D visual child; self-damage via CannonSelfDamage (fractional accumulate).
+  - Cannon inherits variance; audio child node follows muzzle; health lives on 3D visual child; self-damage now lives directly inside `Cannon` (fractional accumulate).
   - Projectile parent-friendly: Rigidbody on root, Colliders on children; still applies Health damage and spawns hit VFX.
 - CannonBall (Projectile subclass): explosion VFX + optional shrapnel (RB+Collider; optional Projectile for shrapnel damage).
 - VFX content: sparks/smoke tuned (drag/dampen/lifetime), URP particles materials, soft particles; flipbook/gif guidance.
@@ -830,7 +830,7 @@ Changes Since Prior Entry
     - New fields: `force2DForDebug`, `audioMinDistance`, `audioMaxDistance`, `pitchRange`, `fireVolume`.
     - Removed Health from Cannon root (no `RequireComponent<Health>`); health expected on visual child.
 - Cannon self-wear
-  - `Assets/Scripts/CannonSelfDamage.cs`: new helper.
+  - `Assets/Scripts/Cannon.cs`: now contains the self-wear helper logic.
     - Applies fractional self-damage per shot; accumulates remainder until whole points.
     - Auto-finds `Health` on children (preferred) or on self; mirrors Cannon `fireKey`.
 - Cannonball projectile
@@ -1607,7 +1607,7 @@ Immediate Glue With Existing Code (No Changes Today)
 
 Use WeaponMount.MountWeapon(prefab) at runtime for placement.
 Use ProjectileLauncher variance fields to reflect crew skill in moment-to-moment accuracy.
-Keep Health on the 3D child; CannonSelfDamage continues to accumulate fractional wear.
+Keep Health on the 3D child; Cannon’s built-in wear handler continues to accumulate fractional damage.
 Explosion VFX/audio via explosionEffectPrefab and an AudioSource on that prefab.
 Step-By-Step Next (When You Want To Implement)
 

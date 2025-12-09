@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
+using UnityEngine.Serialization;
 
 // General weapon mount with yaw/pitch pivots and runtime mounting for ProjectileLauncher-based weapons.
 public class WeaponMount : MonoBehaviour
 {
     [Header("Identity")]
-    public string mountId = "Mount_01";
+    public string mountId = string.Empty;
     public string mountType = "cannon";  // accepted type (informational gate for game logic)
 
     [Header("Pivots")]
@@ -63,8 +64,10 @@ public class WeaponMount : MonoBehaviour
     public bool autoCreateCrewStation = true;
     [Tooltip("Crew skill focus expected when a runtime station needs to be created automatically.")]
     public CrewSkill defaultCrewSkill = CrewSkill.Gunnery;
-    [Range(1, 4)] public int defaultCrewRequired = 1;
-    [Range(1, 4)] public int defaultCrewMax = 2;
+    [Tooltip("Optional fallback requirement profile when the mounted weapon prefab lacks CrewStationRequirementProfile.")]
+    public CrewStationRequirementProfile fallbackCrewProfile;
+    [FormerlySerializedAs("defaultCrewRequired"), SerializeField, HideInInspector] int legacyDefaultCrewRequired = 1;
+    [FormerlySerializedAs("defaultCrewMax"), SerializeField, HideInInspector] int legacyDefaultCrewMax = 2;
 
     [Header("Debug Logging")]
     [Tooltip("Writes verbose mount + targeting diagnostics to Logs/game_debug.log when enabled.")]
@@ -97,17 +100,22 @@ public class WeaponMount : MonoBehaviour
     public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
-    public bool CanFireAtCurrentTarget => HasSelectedTarget && _targetColliderInsideSensor && _hasBallisticInterceptSolution;
+    public bool HasTargetLock => HasSelectedTarget;
+    public bool CanFireAtCurrentTarget => HasTargetLock;
+    public bool HasCrewReady => HasOperationalCrew();
     public Health MountedWeaponHealth => weaponHealth;
 
     /// <summary>
     /// Attempt to fire the currently mounted weapon. Returns true if a fire command was issued.
     /// </summary>
-    public bool TryFire()
+    public bool TryFire(bool ignoreTargetLock = false)
     {
         if (!HasOperationalCrew())
         {
-            LogDebug("TryFire blocked - no crew assigned to this mount.");
+            string stationId = crewStation != null ? crewStation.stationId : "(none)";
+            int assigned = crewStation != null ? crewStation.AssignedCrewCount : 0;
+            int required = crewStation != null ? crewStation.MinimumCrewRequired : 0;
+            LogDebug($"TryFire blocked - no crew assigned (station={stationId}, assigned={assigned}, required={required}).");
             return false;
         }
 
@@ -117,10 +125,10 @@ public class WeaponMount : MonoBehaviour
         if (!currentLauncher.IsReady)
             return false;
 
-        if (!CanFireAtCurrentTarget)
+        if (!ignoreTargetLock && !HasTargetLock)
             return false;
 
-        currentLauncher.TriggerFireCommand();
+        currentLauncher.TriggerFireCommand(ignoreTargetLock);
         
         // Grant gunnery XP to all crew members assigned to this weapon
         if (crewStation != null && crewStation.AssignedCrew != null)
@@ -270,15 +278,11 @@ public class WeaponMount : MonoBehaviour
 
         if (targetingController == null)
         {
-            targetingController = FindObjectOfType<TargetingController>();
+            targetingController = FindFirstObjectByType<TargetingController>();
             if (targetingController == null)
             {
                 _hasBallisticInterceptSolution = false;
                 return;
-                    if (isOccupied)
-                    {
-                        WeaponPersistenceManager.Instance.RegisterMountedWeapon(this);
-                    }
             }
         }
 
@@ -310,7 +314,7 @@ public class WeaponMount : MonoBehaviour
     {
         if (targetingController == null)
         {
-            targetingController = FindObjectOfType<TargetingController>();
+            targetingController = FindFirstObjectByType<TargetingController>();
         }
 
         if (targetAcquisitionCollider == null)
@@ -410,9 +414,9 @@ public class WeaponMount : MonoBehaviour
         if (crewStation != null)
         {
             ApplyCrewLimitsToStation(crewStation);
-            // Use GameObject name to ensure uniqueness (mounts often share the same mountId like "Mount_01")
-            // This ensures each weapon mount gets a unique station ID
-            string expectedId = $"{gameObject.name}_crew_slot";
+            string expectedId = !string.IsNullOrEmpty(mountId)
+                ? $"{mountId}_crew_slot"
+                : $"{gameObject.name}_crew_slot";
             
             if (crewStation.stationId != expectedId)
             {
@@ -433,9 +437,53 @@ public class WeaponMount : MonoBehaviour
         if (station == null)
             return;
 
-        int minRequired = Mathf.Max(0, defaultCrewRequired);
-        int maxAllowed = Mathf.Max(minRequired, defaultCrewMax);
-        station.SetCrewLimits(minRequired, maxAllowed);
+        var profile = ResolveActiveCrewProfile();
+
+        int minRequired = profile != null
+            ? profile.MinimumCrewRequired
+            : Mathf.Max(0, legacyDefaultCrewRequired);
+
+        int maxAllowed = profile != null
+            ? profile.MaximumCrewAllowed
+            : Mathf.Max(minRequired, legacyDefaultCrewMax);
+
+        bool changed = station.MinimumCrewRequired != minRequired || station.MaximumCrewAllowed != maxAllowed;
+        if (changed)
+        {
+            station.SetCrewLimits(minRequired, maxAllowed);
+            RequestAnchorRebuild();
+        }
+    }
+
+    CrewStationRequirementProfile ResolveActiveCrewProfile()
+    {
+        if (mountedWeapon != null)
+        {
+            var profile = mountedWeapon.GetComponentInChildren<CrewStationRequirementProfile>();
+            if (profile != null)
+                return profile;
+        }
+
+        return fallbackCrewProfile;
+    }
+
+    void RequestAnchorRebuild()
+    {
+        if (!Application.isPlaying)
+            return;
+
+        var builders = GetComponents<CrewStationAnchorRuntimeBuilder>();
+        if (builders == null || builders.Length == 0)
+            return;
+
+        for (int i = 0; i < builders.Length; i++)
+        {
+            var builder = builders[i];
+            if (builder != null)
+            {
+                builder.RebuildAnchors();
+            }
+        }
     }
 
     bool HasOperationalCrew()
@@ -571,12 +619,77 @@ public class WeaponMount : MonoBehaviour
         _hasBallisticInterceptSolution = false;
     }
 
+    static readonly System.Collections.Generic.Dictionary<string, int> s_MountNameUsage = new System.Collections.Generic.Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+    static readonly System.Collections.Generic.HashSet<string> s_AssignedMountIds = new System.Collections.Generic.HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+    bool _mountIdFinalized;
+
+#if UNITY_EDITOR || UNITY_STANDALONE || UNITY_ANDROID || UNITY_IOS
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetMountIdRegistry()
+    {
+        s_MountNameUsage.Clear();
+        s_AssignedMountIds.Clear();
+    }
+#endif
+
     void EnsureMountId()
     {
-        if (!string.IsNullOrEmpty(mountId))
+        if (_mountIdFinalized && !string.IsNullOrEmpty(mountId))
             return;
 
-        mountId = transform.name;
+        string baseName = ComputeBaseMountName();
+        if (string.IsNullOrEmpty(baseName))
+        {
+            baseName = "WeaponMount";
+        }
+
+        string uniqueId = AllocateMountId(baseName);
+        mountId = uniqueId;
+        _mountIdFinalized = true;
+    }
+
+    string ComputeBaseMountName()
+    {
+        string raw = transform != null ? transform.name : string.Empty;
+        if (string.IsNullOrEmpty(raw))
+            return raw;
+
+        const string actualSuffix = "_actual";
+        if (raw.EndsWith(actualSuffix, System.StringComparison.OrdinalIgnoreCase))
+        {
+            raw = raw.Substring(0, raw.Length - actualSuffix.Length);
+        }
+
+        return raw;
+    }
+
+    string AllocateMountId(string baseName)
+    {
+        if (string.IsNullOrEmpty(baseName))
+            baseName = "WeaponMount";
+
+        int nextIndex = 1;
+        if (s_MountNameUsage.TryGetValue(baseName, out int count))
+        {
+            nextIndex = count + 1;
+        }
+        s_MountNameUsage[baseName] = nextIndex;
+
+        string candidate = FormatMountId(baseName, nextIndex);
+        while (s_AssignedMountIds.Contains(candidate))
+        {
+            nextIndex++;
+            s_MountNameUsage[baseName] = nextIndex;
+            candidate = FormatMountId(baseName, nextIndex);
+        }
+
+        s_AssignedMountIds.Add(candidate);
+        return candidate;
+    }
+
+    static string FormatMountId(string baseName, int index)
+    {
+        return $"{baseName}_{index:00}";
     }
 
     void HandleDebugKeypadInput()
@@ -635,6 +748,7 @@ public class WeaponMount : MonoBehaviour
         _lastAccuracyScale = -1f;
         _lastReloadScale = -1f;
         UpdateCrewPerformanceBonuses(HasOperationalCrew());
+        ApplyCrewLimitsToStation(crewStation);
         return true;
     }
 
@@ -660,6 +774,7 @@ public class WeaponMount : MonoBehaviour
         weapon.transform.SetParent(null);
         _lastAccuracyScale = -1f;
         _lastReloadScale = -1f;
+        ApplyCrewLimitsToStation(crewStation);
         return weapon;
     }
 

@@ -12,7 +12,7 @@ public class ShipHUDPanel : MonoBehaviour
     public static ShipHUDPanel InstanceOrFind()
     {
         if (_instance != null) return _instance;
-        _instance = FindObjectOfType<ShipHUDPanel>(includeInactive: true);
+        _instance = FindFirstObjectByType<ShipHUDPanel>(FindObjectsInactive.Include);
         return _instance;
     }
 

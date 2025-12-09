@@ -363,7 +363,7 @@ public class ShipHUDDisplay : MonoBehaviour
             ProjectileLauncher launcher = mount.currentLauncher;
             if (launcher != null)
             {
-                interactable = launcher.IsReady && mount.CanFireAtCurrentTarget;
+                interactable = launcher.IsReady;
             }
         }
 

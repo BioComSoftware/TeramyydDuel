@@ -65,7 +65,7 @@ public class TargetHighlightOverlay : MonoBehaviour
 
         if (targetingController == null)
         {
-            targetingController = FindObjectOfType<TargetingController>();
+            targetingController = FindFirstObjectByType<TargetingController>();
         }
 
         SetHighlightVisible(false);

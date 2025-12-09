@@ -26,7 +26,7 @@ public static class CreateHUD_Direct
         canvasGO.AddComponent<GraphicRaycaster>();
         
         // Ensure EventSystem exists
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
         {
             var es = new GameObject("EventSystem");
             es.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -74,8 +74,8 @@ public static class CreateHUD_Direct
         Debug.Log("HUD Canvas created successfully with Settings button!");
     }
     
-    static T FindObjectOfType<T>() where T : Object
+    static T FindFirstObjectByType<T>() where T : Object
     {
-        return Object.FindObjectOfType<T>();
+        return Object.FindFirstObjectByType<T>();
     }
 }

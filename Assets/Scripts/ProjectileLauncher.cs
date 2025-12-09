@@ -118,7 +118,7 @@ public class ProjectileLauncher : MonoBehaviour
                 return;
             }
 
-            if (!IsFireCommandAllowed())
+            if (!IsFireCommandAllowed(ignoreTargetLock: false))
             {
                 if (debugLog)
                 {
@@ -180,9 +180,9 @@ public class ProjectileLauncher : MonoBehaviour
     /// <summary>
     /// Allows external callers (e.g., HUD buttons) to issue a fire command while honoring target lock rules.
     /// </summary>
-    public void TriggerFireCommand()
+    public void TriggerFireCommand(bool ignoreTargetLock = false)
     {
-        if (!IsFireCommandAllowed())
+        if (!IsFireCommandAllowed(ignoreTargetLock))
         {
             if (debugLog)
             {
@@ -195,9 +195,9 @@ public class ProjectileLauncher : MonoBehaviour
         FireProjectile();
     }
 
-    bool IsFireCommandAllowed()
+    bool IsFireCommandAllowed(bool ignoreTargetLock = false)
     {
-        if (!requireValidMountTargetLock)
+        if (ignoreTargetLock || !requireValidMountTargetLock)
             return true;
 
         if (_owningMount == null)

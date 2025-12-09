@@ -25,7 +25,7 @@ public class ViewSwitchButton : MonoBehaviour
     void Start()
     {
         button = GetComponent<Button>();
-        viewManager = FindObjectOfType<CameraViewManager>();
+        viewManager = FindFirstObjectByType<CameraViewManager>();
         
         if (viewManager == null)
         {

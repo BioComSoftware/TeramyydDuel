@@ -5075,10 +5075,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e08813d3eb03a94f85754cc15ef87d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CannonSelfDamage
-  cannon: {fileID: 79155038296863490}
-  health: {fileID: 1849268559633723962}
-  damagePerShot: 0.05
-  minShotInterval: 0.5
 --- !u!65 &6297898395109153350
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10006,6 +10002,7 @@ GameObject:
   - component: {fileID: 79155038296863490}
   - component: {fileID: 5702391970838010796}
   - component: {fileID: 5067446363001794963}
+  - component: {fileID: 6389119831725280789}
   m_Layer: 0
   m_Name: Cannon
   m_TagString: Untagged
@@ -10061,6 +10058,8 @@ MonoBehaviour:
   debugLog: 0
   requireValidMountTargetLock: 1
   fireAudioSource: {fileID: 0}
+  wearTarget: {fileID: 0}
+  damagePerShot: 0.5
 --- !u!82 &5702391970838010796
 AudioSource:
   m_ObjectHideFlags: 0
@@ -10179,6 +10178,20 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 0.3, z: 0.3}
   m_Center: {x: -0.1, y: 0, z: 0}
+--- !u!114 &6389119831725280789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8749578242190884092}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a226ee01728b43f49a01bf2d468fa32f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CrewStationRequirementProfile
+  minimumCrewRequired: 1
+  maximumCrewAllowed: 5
 --- !u!1 &9049453266903133057
 GameObject:
   m_ObjectHideFlags: 0

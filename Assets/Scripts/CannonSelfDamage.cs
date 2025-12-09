@@ -1,72 +1,31 @@
 ﻿using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
-// Applies self-damage to the cannon each time it fires.
-// Attach this to the same GameObject as the Cannon component.
-// Health is expected to live on the visual 3D child (e.g., Cylinder). You can
-// explicitly assign it, or leave empty to auto-find the first Health in children.
-// Health now supports fractional values directly, so fractional wear applies immediately.
-public class CannonSelfDamage : MonoBehaviour
+/// <summary>
+/// Deprecated wrapper preserved so existing prefabs dont lose references. Cannon now owns self-wear directly.
+/// </summary>
+[DisallowMultipleComponent]
+[AddComponentMenu("")]
+public sealed class CannonSelfDamage : MonoBehaviour
 {
-    [Header("References")]
-    public Cannon cannon;          // If null, auto-find on this GameObject
-    [Tooltip("Health component to damage (usually on the visual 3D child). If null, auto-find in children.")]
-    public Health health;          // If null, auto-find in children first, then on self
+    void Reset() => RetireComponent();
 
-    [Header("Damage Per Shot (can be fractional)")]
-    [Tooltip("Amount of health removed each time the cannon fires. Accepts fractional values (e.g., 0.5).")]
-    public float damagePerShot = 0.5f;
+    void Awake() => RetireComponent();
 
-    [Header("Filtering")]
-    [Tooltip("Optional cooldown window (seconds) to ignore rapid duplicate events.")]
-    public float minShotInterval = 0f;
-
-    private float _lastShotTime = -999f;
-
-    void Awake()
+    void RetireComponent()
     {
-        if (cannon == null) cannon = GetComponent<Cannon>();
-        if (cannon == null) cannon = GetComponentInParent<Cannon>();
-        if (health == null)
+        string message = "[CannonSelfDamage] This component is obsolete. Configure damagePerShot on the Cannon instead.";
+        Debug.LogWarning(message, this);
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
         {
-            // Prefer a child Health (visual mesh child) over self
-            health = GetComponentInChildren<Health>();
-            if (health == null) health = GetComponent<Health>();
-        }
-    }
-
-    void OnEnable()
-    {
-        if (cannon != null)
-        {
-            cannon.ProjectileFired += HandleProjectileFired;
-        }
-    }
-
-    void OnDisable()
-    {
-        if (cannon != null)
-        {
-            cannon.ProjectileFired -= HandleProjectileFired;
-        }
-    }
-
-    void HandleProjectileFired(ProjectileLauncher launcher)
-    {
-        if (launcher != cannon)
+            Undo.DestroyObjectImmediate(this);
             return;
-
-        float t = Time.time;
-        if (minShotInterval > 0f && t - _lastShotTime < minShotInterval)
-            return;
-
-        _lastShotTime = t;
-        ApplyWear(damagePerShot);
-    }
-
-    private void ApplyWear(float amount)
-    {
-        if (health == null || amount <= 0f) return;
-
-        health.TakeDamage(amount);
+        }
+#endif
+        Destroy(this);
     }
 }

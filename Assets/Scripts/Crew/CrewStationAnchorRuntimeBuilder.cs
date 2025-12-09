@@ -16,11 +16,22 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
     [Tooltip("Prefab or template transform cloned for each world anchor. Leave empty to spawn simple empty transforms.")]
     [SerializeField] Transform worldAnchorPrefab;
 
+    [Header("World Layout")]
+    [Tooltip("Side-to-side spacing (local X) between crew anchors when more than one is required.")]
+    [SerializeField, Min(0.05f)] float worldAnchorLateralSpacing = 0.5f;
+    [Tooltip("Front-to-back spacing (local Z) between rows when three or more anchors are required.")]
+    [SerializeField, Min(0.05f)] float worldAnchorRowSpacing = 0.5f;
+
     [Header("HUD Anchor Prefab")]
     [Tooltip("Parent under which runtime HUD anchors will be created (e.g., ShipOutline/Bow_weapon_mount/Bow_weapon_mount_crew_anchors)." )]
     [SerializeField] RectTransform hudAnchorParent;
     [Tooltip("Prefab cloned for each HUD anchor. Leave empty to generate a bare RectTransform.")]
     [SerializeField] RectTransform hudAnchorPrefab;
+
+    [Header("HUD Layout")]
+    [SerializeField] bool autoDistributeHudAnchors = true;
+    [Min(0f)] [SerializeField] float hudAnchorSpacingPadding = 2f;
+    [Min(1f)] [SerializeField] float hudAnchorMinSpacing = 24f;
 
     [Header("Options")]
     [Tooltip("Override for number of anchors to create. When zero, uses station.MaximumCrewAllowed.")]
@@ -121,10 +132,16 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
         Transform parent = worldAnchorParent != null ? worldAnchorParent : transform;
         string prefix = ResolvePrefix(GetSuggestedWorldPrefix(parent));
 
+        var offsets = GenerateWorldAnchorOffsets(anchorCount);
+
         for (int i = 0; i < anchorCount; i++)
         {
             Transform instance = CreateWorldAnchorInstance(parent, i);
             instance.name = $"{prefix}_CrewAnchor{i + 1}";
+            if (i < offsets.Count)
+            {
+                instance.localPosition = offsets[i];
+            }
             _worldAnchors.Add(instance);
             LogVerbose($"Created world anchor '{instance.name}'.");
         }
@@ -147,6 +164,96 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
         return instance;
     }
 
+    List<Vector3> GenerateWorldAnchorOffsets(int totalCount)
+    {
+        var offsets = new List<Vector3>(totalCount);
+        if (totalCount <= 0)
+            return offsets;
+
+        if (totalCount == 1)
+        {
+            offsets.Add(Vector3.zero);
+            return offsets;
+        }
+
+        if (totalCount == 2)
+        {
+            float half = worldAnchorLateralSpacing * 0.5f;
+            offsets.Add(new Vector3(-half, 0f, 0f));
+            offsets.Add(new Vector3(half, 0f, 0f));
+            return offsets;
+        }
+
+        if (totalCount == 3)
+        {
+            float half = worldAnchorLateralSpacing * 0.5f;
+            offsets.Add(new Vector3(-half, 0f, 0f));
+            offsets.Add(new Vector3(half, 0f, 0f));
+            offsets.Add(new Vector3(0f, 0f, worldAnchorRowSpacing));
+            return offsets;
+        }
+
+        var rows = CalculateWorldAnchorRows(totalCount);
+        float zOffset = 0f;
+        for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        {
+            int rowCount = rows[rowIndex];
+            float centerOffset = (rowCount - 1) * 0.5f;
+            for (int i = 0; i < rowCount; i++)
+            {
+                float x = (i - centerOffset) * worldAnchorLateralSpacing;
+                offsets.Add(new Vector3(x, 0f, zOffset));
+            }
+            zOffset += worldAnchorRowSpacing;
+        }
+
+        return offsets;
+    }
+
+    List<int> CalculateWorldAnchorRows(int totalCount)
+    {
+        var rows = new List<int>();
+        int remaining = totalCount;
+
+        while (remaining > 0)
+        {
+            if (remaining == 4)
+            {
+                rows.Add(2);
+                rows.Add(2);
+                break;
+            }
+
+            if (remaining == 5)
+            {
+                rows.Add(3);
+                rows.Add(2);
+                break;
+            }
+
+            if (remaining == 1 && rows.Count > 0)
+            {
+                int lastIndex = rows.Count - 1;
+                if (rows[lastIndex] > 2)
+                {
+                    rows[lastIndex] -= 1;
+                    rows.Add(2);
+                }
+                else
+                {
+                    rows.Add(1);
+                }
+                break;
+            }
+
+            int row = Mathf.Min(3, remaining);
+            rows.Add(row);
+            remaining -= row;
+        }
+
+        return rows;
+    }
+
     void BuildHudAnchors(int anchorCount)
     {
         if (hudSlot == null && hudAnchorParent == null)
@@ -162,6 +269,7 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
         {
             RectTransform instance = CreateHudAnchorInstance(parent, i);
             instance.name = $"{prefix}_crew_Icon_Anchor{i + 1}";
+            ApplyHudAnchorOffset(instance, i, anchorCount);
             _hudAnchors.Add(instance);
             LogVerbose($"Created HUD anchor '{instance.name}'.");
         }
@@ -184,6 +292,30 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
         }
 
         return instance;
+    }
+
+    void ApplyHudAnchorOffset(RectTransform instance, int index, int totalCount)
+    {
+        if (!autoDistributeHudAnchors || instance == null || totalCount <= 1)
+            return;
+
+        float width = instance.rect.width;
+        if (width <= 0f && hudAnchorPrefab != null)
+        {
+            width = hudAnchorPrefab.rect.width;
+        }
+        if (width <= 0f)
+        {
+            width = hudAnchorMinSpacing;
+        }
+
+        float spacing = Mathf.Max(hudAnchorMinSpacing, width + hudAnchorSpacingPadding);
+        float firstOffset = -spacing * 0.5f * (totalCount - 1);
+        float offset = firstOffset + spacing * index;
+
+        var anchored = instance.anchoredPosition;
+        anchored.x += offset;
+        instance.anchoredPosition = anchored;
     }
 
     void ApplyAnchorsToHudSlot()
@@ -249,7 +381,7 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
 
         if (_spawner == null)
         {
-            _spawner = FindObjectOfType<CrewRuntimeSpawner>();
+            _spawner = FindFirstObjectByType<CrewRuntimeSpawner>();
         }
 
         if (_spawner != null)

@@ -59,21 +59,16 @@ public static class CreateHUD
         if (esType != null)
         {
             int existingCount = 0;
-            try
-            {
-                // Use newer, faster API when available
-                var results = UnityEngine.Object.FindObjectsByType(
-                    esType,
-                    FindObjectsInactive.Include,
-                    FindObjectsSortMode.None);
-                if (results != null) existingCount = results.Length;
-            }
-            catch
-            {
-                // Fallback for older Unity if FindObjectsByType(Type, ..) is unavailable
-                var legacy = UnityEngine.Object.FindObjectsOfType(esType);
-                if (legacy != null) existingCount = legacy.Length;
-            }
+#if UNITY_2023_1_OR_NEWER
+            var results = UnityEngine.Object.FindObjectsByType(
+                esType,
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            if (results != null) existingCount = results.Length;
+#else
+            var legacy = UnityEngine.Object.FindObjectsOfType(esType);
+            if (legacy != null) existingCount = legacy.Length;
+#endif
 
             if (existingCount == 0)
             {

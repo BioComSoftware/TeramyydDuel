@@ -39,7 +39,7 @@ public class CrewPersistenceManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = FindObjectOfType<CrewPersistenceManager>();
+                _instance = FindFirstObjectByType<CrewPersistenceManager>();
                 if (_instance == null)
                 {
                     var go = new GameObject("CrewPersistenceManager");

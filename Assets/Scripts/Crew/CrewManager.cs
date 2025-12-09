@@ -12,7 +12,7 @@ public class CrewManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = FindObjectOfType<CrewManager>();
+                _instance = FindFirstObjectByType<CrewManager>();
                 if (_instance == null)
                 {
                     var go = new GameObject("CrewManager");
@@ -52,7 +52,7 @@ public class CrewManager : MonoBehaviour
     void Start()
     {
         // Find and register all CrewStation components in the scene
-        var stations = FindObjectsOfType<CrewStation>(true); // Include inactive
+        var stations = GetAllStationsIncludingInactive();
         string msg = $"[CrewManager] Start: Found {stations.Length} CrewStation components in scene";
         Debug.Log(msg);
         FileLogger.Log(msg, "CrewManager");
@@ -235,7 +235,7 @@ public class CrewManager : MonoBehaviour
         Debug.LogWarning(searchMsg);
         FileLogger.Log(searchMsg, "CrewManager");
         
-        var allStations = FindObjectsOfType<CrewStation>(true);
+        var allStations = GetAllStationsIncludingInactive();
         foreach (var st in allStations)
         {
             if (st.stationId == stationId)
@@ -317,6 +317,15 @@ public class CrewManager : MonoBehaviour
             return false;
 
         return station.HasRequiredCrew;
+    }
+
+    static CrewStation[] GetAllStationsIncludingInactive()
+    {
+#if UNITY_2023_1_OR_NEWER
+        return UnityEngine.Object.FindObjectsByType<CrewStation>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#else
+        return UnityEngine.Object.FindObjectsOfType<CrewStation>(true);
+#endif
     }
 
     public bool MeetsRequirement(string stationId)

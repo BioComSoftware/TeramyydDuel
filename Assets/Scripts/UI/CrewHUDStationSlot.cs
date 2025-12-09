@@ -13,6 +13,8 @@ namespace Teramyyd.UI
     {
         [Header("Station Binding")]
         public CrewStation station;
+        [Tooltip("Used when no direct CrewStation reference is assigned. Falls back to the slot GameObject name if empty.")]
+        [SerializeField] string stationIdOverride;
         [Tooltip("Primary RectTransform the first crew portrait snaps to.")]
         public RectTransform iconAnchor;
         [Tooltip("Optional extra anchors for additional crew assigned to the same station.")]
@@ -37,7 +39,13 @@ namespace Teramyyd.UI
         {
             get
             {
-                return station != null ? station.stationId : string.Empty;
+                if (station != null)
+                    return station.stationId;
+
+                if (TryResolveStation())
+                    return station != null ? station.stationId : ResolveFallbackStationId();
+
+                return ResolveFallbackStationId();
             }
         }
 
@@ -52,11 +60,53 @@ namespace Teramyyd.UI
         public void Initialize(CrewHUDController controller)
         {
             _controller = controller;
+            TryResolveStation();
             if (highlightImage != null)
             {
                 _defaultHighlight = highlightImage.color;
                 highlightImage.gameObject.SetActive(false);
             }
+        }
+
+        public bool TryResolveStation()
+        {
+            if (station != null)
+                return true;
+
+            string targetId = ResolveFallbackStationId();
+            if (string.IsNullOrEmpty(targetId))
+                return false;
+
+            if (CrewManager.HasInstance && CrewManager.Instance.TryGetStation(targetId, out var resolved))
+            {
+                station = resolved;
+                return true;
+            }
+
+#if UNITY_2023_1_OR_NEWER
+            var stations = UnityEngine.Object.FindObjectsByType<CrewStation>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+#else
+            var stations = UnityEngine.Object.FindObjectsOfType<CrewStation>(includeInactive: true);
+#endif
+            for (int i = 0; i < stations.Length; i++)
+            {
+                var candidate = stations[i];
+                if (candidate != null && candidate.stationId == targetId)
+                {
+                    station = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        string ResolveFallbackStationId()
+        {
+            if (!string.IsNullOrEmpty(stationIdOverride))
+                return stationIdOverride;
+
+            return gameObject != null ? gameObject.name : string.Empty;
         }
 
         public void OnDrop(PointerEventData eventData)

@@ -6,6 +6,7 @@ Use this file to keep a concise record of which GameObjects host each crew-relat
 
 - `/Ship/Bow_weapon_mount/Bow_weapon_mount_actual`
   - `CrewStation.stationId`: blank in edit mode; runtime overrides to `Bow_weapon_mount_actual_crew_slot`.
+  - `CrewStationRequirementProfile` (from mounted cannon prefab `Assets/Prefabs/Cannon.prefab`): sets minimum crew = 1, maximum crew = 2.
   - `CrewStationAnchorRuntimeBuilder.Station`: (self) `CrewStation` on `/Ship/Bow_weapon_mount/Bow_weapon_mount_actual`.
   - `CrewStationAnchorRuntimeBuilder.HUD Slot`: `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount` (`CrewHUDStationSlot`).
   - `CrewStationAnchorRuntimeBuilder.World Anchor Parent`: `/Ship/Bow_weapon_mount/Crew_anchors` (Transform).
@@ -13,6 +14,7 @@ Use this file to keep a concise record of which GameObjects host each crew-relat
   - `CrewStationAnchorRuntimeBuilder.HUD Anchor Parent`: `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount/Bow_weapon_mount_crew_anchors` (RectTransform).
   - `CrewStationAnchorRuntimeBuilder.HUD Anchor Prefab`: `Assets/Prefabs/CrewAnchors/CrewHudAnchor.prefab`.
   - `CrewStationAnchorRuntimeBuilder.Override Anchor Count`: `0` (uses `CrewStation.MaximumCrewAllowed`).
+  - `CrewStationAnchorRuntimeBuilder.HUD Layout`: `autoDistributeHudAnchors = true`, `hudAnchorSpacingPadding = 2`, `hudAnchorMinSpacing = 24` (default spacing yields ~13px offsets for two anchors).
 
 - `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount`
   - `CrewHUDStationSlot.Station`: `/Ship/Bow_weapon_mount/Bow_weapon_mount_actual` (`CrewStation`).

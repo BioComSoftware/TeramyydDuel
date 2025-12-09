@@ -10,7 +10,6 @@ public static class CreateGameField
     public static void Create()
     {
         const float sizeX = 1000f, sizeY = 1000f, sizeZ = 1000f;
-        const float halfX = sizeX * 0.5f, halfZ = sizeZ * 0.5f;
         // Root logical bounds only (no colliders, no renderers)
         var root = new GameObject("GameField_Logical");
         Undo.RegisterCreatedObjectUndo(root, "Create Logical Game Field");

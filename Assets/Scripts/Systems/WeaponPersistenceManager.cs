@@ -40,7 +40,7 @@ public class WeaponPersistenceManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = FindObjectOfType<WeaponPersistenceManager>();
+                _instance = FindFirstObjectByType<WeaponPersistenceManager>();
                 if (_instance == null)
                 {
                     var go = new GameObject("WeaponPersistenceManager");
