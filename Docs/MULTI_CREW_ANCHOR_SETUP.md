@@ -2,165 +2,73 @@
 
 ## Overview
 
-The crew system now supports multiple crew members at a single station, with each crew member positioned at their own dedicated 3D world anchor. This guide explains how the system works and how to configure it in Unity.
+Weapon stations now auto-generate both their 3D world anchor points and their HUD crew icon anchors at runtime. The new `CrewStationAnchorRuntimeBuilder` component reads the crew capacity from each `CrewStation`, instantiates the correct number of anchor prefabs under the parents you provide, registers those transforms with the HUD, and pipes them into `CrewRuntimeSpawner` so 3D CrewMember prefabs follow the same data.
 
-## How It Works
+This guide explains how the runtime builder works and how to configure it in your scenes.
 
-### Crew Assignment Order
-When multiple crew members are assigned to a station:
-1. The first crew member is assigned to anchor index 0
-2. The second crew member is assigned to anchor index 1
-3. And so on...
+## Runtime Flow
 
-The system automatically determines which crew member should use which anchor based on their position in the station's `AssignedCrew` list.
+1. `CrewStationAnchorRuntimeBuilder` runs when play mode starts.
+2. It creates `Bow_weapon_mount_CrewAnchor<n>` GameObjects under your world `Crew_anchors` parent object (for example `/Ship/Bow_weapon_mount/Crew_anchors`) using the assigned world-anchor prefab (or plain transforms when no prefab is specified).
+3. It creates `Bow_weapon_mount_crew_Icon_Anchor<n>` `RectTransform` children under the HUD anchor parent (for example `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount/Bow_weapon_mount_crew_anchors`).
+4. The script assigns those transforms to the matching `CrewHUDStationSlot` component on `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/<mount>_weapon_mount`, then registers the world anchors with the `CrewRuntimeSpawner` component so crew visuals spawn at the right spots.
+5. `CrewHUDController` and the drag/drop workflow behave exactly the same as before—icons can be dragged to the runtime-created anchors and the crew are spawned at the matching 3D positions.
 
-### HUD and 3D World Anchors
+## Scene Authoring Checklist
 
-Each station has two types of anchors that must match:
+### 1. Create anchor parents
 
-1. **HUD Anchors** (2D UI positions):
-   - `iconAnchor` - First crew icon position
-   - `additionalIconAnchors[]` - Additional crew icon positions
-   
-2. **World Anchors** (3D game world positions):
-   - `worldAnchors[0]` - First crew 3D position
-   - `worldAnchors[1]` - Second crew 3D position
-   - `worldAnchors[2]` - Third crew 3D position (if needed)
+- **World hierarchy**: Under each weapon mount create an empty `Crew_anchors` object, such as `/Ship/Bow_weapon_mount/Crew_anchors`. This keeps the generated anchors positioned and oriented relative to the mount.
+- **HUD hierarchy**: Under the matching HUD node create `<mount>_crew_anchors`, such as `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount/Bow_weapon_mount_crew_anchors`. This controls where the HUD anchors spawn.
 
-**Important**: The number of world anchors must match the number of HUD anchors for each station.
+### 2. Ensure the HUD mount has a CrewHUDStationSlot component
 
-## Unity Setup Instructions
+Before wiring the runtime builder, make sure every HUD mount GameObject (for example `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/Bow_weapon_mount`) has the `CrewHUDStationSlot` script attached. If the component is missing, add it to that GameObject now—this is the drag/drop target the HUD uses.
 
-### 1. CrewHUDStationSlot Setup
+### 3. Add the runtime builder component
 
-For each station slot in your HUD:
+1. Select the GameObject that hosts the `CrewStation` (typically `/Ship/Bow_weapon_mount/Bow_weapon_mount_actual`).
+2. Add the `CrewStationAnchorRuntimeBuilder` component (script).
+3. Assign fields:
+   - **Station (component reference)**: should auto-fill from the same GameObject (the `CrewStation` script on `<mount>_weapon_mount_actual`).
+   - **HUD Slot (component reference)**: drag the GameObject that contains the `CrewHUDStationSlot` script from `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/<mount>_weapon_mount`.
+   - **World Anchor Parent (GameObject/Transform reference)**: the `/Ship/<mount>_weapon_mount/Crew_anchors` transform you created earlier.
+   - **World Anchor Prefab (Prefab reference)**: assign the prefab that determines the orientation for `CrewMember_Default` (for example `Assets/Prefabs/CrewAnchors/CrewWorldAnchor.prefab`).
+   - **HUD Anchor Parent (RectTransform reference)**: the `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/<mount>_weapon_mount/<mount>_weapon_mount_crew_anchors` RectTransform.
+   - **HUD Anchor Prefab (Prefab reference)**: the prefabbed RectTransform with the HUD offsets you want (for example `Assets/Prefabs/CrewAnchors/CrewHudAnchor.prefab`).
+   - **Override Anchor Count (optional)**: leave at 0 to use `CrewStation.MaximumCrewAllowed`, or set explicitly if you need more/fewer anchors.
+   - **Anchor Name Prefix (optional)**: only needed if you want a different naming pattern than the auto-detected mount name.
 
-1. Select the `CrewHUDStationSlot` GameObject
-2. In the Inspector, locate the **Station Binding** section
-3. Set the **World Anchors** array size to match your crew capacity:
-   - For 1-crew stations: Size = 1
-   - For 2-crew stations: Size = 2
-   - For 3-crew stations: Size = 3
+### 4. Prefab tips
 
-4. Drag the corresponding world anchor Transforms into each array element:
-   - Element 0: `Bow_weapon_mount_CrewAnchor1`
-   - Element 1: `Bow_weapon_mount_CrewAnchor2`
-   - Etc.
+- **World anchor prefab (Prefab asset reference)**: build a small prefab that has the default local position, rotation, and any helper visuals you need so crew always spawn facing the proper heading (e.g., author `Assets/Prefabs/CrewAnchors/CrewWorldAnchor.prefab`). Every instance of this prefab will be cloned per crew slot.
+- **HUD anchor prefab (Prefab asset reference)**: create a prefab with a `RectTransform` and any guide sprites (e.g., `Assets/Prefabs/CrewAnchors/CrewHudAnchor.prefab`). The runtime copies its anchored position/size so every station shares a consistent look.
+- If either prefab is left empty the builder will create plain transforms centered on the parent.
 
-### 2. CrewRuntimeSpawner Setup
+### 5. Linking to CrewRuntimeSpawner
 
-The `CrewRuntimeSpawner` component needs to be configured with world anchors for each station:
+No manual setup is required in `CrewRuntimeSpawner` anymore. The runtime builder calls `RegisterStationAnchors` automatically whenever it spawns world anchors. When a station is disabled the builder unregisters them so the spawner falls back to serialized defaults.
 
-1. Select the GameObject with the `CrewRuntimeSpawner` component
-2. In the Inspector, locate the **Station Anchors** array
-3. For each station, configure the `StationAnchorBinding`:
-   - **Station Id**: Must match the `CrewStation.stationId` (e.g., "bow_weapon_mount")
-   - **Anchors**: Array of Transform references
-     - Element 0: First crew position (e.g., `Bow_weapon_mount_CrewAnchor1`)
-     - Element 1: Second crew position (e.g., `Bow_weapon_mount_CrewAnchor2`)
-     - Etc.
+## Behavioural Notes
 
-### 3. World Anchor Transform Naming Convention
-
-For consistency and easier debugging, follow this naming pattern:
-
-```
-{StationName}_CrewAnchor{Index}
-```
-
-Examples:
-- `Bow_weapon_mount_CrewAnchor1`
-- `Bow_weapon_mount_CrewAnchor2`
-- `Stern_weapon_mount_CrewAnchor1`
-- `Stern_weapon_mount_CrewAnchor2`
-
-**Note**: While the code doesn't require this naming convention, it helps with organization.
-
-## Technical Details
-
-### Key Components Modified
-
-1. **CrewHUDStationSlot.cs**
-   - Changed `worldAnchor` (single) to `worldAnchors[]` (array)
-   - Added `GetWorldAnchorForIcon()` method to map crew icons to world anchors
-   - Added `GetAnchorIndex()` helper to determine anchor position
-
-2. **CrewRuntimeSpawner.cs**
-   - Changed `StationAnchorBinding.anchor` to `StationAnchorBinding.anchors[]`
-   - Updated `_anchorLookup` to store `Transform[]` instead of single `Transform`
-   - Added `GetCrewIndexAtStation()` to determine crew's position in station
-   - Added `TryGetAnchorForCrew()` to select appropriate anchor based on crew index
-
-3. **CrewHUDController.cs**
-   - Modified `AttachIconToSlot()` to use `GetWorldAnchorForIcon()` when invoking `OnVisualAnchorChanged`
-
-### Fallback Behavior
-
-If there are more crew assigned than anchors available:
-- The system falls back to using `anchors[0]` (the first anchor)
-- Multiple crew will occupy the same 3D position
-- This prevents crashes but results in visual overlap
-
-**Best Practice**: Always ensure the number of world anchors matches the station's `maximumCrewAllowed` setting.
-
-## Example Configuration
-
-For a 2-crew weapon mount station:
-
-### CrewStation Component
-```
-Station Id: bow_weapon_mount
-Maximum Crew Allowed: 2
-```
-
-### CrewHUDStationSlot Component
-```
-Icon Anchor: Bow_weapon_mount_slot_Icon_Anchor1
-Additional Icon Anchors: [Bow_weapon_mount_slot_Icon_Anchor2]
-World Anchors: [Bow_weapon_mount_CrewAnchor1, Bow_weapon_mount_CrewAnchor2]
-```
-
-### CrewRuntimeSpawner Component
-```
-Station Anchors:
-  - Station Id: bow_weapon_mount
-    Anchors: [Bow_weapon_mount_CrewAnchor1, Bow_weapon_mount_CrewAnchor2]
-```
+- Anchor counts always match the crew cap (`CrewStation.MaximumCrewAllowed`) unless you override it on the builder component.
+- World anchor GameObjects are named `{Mount}_CrewAnchor1..N`; HUD anchors use `{Mount}_crew_Icon_Anchor1..N` to match the drag/drop naming convention.
+- Icons still request anchors through the `CrewHUDStationSlot` script on each HUD mount, so drag/drop, tooltips, and `OnVisualAnchorChanged` continue to work without any further wiring.
+- Generated anchors exist only at runtime. The scene remains clean in edit mode, so the placeholder parents stay empty until you hit Play.
 
 ## Testing
 
-To verify the setup:
-
-1. Start the game
-2. Assign one crew member to the station
-   - Check HUD: Icon should appear at first HUD anchor
-   - Check 3D world: Crew should appear at first world anchor
-3. Assign a second crew member to the same station
-   - Check HUD: Second icon should appear at second HUD anchor
-   - Check 3D world: Second crew should appear at second world anchor
-4. Remove crew members
-   - Each crew should disappear from their respective positions
-5. Reassign in different order
-   - First assigned crew should always use index 0 anchors
-   - Order matters: assignment sequence determines anchor usage
+1. Enter Play mode.
+2. Confirm that each `/Ship/<mount>_weapon_mount/Crew_anchors` parent now contains the expected number of `*_CrewAnchor` children and that the HUD hierarchy gained `*_crew_Icon_Anchor` children under `/Ship/HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline/<mount>_weapon_mount/<mount>_weapon_mount_crew_anchors`.
+3. Drag a crew icon onto the mount's HUD slot. The icon should snap to the runtime anchor and a `CrewMember_Default` instance should appear at the matching world anchor.
+4. Assign additional crew members and verify that icons/crew use the next anchors in order.
+5. Unassign crew and ensure the anchors are released (icons return to unassigned slots and world crew despawn or hide).
 
 ## Troubleshooting
 
-### Crew appearing at wrong position
-- Verify world anchor array order matches HUD anchor array order
-- Check that anchor indices are consistent (Element 0 = first crew, Element 1 = second crew)
+- **No anchors spawned**: Make sure the `CrewStationAnchorRuntimeBuilder` component is enabled, the scene contains the referenced parents (`/Ship/<mount>_weapon_mount/Crew_anchors` and the HUD anchor parent), and the GameObject is active when play starts. Check the console for `[CrewStationAnchorRuntimeBuilder]` warnings.
+- **Crew spawn at origin**: Usually means the world anchor prefab reference was missing or the world parent transform was not set. The builder logs which transforms it created—inspect `/Ship/<mount>_weapon_mount/Crew_anchors` during play.
+- **HUD icons overlap**: Verify the HUD anchor prefab has the offsets you expect and that the `/Ship/.../<mount>_weapon_mount/<mount>_weapon_mount_crew_anchors` RectTransform is positioned correctly on the HUD.
+- **CrewRuntimeSpawner warning about missing anchors**: Ensure the builder references the correct `CrewStation` component so it can call `CrewRuntimeSpawner.RegisterStationAnchors`. The station ID must match the HUD slot/station used by `CrewManager`.
 
-### Multiple crew at same 3D position
-- Check `worldAnchors` array size matches number of HUD anchors
-- Ensure all array elements are assigned (not null)
-- Verify `CrewRuntimeSpawner` has matching anchor count in `StationAnchorBinding`
-
-### Crew not visible in 3D world
-- Check `CrewRuntimeSpawner.hideUnassignedVisuals` setting
-- Verify world anchor Transforms exist in scene
-- Check that station IDs match exactly (case-sensitive)
-
-### HUD icons overlapping
-- This is a separate issue from world anchors
-- Check `iconAnchor` and `additionalIconAnchors` are properly positioned
-- Verify `CrewHUDStationSlot.RequestAnchorFor()` is finding available anchors
+With the runtime builder in place you no longer need to hand-author arrays on `CrewHUDStationSlot` or `CrewRuntimeSpawner`. Just create the placeholder parents, assign the prefabs once, and let the system populate both the HUD and world anchor hierarchies for every weapon mount when the scene runs.

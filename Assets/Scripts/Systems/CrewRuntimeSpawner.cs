@@ -103,6 +103,50 @@ public class CrewRuntimeSpawner : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Allows runtime systems (e.g., CrewStationAnchorRuntimeBuilder) to override anchors for a station.
+    /// Passing null or an empty list removes the override and falls back to serialized values.
+    /// </summary>
+    public void RegisterStationAnchors(string stationId, IList<Transform> anchors)
+    {
+        if (string.IsNullOrWhiteSpace(stationId))
+            return;
+
+        if (anchors == null || anchors.Count == 0)
+        {
+            if (_anchorLookup.ContainsKey(stationId))
+            {
+                _anchorLookup.Remove(stationId);
+            }
+            _stationAnchorNextIndex.Remove(stationId);
+            return;
+        }
+
+        if (!_anchorLookup.TryGetValue(stationId, out var list) || list == null)
+        {
+            list = new List<Transform>(anchors.Count);
+            _anchorLookup[stationId] = list;
+        }
+        else
+        {
+            list.Clear();
+        }
+
+        for (int i = 0; i < anchors.Count; i++)
+        {
+            var anchor = anchors[i];
+            if (anchor == null)
+                continue;
+
+            if (!list.Contains(anchor))
+            {
+                list.Add(anchor);
+            }
+        }
+
+        _stationAnchorNextIndex[stationId] = 0;
+    }
+
     void SpawnPersistedCrew()
     {
         if (defaultCrewPrefab == null)
