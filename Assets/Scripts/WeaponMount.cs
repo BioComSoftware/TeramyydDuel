@@ -91,7 +91,7 @@ public class WeaponMount : MonoBehaviour
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
     public bool HasTargetLock => HasSelectedTarget;
-    public bool HasHorizontalLock => HasSelectedTarget && IsYawWithinEdgeMargin();
+    public bool HasHorizontalLock => HasSelectedTarget && IsYawWithinEdgeMargin() && IsYawAlignedWithTarget();
     public bool IsTargetFullyAcquired => HasHorizontalLock && _hasBallisticInterceptSolution;
     public bool CanFireAtCurrentTarget => IsTargetFullyAcquired;
     public bool HasCrewReady => HasOperationalCrew();
@@ -196,6 +196,12 @@ public class WeaponMount : MonoBehaviour
     {
         GetYawEdgeMetrics(out _, out _, out float effectiveLimit);
         return Mathf.Abs(_yaw) <= effectiveLimit;
+    }
+
+    bool IsYawAlignedWithTarget()
+    {
+        // Only consider us "locked" if we are pointing within a tight margin of the firing solution
+        return Mathf.Abs(Mathf.DeltaAngle(_yaw, _aimYawTarget)) < 2f;
     }
 
     void GetYawEdgeMetrics(out float halfYaw, out float buffer, out float effectiveLimit)
@@ -506,11 +512,28 @@ public class WeaponMount : MonoBehaviour
             }
 
             Vector3 localAimDir = reference.InverseTransformDirection(worldAimDir);
-            yaw = Mathf.Clamp(Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg, -halfYaw, halfYaw);
+            float rawYaw = Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg;
+            
+            // If the target is outside our yaw limits, we don't have a valid firing solution
+            if (Mathf.Abs(rawYaw) > halfYaw + 5f) // 5 degrees tolerance for edge cases
+            {
+                // We still clamp and return true-ish values so the turret turns TOWARDS the target,
+                // but we return false to indicate no valid solution.
+                yaw = Mathf.Clamp(rawYaw, -halfYaw, halfYaw);
+                
+                Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -yaw, 0f) * localAimDir;
+                float desiredPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
+                pitch = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+                launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
+                
+                return false;
+            }
 
-            Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -yaw, 0f) * localAimDir;
-            float desiredPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
-            pitch = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+            yaw = Mathf.Clamp(rawYaw, -halfYaw, halfYaw);
+
+            Vector3 yawAlignedAimDir2 = Quaternion.Euler(0f, -yaw, 0f) * localAimDir;
+            float desiredPitch2 = -Mathf.Atan2(yawAlignedAimDir2.y, yawAlignedAimDir2.z) * Mathf.Rad2Deg;
+            pitch = Mathf.Clamp(desiredPitch2, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
             launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
             return true;
         }
