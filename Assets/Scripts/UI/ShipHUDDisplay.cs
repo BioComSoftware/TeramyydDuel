@@ -137,7 +137,6 @@ public class ShipHUDDisplay : MonoBehaviour
                     LogDebug($"{binding.weaponMount.name} mounts {weaponType}, sprite={spriteName}");
                 }
         }
-
         if (binding.iconImage.sprite != targetSprite)
         {
             binding.iconImage.sprite = targetSprite;
@@ -152,9 +151,9 @@ public class ShipHUDDisplay : MonoBehaviour
             WeaponMount mount = binding.weaponMount;
             if (mount != null && mount.HasSelectedTarget)
             {
-                bool insideSensor = mount.HasTargetInsideAcquisitionCollider;
+                bool hasHorizontalLock = mount.HasHorizontalLock;
                 bool hasFiringSolution = mount.HasValidFiringSolution;
-                indicatorVisible = !(insideSensor && hasFiringSolution);
+                indicatorVisible = !(hasHorizontalLock && hasFiringSolution);
             }
 
             binding.cachedTargetNotAcquiredVisible = indicatorVisible;
@@ -163,9 +162,9 @@ public class ShipHUDDisplay : MonoBehaviour
             {
                 string mountName = mount != null ? mount.mountId : "(null mount)";
                 bool hasTarget = mount != null && mount.HasSelectedTarget;
-                bool insideSensor = mount != null && mount.HasTargetInsideAcquisitionCollider;
+                bool hasHorizontalLock = mount != null && mount.HasHorizontalLock;
                 bool hasSolution = mount != null && mount.HasValidFiringSolution;
-                LogDebug($"TargetNotAcquired â†’ {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, InsideSensor={insideSensor}, HasSolution={hasSolution})");
+                LogDebug($"TargetNotAcquired -> {(indicatorVisible ? "VISIBLE" : "HIDDEN")} for {mountName} (HasTarget={hasTarget}, HasHorizontalLock={hasHorizontalLock}, HasSolution={hasSolution})");
             }
         }
 

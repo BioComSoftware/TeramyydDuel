@@ -52,6 +52,8 @@ public class WeaponMount : MonoBehaviour
     public string targetAcquisitionColliderNameHint = string.Empty;
     [Tooltip("Automatically tries to bind the acquisition collider whenever the reference is missing (useful when the weapon prefab is spawned at runtime).")]
     public bool autoAssignTargetAcquisitionCollider = true;
+    [Tooltip("Degrees away from the yaw limit that still counts as 'at the edge'. Staying inside this margin means the target is reachable.")]
+    [Min(0f)] public float yawEdgeBufferDeg = 0.5f;
 
     [Header("Testing (optional)")]
     [Tooltip("If set with autoPopulateOnStart, this weapon prefab is mounted at Start for quick testing")] public GameObject autoPopulatePrefab;
@@ -90,6 +92,9 @@ public class WeaponMount : MonoBehaviour
     bool _targetColliderInsideSensor;
     bool _hasLoggedSensorState;
     bool _lastLoggedSensorState;
+    bool _hasLoggedAcquisitionState;
+    bool _lastLoggedHorizontalLock;
+    bool _lastLoggedBallisticLock;
     Health _lastLoggedTarget;
     Collider _lastLoggedTargetCollider;
     Collider _lastLoggedSensorCollider;
@@ -101,8 +106,9 @@ public class WeaponMount : MonoBehaviour
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
     public bool HasTargetLock => HasSelectedTarget;
-    public bool IsTargetFullyAcquired => HasSelectedTarget && _targetColliderInsideSensor && _hasBallisticInterceptSolution;
-    public bool CanFireAtCurrentTarget => HasTargetLock;
+    public bool HasHorizontalLock => HasSelectedTarget && IsYawWithinEdgeMargin();
+    public bool IsTargetFullyAcquired => HasHorizontalLock && _hasBallisticInterceptSolution;
+    public bool CanFireAtCurrentTarget => IsTargetFullyAcquired;
     public bool HasCrewReady => HasOperationalCrew();
     public Health MountedWeaponHealth => weaponHealth;
 
@@ -181,16 +187,14 @@ public class WeaponMount : MonoBehaviour
         {
             string path = GetHierarchyPath(transform);
             LogDebug($"Start complete. isOccupied={isOccupied}, path='{path}', childCount={transform.childCount}");
-            // List immediate children
             for (int i = 0; i < transform.childCount; i++)
             {
                 var child = transform.GetChild(i);
-                var launcher = child.GetComponent<ProjectileLauncher>();
-                LogDebug($"  Child {i}: {child.name}, hasLauncher={launcher != null}");
+                var childLauncher = child.GetComponent<ProjectileLauncher>();
+                LogDebug($"  Child {i}: {child.name}, hasLauncher={childLauncher != null}");
             }
         }
     }
-
 
     string GetHierarchyPath(Transform t)
     {
@@ -203,7 +207,20 @@ public class WeaponMount : MonoBehaviour
         }
         return path;
     }
- 
+
+    bool IsYawWithinEdgeMargin()
+    {
+        GetYawEdgeMetrics(out _, out _, out float effectiveLimit);
+        return Mathf.Abs(_yaw) <= effectiveLimit;
+    }
+
+    void GetYawEdgeMetrics(out float halfYaw, out float buffer, out float effectiveLimit)
+    {
+        halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+        buffer = Mathf.Clamp(yawEdgeBufferDeg, 0f, halfYaw);
+        effectiveLimit = Mathf.Max(0f, halfYaw - buffer);
+    }
+
     void Update()
     {
         EnsureMountId();
@@ -264,9 +281,11 @@ public class WeaponMount : MonoBehaviour
             isOccupied = false;
         }
 
+        RefreshBallisticReadiness(autoTargetingActive);
         _wasAutoTargetingActive = autoTargetingActive;
         TryResolveTargetAcquisitionCollider();
         UpdateTargetAcquisitionState();
+        ReportAcquisitionDiagnostics();
     }
 
     void AutoAimTowardsTarget()
@@ -309,6 +328,109 @@ public class WeaponMount : MonoBehaviour
         {
             currentLauncher.SetRuntimeLaunchSpeed(_aimLaunchSpeed);
         }
+    }
+
+    void RefreshBallisticReadiness(bool autoTargetingActive)
+    {
+        if (targetingController == null)
+        {
+            targetingController = FindFirstObjectByType<TargetingController>();
+        }
+
+        if (targetingController == null)
+        {
+            _hasBallisticInterceptSolution = false;
+            return;
+        }
+
+        Health target = targetingController.CurrentTarget;
+        if (target == null)
+        {
+            _hasBallisticInterceptSolution = false;
+            return;
+        }
+
+        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
+        if (currentLauncher == null || muzzle == null)
+        {
+            _hasBallisticInterceptSolution = false;
+            return;
+        }
+
+        bool solved = TrySolveBallisticArc(target.transform, out float yaw, out float pitch, out float launchSpeed);
+
+        if (!autoTargetingActive)
+        {
+            _aimYawTarget = yaw;
+            _aimPitchTarget = pitch;
+            _aimLaunchSpeed = launchSpeed;
+            _hasAimSolution = true;
+        }
+
+        _hasBallisticInterceptSolution = solved;
+    }
+
+    void ComputeBallisticSolution(Transform targetTransform)
+    {
+        _hasAimSolution = false;
+
+        if (targetTransform == null)
+            return;
+
+        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
+        if (muzzle == null)
+            return;
+
+        if (currentLauncher == null)
+        {
+            Vector3 origin = muzzle.position;
+            Vector3 aimPoint = GetTargetAimPoint(targetTransform);
+            Vector3 displacement = aimPoint - origin;
+            if (displacement.sqrMagnitude < 0.0001f)
+                return;
+
+            Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
+            Vector3 localDir = reference.InverseTransformDirection(displacement.normalized);
+            float desiredYawLOS = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+            float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+            _aimYawTarget = Mathf.Clamp(desiredYawLOS, -halfYaw, halfYaw);
+            return;
+        }
+
+        bool solved = TrySolveBallisticArc(targetTransform, out float yaw, out float pitch, out float launchSpeed);
+
+        _aimYawTarget = yaw;
+        _aimPitchTarget = pitch;
+        _aimLaunchSpeed = launchSpeed;
+        _hasAimSolution = true;
+        _hasBallisticInterceptSolution = solved;
+    }
+
+    void ReportAcquisitionDiagnostics()
+    {
+        if (!enableDebugLogging)
+        {
+            _hasLoggedAcquisitionState = false;
+            return;
+        }
+
+        bool horizontalLock = HasHorizontalLock;
+        bool ballisticLock = _hasBallisticInterceptSolution;
+
+        if (_hasLoggedAcquisitionState &&
+            horizontalLock == _lastLoggedHorizontalLock &&
+            ballisticLock == _lastLoggedBallisticLock)
+        {
+            return;
+        }
+
+        GetYawEdgeMetrics(out float halfYaw, out float buffer, out float effectiveLimit);
+        string status = $"{mountId}: acquisition horizontal={horizontalLock} ballistic={ballisticLock} yaw={_yaw:F1}deg limit={effectiveLimit:F1}deg (half={halfYaw:F1}deg buffer={buffer:F1}deg)";
+        LogDebug(status);
+
+        _hasLoggedAcquisitionState = true;
+        _lastLoggedHorizontalLock = horizontalLock;
+        _lastLoggedBallisticLock = ballisticLock;
     }
 
     void UpdateTargetAcquisitionState()
@@ -380,6 +502,118 @@ public class WeaponMount : MonoBehaviour
                 : "Unable to compute precise separation";
         }
         FinalizeAcquisitionState(inside, target, targetCollider, reason);
+    }
+
+    bool TrySolveBallisticArc(Transform targetTransform, out float yaw, out float pitch, out float launchSpeed)
+    {
+        yaw = _yaw;
+        pitch = _pitch;
+        launchSpeed = currentLauncher != null ? currentLauncher.launchSpeed : 0f;
+
+        if (targetTransform == null || currentLauncher == null)
+            return false;
+
+        Transform muzzle = currentLauncher.spawnPoint != null ? currentLauncher.spawnPoint : pitchBarrel;
+        if (muzzle == null)
+            return false;
+
+        Vector3 origin = muzzle.position;
+        Vector3 aimPoint = GetTargetAimPoint(targetTransform);
+        Vector3 displacement = aimPoint - origin;
+        if (displacement.sqrMagnitude < 0.0001f)
+            return false;
+
+        Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
+
+        Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
+        Vector3 worldUp = -gravityVector.normalized;
+        float verticalOffset = Vector3.Dot(displacement, worldUp);
+        Vector3 planar = displacement - verticalOffset * worldUp;
+        float horizontalDistance = planar.magnitude;
+        Vector3 planarDir;
+        if (horizontalDistance > 0.0005f)
+        {
+            planarDir = planar / horizontalDistance;
+        }
+        else
+        {
+            Vector3 projectedForward = Vector3.ProjectOnPlane(reference.forward, worldUp);
+            if (projectedForward.sqrMagnitude < 1e-6f)
+            {
+                projectedForward = Vector3.ProjectOnPlane(reference.up, worldUp);
+            }
+            planarDir = projectedForward.sqrMagnitude > 1e-6f ? projectedForward.normalized : reference.forward.normalized;
+        }
+
+        Vector3 toTargetForAiming = aimPoint - origin;
+        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
+
+        float desiredYawLOS = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+        float clampedYawLOS = Mathf.Clamp(desiredYawLOS, -halfYaw, halfYaw);
+
+        float gravityMag = Physics.gravity.magnitude;
+        if (gravityMag < 0.0001f)
+            gravityMag = 9.81f;
+
+        float thetaMaxRad = Mathf.Deg2Rad * Mathf.Clamp(Mathf.Abs(pitchUpDeg), 1f, 85f);
+        float drag = currentLauncher.ProjectileDrag;
+        float damping = currentLauncher.ProjectileLinearDamping;
+        float maxSpeed = currentLauncher.launchSpeed;
+
+        float solvedLaunchSpeedValue;
+        float launchAngleRad;
+        bool solved = BallisticsSolver.SolveWithUnityDrag(
+            horizontalDistance,
+            verticalOffset,
+            gravityMag,
+            maxSpeed,
+            thetaMaxRad,
+            drag,
+            damping,
+            out solvedLaunchSpeedValue,
+            out launchAngleRad);
+
+        if (solved)
+        {
+            Vector3 worldAimDir;
+            if (horizontalDistance > 0.0005f)
+            {
+                float cos = Mathf.Cos(launchAngleRad);
+                float sin = Mathf.Sin(launchAngleRad);
+                worldAimDir = (planarDir * cos + worldUp * sin).normalized;
+            }
+            else
+            {
+                if (Mathf.Abs(verticalOffset) < 0.0005f)
+                {
+                    worldAimDir = planarDir;
+                }
+                else
+                {
+                    worldAimDir = verticalOffset >= 0f ? worldUp : -worldUp;
+                }
+            }
+
+            Vector3 localAimDir = reference.InverseTransformDirection(worldAimDir);
+            yaw = Mathf.Clamp(Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg, -halfYaw, halfYaw);
+
+            Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -yaw, 0f) * localAimDir;
+            float desiredPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
+            pitch = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+            launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
+            return true;
+        }
+
+        Vector3 dirAfterYaw = Quaternion.Euler(0f, -clampedYawLOS, 0f) * localDir;
+        float forwardAfterYaw = dirAfterYaw.z;
+        float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, forwardAfterYaw) * Mathf.Rad2Deg;
+        fallbackPitch = Mathf.Clamp(fallbackPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+
+        yaw = clampedYawLOS;
+        pitch = fallbackPitch;
+        launchSpeed = currentLauncher.launchSpeed;
+        return false;
     }
 
     Vector3 GetTargetAimPoint(Transform targetTransform)
@@ -493,122 +727,6 @@ public class WeaponMount : MonoBehaviour
             return true;
 
         return CrewManager.Instance.MeetsRequirement(crewStation);
-    }
-    void ComputeBallisticSolution(Transform targetTransform)
-    {
-        _hasAimSolution = false;
-        _hasBallisticInterceptSolution = false;
-
-        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
-        if (muzzle == null)
-            return;
-
-        Vector3 origin = muzzle.position;
-        Vector3 aimPoint = GetTargetAimPoint(targetTransform);
-        Vector3 displacement = aimPoint - origin;
-        if (displacement.sqrMagnitude < 0.0001f)
-            return;
-
-        Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
-
-        Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
-        Vector3 worldUp = -gravityVector.normalized; // up is opposite gravity
-        float verticalOffset = Vector3.Dot(displacement, worldUp);
-        Vector3 planar = displacement - verticalOffset * worldUp;
-        float horizontalDistance = planar.magnitude;
-        Vector3 planarDir;
-        if (horizontalDistance > 0.0005f)
-        {
-            planarDir = planar / horizontalDistance;
-        }
-        else
-        {
-            Vector3 projectedForward = Vector3.ProjectOnPlane(reference.forward, worldUp);
-            if (projectedForward.sqrMagnitude < 1e-6f)
-            {
-                projectedForward = Vector3.ProjectOnPlane(reference.up, worldUp);
-            }
-            planarDir = projectedForward.sqrMagnitude > 1e-6f ? projectedForward.normalized : reference.forward.normalized;
-        }
-
-        Vector3 toTargetForAiming = aimPoint - origin;
-        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
-
-        float desiredYawLOS = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
-        float clampedYawLOS = Mathf.Clamp(desiredYawLOS, -halfYaw, halfYaw);
-
-        if (currentLauncher == null)
-        {
-            _aimYawTarget = clampedYawLOS;
-            return;
-        }
-
-        float gravityMag = Physics.gravity.magnitude;
-        if (gravityMag < 0.0001f)
-            gravityMag = 9.81f;
-
-        float thetaMaxRad = Mathf.Deg2Rad * Mathf.Clamp(Mathf.Abs(pitchUpDeg), 1f, 85f);
-        float drag = currentLauncher.ProjectileDrag;
-        float damping = currentLauncher.ProjectileLinearDamping;
-        float maxSpeed = currentLauncher.launchSpeed;
-
-        float launchSpeed;
-        float launchAngleRad;
-        bool solved = BallisticsSolver.SolveWithUnityDrag(
-            horizontalDistance,
-            verticalOffset,
-            gravityMag,
-            maxSpeed,
-            thetaMaxRad,
-            drag,
-            damping,
-            out launchSpeed,
-            out launchAngleRad);
-
-        if (solved)
-        {
-            Vector3 worldAimDir;
-            if (horizontalDistance > 0.0005f)
-            {
-                float cos = Mathf.Cos(launchAngleRad);
-                float sin = Mathf.Sin(launchAngleRad);
-                worldAimDir = (planarDir * cos + worldUp * sin).normalized;
-            }
-            else
-            {
-                if (Mathf.Abs(verticalOffset) < 0.0005f)
-                {
-                    worldAimDir = planarDir;
-                }
-                else
-                {
-                    worldAimDir = verticalOffset >= 0f ? worldUp : -worldUp;
-                }
-            }
-
-            Vector3 localAimDir = reference.InverseTransformDirection(worldAimDir);
-            float desiredYaw = Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg;
-            _aimYawTarget = Mathf.Clamp(desiredYaw, -halfYaw, halfYaw);
-
-            Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localAimDir;
-            float desiredPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
-            _aimPitchTarget = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-            _aimLaunchSpeed = Mathf.Clamp(launchSpeed, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
-            _hasAimSolution = true;
-            _hasBallisticInterceptSolution = true;
-            return;
-        }
-
-        _aimYawTarget = clampedYawLOS;
-        Vector3 dirAfterYaw = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localDir;
-        float forwardAfterYaw = dirAfterYaw.z;
-        float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, forwardAfterYaw) * Mathf.Rad2Deg;
-        fallbackPitch = Mathf.Clamp(fallbackPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-        _aimPitchTarget = fallbackPitch;
-        _aimLaunchSpeed = currentLauncher.launchSpeed;
-        _hasAimSolution = true;
-        _hasBallisticInterceptSolution = false;
     }
 
     void SyncAimTargetsToCurrentPose()
