@@ -34,8 +34,12 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
     [Min(1f)] [SerializeField] float hudAnchorMinSpacing = 24f;
 
     [Header("Options")]
-    [Tooltip("Override for number of anchors to create. When zero, uses station.MaximumCrewAllowed.")]
+    [Tooltip("If true, the 'Override Anchor Count' value will be used instead of the Station's Maximum Crew.")]
+    [SerializeField] bool useOverrideAnchorCount = false;
+
+    [Tooltip("Override for number of anchors to create. Only used if 'Use Override Anchor Count' is true.")]
     [SerializeField, Min(0)] int overrideAnchorCount = 0;
+
     [Tooltip("Optional prefix override for generated anchor names (defaults to station or parent name).")]
     [SerializeField] string anchorNamePrefix = string.Empty;
     [Tooltip("Automatically rebuild anchors when this component enables in play mode.")]
@@ -115,13 +119,14 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
 
     int DetermineAnchorCount()
     {
-        if (overrideAnchorCount > 0)
+        if (useOverrideAnchorCount && overrideAnchorCount > 0)
             return overrideAnchorCount;
 
         if (station != null)
         {
             station.EnsureStationId();
-            return Mathf.Max(1, station.MaximumCrewAllowed);
+            // Allow 0 anchors if MaximumCrewAllowed is 0 (e.g. automated station)
+            return Mathf.Max(0, station.MaximumCrewAllowed);
         }
 
         return 1;

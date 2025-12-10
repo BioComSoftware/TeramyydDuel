@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-10T16:27:39.0483967Z",
+    "lastSavedUtc": "2025-12-10T17:17:17.4664716Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
@@ -29,7 +29,7 @@
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 3.925002336502075,
+            "gunnery": 4.150002479553223,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
@@ -41,7 +41,7 @@
         {
             "crewId": "crew_serena_brasswolf",
             "displayName": "Serena Brasswolf",
-            "gunnery": 3.7900021076202394,
+            "gunnery": 4.015002250671387,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,

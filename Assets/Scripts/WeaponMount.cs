@@ -60,8 +60,15 @@ public class WeaponMount : MonoBehaviour
     public CrewSkill defaultCrewSkill = CrewSkill.Gunnery;
     [Tooltip("Optional fallback requirement profile when the mounted weapon prefab lacks CrewStationRequirementProfile.")]
     public CrewStationRequirementProfile fallbackCrewProfile;
-    [FormerlySerializedAs("defaultCrewRequired"), SerializeField, HideInInspector] int legacyDefaultCrewRequired = 1;
-    [FormerlySerializedAs("defaultCrewMax"), SerializeField, HideInInspector] int legacyDefaultCrewMax = 2;
+
+    [Header("Crew Limits (Default)")]
+    [Tooltip("Minimum crew required if no specific profile is found on the mounted weapon.")]
+    [FormerlySerializedAs("legacyDefaultCrewRequired")]
+    [SerializeField] int defaultCrewRequired = 1;
+
+    [Tooltip("Maximum crew allowed if no specific profile is found on the mounted weapon.")]
+    [FormerlySerializedAs("legacyDefaultCrewMax")]
+    [SerializeField] int defaultCrewMax = 2;
 
     [Header("Debug Logging")]
     [Tooltip("Writes verbose mount + targeting diagnostics to Logs/game_debug.log when enabled.")]
@@ -605,15 +612,19 @@ public class WeaponMount : MonoBehaviour
         if (station == null)
             return;
 
-        var profile = ResolveActiveCrewProfile();
+        // Per user request: WeaponMount defaults are the AUTHORITATIVE source of truth.
+        // We ignore any profile on the mounted weapon and strictly use the inspector values.
+        int minRequired = Mathf.Max(0, defaultCrewRequired);
+        int maxAllowed = Mathf.Max(0, defaultCrewMax);
 
-        int minRequired = profile != null
-            ? profile.MinimumCrewRequired
-            : Mathf.Max(0, legacyDefaultCrewRequired);
-
-        int maxAllowed = profile != null
-            ? profile.MaximumCrewAllowed
-            : Mathf.Max(minRequired, legacyDefaultCrewMax);
+        // Debug logic to diagnose anchor count issues
+        if (enableDebugLogging || Application.isEditor)
+        {
+            if (station.MaximumCrewAllowed != maxAllowed)
+            {
+                Debug.Log($"[WeaponMount:{name}] Enforcing crew limits. Current: {station.MaximumCrewAllowed}, Target: {maxAllowed} (DefaultMax: {defaultCrewMax})");
+            }
+        }
 
         bool changed = station.MinimumCrewRequired != minRequired || station.MaximumCrewAllowed != maxAllowed;
         if (changed)

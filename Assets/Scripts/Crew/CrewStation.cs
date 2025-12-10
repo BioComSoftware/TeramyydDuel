@@ -14,8 +14,12 @@ public class CrewStation : MonoBehaviour
     public CrewSkill primarySkill = CrewSkill.Gunnery;
     [Tooltip("Minimum skill level required to accept an assignment.")]
     [Min(1f)] public float minimumSkillLevel = 1f;
-    [SerializeField, HideInInspector] int _minimumCrewRequired = 1;
-    [SerializeField, HideInInspector] int _maximumCrewAllowed = 1;
+    
+    [Tooltip("Minimum crew that must be assigned before the station counts as staffed.")]
+    [SerializeField] int _minimumCrewRequired = 1;
+    
+    [Tooltip("Absolute crew cap for this station.")]
+    [SerializeField] int _maximumCrewAllowed = 1;
 
     [Header("Training")]
     [Tooltip("Skill used for progression when someone operates this station. Defaults to Primary Skill.")]
