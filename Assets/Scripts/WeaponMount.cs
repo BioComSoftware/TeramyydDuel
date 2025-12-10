@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Serialization;
 
 // General weapon mount with yaw/pitch pivots and runtime mounting for ProjectileLauncher-based weapons.
@@ -44,14 +44,6 @@ public class WeaponMount : MonoBehaviour
     public float autoAimYawSpeedDegPerSec = 120f;
     [Tooltip("Maximum pitch slew speed while auto-tracking (deg/sec).")]
     public float autoAimPitchSpeedDegPerSec = 90f;
-
-    [Header("Target Acquisition Sensor")]
-    [Tooltip("Trigger-like collider placed in front of the cannon barrel. When it overlaps the targeted collider, the HUD can hide the TargetNotAcquired sprite.")]
-    public Collider targetAcquisitionCollider;
-    [Tooltip("Optional name hint used when auto-locating the acquisition collider under the mounted weapon. Leave blank to pick the first trigger collider found.")]
-    public string targetAcquisitionColliderNameHint = string.Empty;
-    [Tooltip("Automatically tries to bind the acquisition collider whenever the reference is missing (useful when the weapon prefab is spawned at runtime).")]
-    public bool autoAssignTargetAcquisitionCollider = true;
     [Tooltip("Degrees away from the yaw limit that still counts as 'at the edge'. Staying inside this margin means the target is reachable.")]
     [Min(0f)] public float yawEdgeBufferDeg = 0.5f;
 
@@ -89,20 +81,13 @@ public class WeaponMount : MonoBehaviour
     bool _hasAimSolution;
     bool _hasBallisticInterceptSolution;
     bool _wasAutoTargetingActive;
-    bool _targetColliderInsideSensor;
-    bool _hasLoggedSensorState;
-    bool _lastLoggedSensorState;
     bool _hasLoggedAcquisitionState;
     bool _lastLoggedHorizontalLock;
     bool _lastLoggedBallisticLock;
-    Health _lastLoggedTarget;
-    Collider _lastLoggedTargetCollider;
-    Collider _lastLoggedSensorCollider;
     bool _loggedCrewWarning;
     float _lastAccuracyScale = -1f;
     float _lastReloadScale = -1f;
 
-    public bool HasTargetInsideAcquisitionCollider => _targetColliderInsideSensor;
     public bool HasSelectedTarget => targetingController != null && targetingController.CurrentTarget != null;
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
     public bool HasTargetLock => HasSelectedTarget;
@@ -179,7 +164,6 @@ public class WeaponMount : MonoBehaviour
         {
             MountWeapon(autoPopulatePrefab);
         }
-        TryResolveTargetAcquisitionCollider();
         ApplyRotations();
         SyncAimTargetsToCurrentPose();
         
@@ -232,7 +216,6 @@ public class WeaponMount : MonoBehaviour
         if (!hasCrew)
         {
             _hasBallisticInterceptSolution = false;
-            _targetColliderInsideSensor = false;
             if (enableDebugLogging && !_loggedCrewWarning)
             {
                 LogDebug($"{mountId}: awaiting crew assignment before operating.");
@@ -283,8 +266,6 @@ public class WeaponMount : MonoBehaviour
 
         RefreshBallisticReadiness(autoTargetingActive);
         _wasAutoTargetingActive = autoTargetingActive;
-        TryResolveTargetAcquisitionCollider();
-        UpdateTargetAcquisitionState();
         ReportAcquisitionDiagnostics();
     }
 
@@ -431,77 +412,6 @@ public class WeaponMount : MonoBehaviour
         _hasLoggedAcquisitionState = true;
         _lastLoggedHorizontalLock = horizontalLock;
         _lastLoggedBallisticLock = ballisticLock;
-    }
-
-    void UpdateTargetAcquisitionState()
-    {
-        if (targetingController == null)
-        {
-            targetingController = FindFirstObjectByType<TargetingController>();
-        }
-
-        if (targetAcquisitionCollider == null)
-        {
-            FinalizeAcquisitionState(false, null, null, "Target acquisition collider not assigned.");
-            return;
-        }
-
-        if (targetingController == null)
-        {
-            FinalizeAcquisitionState(false, null, null, "TargetingController not found in scene.");
-            return;
-        }
-
-        Collider targetCollider = targetingController.CurrentTargetCollider;
-        Health target = targetingController.CurrentTarget;
-        if (target == null)
-        {
-            FinalizeAcquisitionState(false, null, null, "No target selected");
-            return;
-        }
-
-        if (targetCollider == null)
-        {
-            FinalizeAcquisitionState(false, target, null, "Target lacks collider reference from TargetingController");
-            return;
-        }
-
-        if (!targetCollider.enabled)
-        {
-            FinalizeAcquisitionState(false, target, targetCollider, $"Target collider '{targetCollider.name}' disabled");
-            return;
-        }
-
-        if (!targetAcquisitionCollider.enabled)
-        {
-            FinalizeAcquisitionState(false, target, targetCollider, $"Sensor collider '{targetAcquisitionCollider.name}' disabled");
-            return;
-        }
-
-        bool inside = false;
-        string reason;
-
-        if (Physics.ComputePenetration(
-                targetAcquisitionCollider,
-                targetAcquisitionCollider.transform.position,
-                targetAcquisitionCollider.transform.rotation,
-                targetCollider,
-                targetCollider.transform.position,
-                targetCollider.transform.rotation,
-                out Vector3 direction,
-                out float penetrationDistance))
-        {
-            inside = true;
-            reason = $"Sensor penetration confirmed (depth={penetrationDistance:F3}m)";
-        }
-        else
-        {
-            float separation = EstimateColliderSeparation(targetAcquisitionCollider, targetCollider);
-            reason = separation < float.MaxValue
-                ? $"No penetration (surface separation â‰ˆ {separation:F3}m)"
-                : "Unable to compute precise separation";
-        }
-        FinalizeAcquisitionState(inside, target, targetCollider, reason);
     }
 
     bool TrySolveBallisticArc(Transform targetTransform, out float yaw, out float pitch, out float launchSpeed)
@@ -838,7 +748,6 @@ public class WeaponMount : MonoBehaviour
             currentLauncher.SetCrewReloadScale(1f);
         }
         if (enableDebugLogging) LogDebug($"Mounting {weaponPrefab.name} -> created {mountedWeapon.name}, launcher={currentLauncher}");
-        TryResolveTargetAcquisitionCollider();
         
         // Align launcher spawn axis (+Y) to mount forward (+Z)
         Transform axisT = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : mountedWeapon.transform;
@@ -979,34 +888,6 @@ public class WeaponMount : MonoBehaviour
         _lastReloadScale = desiredScale;
     }
 
-    void FinalizeAcquisitionState(bool inside, Health target, Collider targetCollider, string reason)
-    {
-        bool previous = _targetColliderInsideSensor;
-        _targetColliderInsideSensor = inside;
-
-        if (!enableDebugLogging)
-            return;
-
-        bool stateChanged = !_hasLoggedSensorState || previous != inside;
-        bool targetChanged = _lastLoggedTarget != target;
-        bool colliderChanged = _lastLoggedTargetCollider != targetCollider;
-        bool sensorChanged = _lastLoggedSensorCollider != targetAcquisitionCollider;
-
-        if (stateChanged || targetChanged || colliderChanged || sensorChanged)
-        {
-            string targetName = target != null ? target.name : "null";
-            string colliderName = targetCollider != null ? targetCollider.name : "null";
-            string sensorName = targetAcquisitionCollider != null ? targetAcquisitionCollider.name : "null";
-            bool sensorIsTrigger = targetAcquisitionCollider != null && targetAcquisitionCollider.isTrigger;
-            LogDebug($"Target acquisition update â†’ inside={inside}, target={targetName}, collider={colliderName}, sensor={sensorName}, sensorIsTrigger={sensorIsTrigger}, reason={reason}");
-            _lastLoggedSensorState = inside;
-            _lastLoggedTarget = target;
-            _lastLoggedTargetCollider = targetCollider;
-            _lastLoggedSensorCollider = targetAcquisitionCollider;
-            _hasLoggedSensorState = true;
-        }
-    }
-
     void LogDebug(string message)
     {
         if (!enableDebugLogging)
@@ -1015,112 +896,5 @@ public class WeaponMount : MonoBehaviour
         string formatted = $"[WeaponMount:{mountId}] {message}";
         Debug.Log(formatted, this);
         FileLogger.Log(formatted, "WeaponMount");
-    }
-
-    float EstimateColliderSeparation(Collider sensor, Collider target)
-    {
-        if (sensor == null || target == null)
-            return float.MaxValue;
-
-        Vector3 sensorPoint = sensor.ClosestPoint(target.bounds.center);
-        Vector3 targetPoint = target.ClosestPoint(sensorPoint);
-        return Vector3.Distance(sensorPoint, targetPoint);
-    }
-
-    void TryResolveTargetAcquisitionCollider()
-    {
-        if (!autoAssignTargetAcquisitionCollider)
-            return;
-
-        if (targetAcquisitionCollider != null)
-        {
-            bool colliderDestroyed = !targetAcquisitionCollider.gameObject.scene.IsValid();
-            bool belongsToThisMount = ColliderBelongsToCurrentMount(targetAcquisitionCollider);
-            if (!colliderDestroyed && belongsToThisMount)
-            {
-                return;
-            }
-
-            if (enableDebugLogging)
-            {
-                string reason = colliderDestroyed ? "was destroyed" : "is not parented under this mount";
-                string colliderName = colliderDestroyed ? "(destroyed)" : targetAcquisitionCollider.name;
-                LogDebug($"Discarding cached acquisition collider '{colliderName}' because it {reason}.");
-            }
-
-            targetAcquisitionCollider = null;
-        }
-
-        Collider candidate = FindAcquisitionColliderCandidate();
-        if (candidate != null)
-        {
-            targetAcquisitionCollider = candidate;
-            if (enableDebugLogging)
-            {
-                LogDebug($"Auto-assigned target acquisition collider '{candidate.name}'");
-            }
-        }
-    }
-
-    Collider FindAcquisitionColliderCandidate()
-    {
-        if (!isOccupied || pitchBarrel == null)
-            return null;
-
-        Collider[] colliders = pitchBarrel.GetComponentsInChildren<Collider>(true);
-        if (colliders == null || colliders.Length == 0)
-            return null;
-
-        Collider candidate = null;
-
-        if (!string.IsNullOrEmpty(targetAcquisitionColliderNameHint))
-        {
-            foreach (var c in colliders)
-            {
-                if (c != null && string.Equals(c.name, targetAcquisitionColliderNameHint, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    candidate = c;
-                    break;
-                }
-            }
-        }
-
-        if (candidate == null)
-        {
-            foreach (var c in colliders)
-            {
-                if (c != null && c.isTrigger)
-                {
-                    candidate = c;
-                    break;
-                }
-            }
-        }
-
-        if (candidate == null)
-        {
-            foreach (var c in colliders)
-            {
-                if (c != null)
-                {
-                    candidate = c;
-                    break;
-                }
-            }
-        }
-
-        return candidate;
-    }
-
-    bool ColliderBelongsToCurrentMount(Collider candidate)
-    {
-        if (candidate == null || pitchBarrel == null)
-            return false;
-
-        Transform t = candidate.transform;
-        if (t == pitchBarrel)
-            return true;
-
-        return t.IsChildOf(pitchBarrel);
     }
 }
