@@ -46,7 +46,21 @@ public class FireAtWillToggle : MonoBehaviour
     {
         _isActive = startActive;
         ApplyVisual();
-        EnsureMountCache();
+        // Don't rely solely on Awake for caching, as other objects might not be ready.
+    }
+
+    void Start()
+    {
+        // If auto-populate is enabled, force a refresh at Start to ensure we have all mounts,
+        // overriding any stale data serialized in the inspector.
+        if (autoPopulateMountsFromChildren)
+        {
+            RefreshMounts();
+        }
+        else
+        {
+            EnsureMountCache();
+        }
     }
 
     void OnEnable()
@@ -126,7 +140,14 @@ public class FireAtWillToggle : MonoBehaviour
         if (!_isActive)
             return;
 
-        EnsureMountCache();
+        // Ensure we have mounts (in case they were destroyed or list was cleared)
+        if (weaponMounts == null || weaponMounts.Length == 0)
+        {
+            if (autoPopulateMountsFromChildren)
+            {
+                RefreshMounts();
+            }
+        }
 
         if (weaponMounts == null || weaponMounts.Length == 0)
         {
@@ -163,22 +184,35 @@ public class FireAtWillToggle : MonoBehaviour
         if (weaponMounts != null && weaponMounts.Length > 0)
             return;
 
-        if (!autoPopulateMountsFromChildren)
-            return;
+        if (autoPopulateMountsFromChildren)
+        {
+            RefreshMounts();
+        }
+    }
 
+    void RefreshMounts()
+    {
         Transform root = autoPopulateRootOverride != null ? autoPopulateRootOverride : transform;
-        WeaponMount[] found = root != null ? root.GetComponentsInChildren<WeaponMount>(includeInactive: true) : null;
+        
+        // 1. Try to find children under the root (or self)
+        WeaponMount[] found = root.GetComponentsInChildren<WeaponMount>(includeInactive: true);
+
+        // 2. If none found, and we are using the default root (self), fall back to global search
+        //    (This handles the case where the script is on a UI object but mounts are elsewhere)
+        if ((found == null || found.Length == 0) && autoPopulateRootOverride == null)
+        {
+            found = FindAllWeaponMounts();
+            LogDebug($"Auto-populate: Local search empty. Global search found {found?.Length ?? 0} mounts.");
+        }
+        else
+        {
+            LogDebug($"Auto-populate: Found {found?.Length ?? 0} mounts under root '{root.name}'.");
+        }
 
         if (found != null && found.Length > 0)
         {
             weaponMounts = found;
-            LogDebug($"Auto-populated {weaponMounts.Length} mount(s) from root '{root.name}'.");
-            return;
         }
-
-        WeaponMount[] global = FindAllWeaponMounts();
-        weaponMounts = global ?? Array.Empty<WeaponMount>();
-        LogDebug($"Auto-populate fallback located {weaponMounts.Length} mount(s) globally.");
     }
 
     void TrimNullMounts()
