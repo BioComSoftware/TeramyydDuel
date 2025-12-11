@@ -59,6 +59,10 @@ public class WeaponPersistenceManager : MonoBehaviour
     [Tooltip("When disabled, changes are tracked but only saved manually via SaveSnapshot().")]
     public bool autoSaveEnabled = true;
 
+    [Header("Weapon Registry")]
+    [Tooltip("List of weapon prefabs that can be restored from persistence. The prefab name (minus ' (Clone)') must match the saved weaponName.")]
+    public List<GameObject> weaponPrefabs = new List<GameObject>();
+
     private WeaponPersistenceSnapshot _snapshot = new WeaponPersistenceSnapshot();
     private readonly Dictionary<string, MountedCannonState> _mountLookup = new Dictionary<string, MountedCannonState>();
     private readonly Dictionary<Health, UnityAction<float>> _healthChangeHandlers = new Dictionary<Health, UnityAction<float>>();
@@ -368,10 +372,70 @@ public class WeaponPersistenceManager : MonoBehaviour
         return string.IsNullOrEmpty(pathPart) ? namePart : $"{namePart}|{pathPart}";
     }
 
+    public bool TryMountSavedWeapon(WeaponMount mount)
+    {
+        if (mount == null) return false;
+
+        InitializeIfNeeded();
+
+        // Try to find state by hierarchy path first (more robust for unique mounts)
+        string path = GetHierarchyPath(mount.transform);
+        MountedCannonState state = null;
+
+        // Search by path
+        foreach (var s in _snapshot.mountedCannons)
+        {
+            if (s.hierarchyPath == path)
+            {
+                state = s;
+                break;
+            }
+        }
+
+        // Fallback: Search by ID if path fails
+        if (state == null && !string.IsNullOrEmpty(mount.mountId))
+        {
+            if (_mountLookup.TryGetValue(mount.mountId, out var s))
+            {
+                state = s;
+            }
+        }
+
+        if (state == null) return false;
+
+        // Find the matching prefab
+        string cleanName = state.weaponName.Replace("(Clone)", "").Trim();
+        GameObject prefab = null;
+        foreach (var p in weaponPrefabs)
+        {
+            if (p.name == cleanName)
+            {
+                prefab = p;
+                break;
+            }
+        }
+
+        if (prefab != null)
+        {
+            bool success = mount.MountWeapon(prefab);
+            if (success && mount.MountedWeaponHealth != null)
+            {
+                // Restore health
+                mount.MountedWeaponHealth.SetHealth(state.currentHealth);
+            }
+            return success;
+        }
+        else
+        {
+            Debug.LogWarning($"[WeaponPersistenceManager] Could not find prefab for saved weapon '{state.weaponName}' (cleaned: '{cleanName}') on mount '{mount.mountId}'");
+        }
+
+        return false;
+    }
+
     string GetHierarchyPath(Transform t)
     {
-        if (t == null)
-            return string.Empty;
+        if (t == null) return "";
         string path = t.name;
         while (t.parent != null)
         {

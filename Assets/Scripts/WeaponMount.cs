@@ -42,10 +42,6 @@ public class WeaponMount : MonoBehaviour
     [Tooltip("Degrees away from the yaw limit that still counts as 'at the edge'. Staying inside this margin means the target is reachable.")]
     [Min(0f)] public float yawEdgeBufferDeg = 0.5f;
 
-    [Header("Testing (optional)")]
-    [Tooltip("If set with autoPopulateOnStart, this weapon prefab is mounted at Start for quick testing")] public GameObject autoPopulatePrefab;
-    public bool autoPopulateOnStart = false;
-
     [Header("Crew Requirements")]
     [Tooltip("Crew station that operates this mount. Auto-located on the same GameObject if left empty.")]
     public CrewStation crewStation;
@@ -162,10 +158,13 @@ public class WeaponMount : MonoBehaviour
     {
         EnsureMountId();
         EnsureCrewStation();
-        if (autoPopulateOnStart && autoPopulatePrefab != null && !isOccupied)
+
+        // Try to load from persistence
+        if (WeaponPersistenceManager.Instance != null)
         {
-            MountWeapon(autoPopulatePrefab);
+            WeaponPersistenceManager.Instance.TryMountSavedWeapon(this);
         }
+
         ApplyRotations();
         SyncAimTargetsToCurrentPose();
         
