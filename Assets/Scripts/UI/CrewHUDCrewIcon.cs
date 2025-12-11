@@ -84,13 +84,43 @@ namespace Teramyyd.UI
             if (parent == null)
                 return;
 
-            _rectTransform.SetParent(parent, worldPositionStays: false);
-            _rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            _rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            _rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            _rectTransform.localScale = new Vector3(scale.x, scale.y, 1f);
-            _rectTransform.anchoredPosition = Vector2.zero;
-            _rectTransform.SetAsLastSibling();
+            // Only perform operations if something actually needs to change
+            // This prevents unnecessary UI rebuilds that cause flickering
+            bool needsReparent = _rectTransform.parent != parent;
+            bool needsScaleChange = _rectTransform.localScale.x != scale.x || _rectTransform.localScale.y != scale.y;
+            bool needsAnchorChange = _rectTransform.anchoredPosition != Vector2.zero ||
+                                    _rectTransform.anchorMin != new Vector2(0.5f, 0.5f) ||
+                                    _rectTransform.anchorMax != new Vector2(0.5f, 0.5f) ||
+                                    _rectTransform.pivot != new Vector2(0.5f, 0.5f);
+
+            if (!needsReparent && !needsScaleChange && !needsAnchorChange)
+            {
+                return; // Already in correct state, don't touch anything
+            }
+
+            if (needsReparent)
+            {
+                _rectTransform.SetParent(parent, worldPositionStays: false);
+            }
+            
+            if (needsAnchorChange)
+            {
+                _rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                _rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                _rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                _rectTransform.anchoredPosition = Vector2.zero;
+            }
+            
+            if (needsScaleChange)
+            {
+                _rectTransform.localScale = new Vector3(scale.x, scale.y, 1f);
+            }
+            
+            if (needsReparent)
+            {
+                _rectTransform.SetAsLastSibling();
+            }
+            
             _lastScale = scale;
         }
 
@@ -242,9 +272,20 @@ namespace Teramyyd.UI
         void UpdateVisuals()
         {
             if (Crew == null)
+            {
+                SetPortraitSprite(null);
                 return;
+            }
 
-            CrewSkillUtility.GetDominantSkill(Crew);
+            if (_controller != null)
+            {
+                Sprite portrait = _controller.GetPortraitForCrew(Crew);
+                SetPortraitSprite(portrait);
+            }
+            else
+            {
+                SetPortraitSprite(null);
+            }
         }
 
         IEnumerator EnsureDropHandled()
