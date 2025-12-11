@@ -1,47 +1,47 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-11T10:31:39.7214820Z",
+    "lastSavedUtc": "2025-12-11T14:13:15.8990016Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 1.0,
+            "gunnery": 1.584999442100525,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": ""
+            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 1.8099992275238038,
+            "gunnery": 2.169999361038208,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": ""
+            "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 4.960003852844238,
+            "gunnery": 5.680005073547363,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Bow_weapon_mount_01_crew_slot"
+            "assignedStationId": "Starboard_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_serena_brasswolf",
             "displayName": "Serena Brasswolf",
-            "gunnery": 4.825003623962402,
+            "gunnery": 5.680005073547363,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
