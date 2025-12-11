@@ -1,11 +1,11 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-11T20:29:12.0923912Z",
+    "lastSavedUtc": "2025-12-11T21:09:29.5114465Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 1.9899990558624268,
+            "gunnery": 2.0799992084503176,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
@@ -17,7 +17,7 @@
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 2.7100002765655519,
+            "gunnery": 2.8000004291534426,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
@@ -29,7 +29,7 @@
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 6.265006065368652,
+            "gunnery": 6.490006446838379,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,

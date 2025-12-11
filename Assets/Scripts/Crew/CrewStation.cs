@@ -10,24 +10,21 @@ public class CrewStation : MonoBehaviour
     [Tooltip("Friendly label for UI/debugging.")]
     public string displayName = "Crew Station";
 
-    [Header("Requirements")]
-    public CrewSkill primarySkill = CrewSkill.Gunnery;
-    [Tooltip("Minimum skill level required to accept an assignment.")]
-    [Min(1f)] public float minimumSkillLevel = 1f;
+    // Runtime-only configuration (set by CrewStationRequirementProfile.ApplyTo() or SetCrewLimits())
+    [System.NonSerialized] public CrewSkill primarySkill = CrewSkill.Gunnery;
+    [System.NonSerialized] public float minimumSkillLevel = 1f;
+    [System.NonSerialized] public CrewSkill trainingSkill = CrewSkill.None;
+    [System.NonSerialized] public float skillGainMultiplier = 1f;
     
-    [Tooltip("Minimum crew that must be assigned before the station counts as staffed.")]
-    [SerializeField] int _minimumCrewRequired = 1;
+    bool _enforceRequirements = true;
+    public bool enforceRequirements 
+    { 
+        get => _enforceRequirements; 
+        set => _enforceRequirements = value; 
+    }
     
-    [Tooltip("Absolute crew cap for this station.")]
-    [SerializeField] int _maximumCrewAllowed = 1;
-
-    [Header("Training")]
-    [Tooltip("Skill used for progression when someone operates this station. Defaults to Primary Skill.")]
-    public CrewSkill trainingSkill = CrewSkill.None;
-    [Tooltip("Multiplier for how quickly stationed crew gain experience here.")]
-    public float skillGainMultiplier = 1f;
-
-    [Header("Status")] public bool enforceRequirements = true;
+    int _minimumCrewRequired = 1;
+    int _maximumCrewAllowed = 1;
 
     readonly List<CrewMember> _assignedCrew = new List<CrewMember>();
     public IReadOnlyList<CrewMember> AssignedCrew => _assignedCrew;
