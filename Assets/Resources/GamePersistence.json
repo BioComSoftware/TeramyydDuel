@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-11T14:24:59.2296989Z",
+    "lastSavedUtc": "2025-12-11T14:46:52.4787805Z",
     "mountedCannons": [
         {
             "persistenceKey": "Mount_01|Ship/Aft_weapon_mount/Weapon_mount",
@@ -116,8 +116,8 @@
             "hierarchyPath": "Ship/Aft_weapon_mount/Aft_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 98.0,
-            "damageTaken": 2.0
+            "currentHealth": 97.0,
+            "damageTaken": 3.0
         },
         {
             "persistenceKey": "Starboard_forward_hull_weapon_mount_01|Ship/Starboard_forward_hull_weapon_mount/Starboard_forward_hull_weapon_mount_actual",
@@ -125,8 +125,8 @@
             "hierarchyPath": "Ship/Starboard_forward_hull_weapon_mount/Starboard_forward_hull_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 96.0,
-            "damageTaken": 4.0
+            "currentHealth": 95.0,
+            "damageTaken": 5.0
         },
         {
             "persistenceKey": "Port_rear_hull_weapon_mount_01|Ship/Port_rear_hull_weapon_mount/Port_rear_hull_weapon_mount_actual",
@@ -152,8 +152,8 @@
             "hierarchyPath": "Ship/Port_forward_hull_weapon_mount/Port_forward_hull_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 98.0,
-            "damageTaken": 2.0
+            "currentHealth": 96.5,
+            "damageTaken": 3.5
         },
         {
             "persistenceKey": "Starboard_rear_hull_weapon_mount_01|Ship/Starboard_rear_hull_weapon_mount/Starboard_rear_hull_weapon_mount_actual",
@@ -161,8 +161,8 @@
             "hierarchyPath": "Ship/Starboard_rear_hull_weapon_mount/Starboard_rear_hull_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 96.5,
-            "damageTaken": 3.5
+            "currentHealth": 95.5,
+            "damageTaken": 4.5
         }
     ]
 }

@@ -28,11 +28,6 @@ public class WeaponMount : MonoBehaviour
     [Tooltip("Invert pitch delta application if your mount pitches opposite of expected.")]
     public bool invertPitchDirection = false;
 
-    [Header("Debug Input (temporary)")]
-    public bool debugKeypadControl = false;
-    public float yawSpeedDegPerSec = 60f;
-    public float pitchSpeedDegPerSec = 45f;
-
     [Header("Target Tracking")]
     [Tooltip("Disable automatic targeting entirely (aiming + ballistic speed adjustments)." )]
     public bool disableAutoTargeting = false;
@@ -257,11 +252,6 @@ public class WeaponMount : MonoBehaviour
             if (currentLauncher != null)
             {
                 currentLauncher.SetRuntimeLaunchSpeed(currentLauncher.launchSpeed);
-            }
-
-            if (debugKeypadControl)
-            {
-                HandleDebugKeypadInput();
             }
         }
 
@@ -811,15 +801,6 @@ public class WeaponMount : MonoBehaviour
     static string FormatMountId(string baseName, int index)
     {
         return $"{baseName}_{index:00}";
-    }
-
-    void HandleDebugKeypadInput()
-    {
-        float dt = Time.deltaTime;
-        if (Input.GetKey(KeyCode.J)) ApplyYawDelta((invertYawDirection ? 1f : -1f) * yawSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.L)) ApplyYawDelta((invertYawDirection ? -1f : 1f) * yawSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.I)) ApplyPitchDelta((invertPitchDirection ? -1f : 1f) * pitchSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.K)) ApplyPitchDelta((invertPitchDirection ? 1f : -1f) * pitchSpeedDegPerSec * dt);
     }
 
     // Mount a new weapon (ProjectileLauncher prefab recommended)
