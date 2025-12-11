@@ -47,17 +47,6 @@ public class WeaponMount : MonoBehaviour
     public CrewStation crewStation;
     [Tooltip("Creates a transient CrewStation at runtime when none is configured so the mount can participate in the crew system before dedicated mount points exist.")]
     public bool autoCreateCrewStation = true;
-    [Tooltip("Crew skill focus expected when a runtime station needs to be created automatically.")]
-    public CrewSkill defaultCrewSkill = CrewSkill.Gunnery;
-
-    [Header("Crew Limits (Default)")]
-    [Tooltip("Minimum crew required if no specific profile is found on the mounted weapon.")]
-    [FormerlySerializedAs("legacyDefaultCrewRequired")]
-    [SerializeField] int defaultCrewRequired = 1;
-
-    [Tooltip("Maximum crew allowed if no specific profile is found on the mounted weapon.")]
-    [FormerlySerializedAs("legacyDefaultCrewMax")]
-    [SerializeField] int defaultCrewMax = 2;
 
     [Header("Debug Logging")]
     [Tooltip("Writes verbose mount + targeting diagnostics to Logs/game_debug.log when enabled.")]
@@ -625,10 +614,8 @@ public class WeaponMount : MonoBehaviour
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = string.IsNullOrEmpty(mountId) ? name + " Crew" : mountId + " Crew";
-            crewStation.primarySkill = defaultCrewSkill;
-            crewStation.trainingSkill = CrewSkill.None;
+            // All other settings will be applied by the weapon's profile.
             ApplyCrewLimitsToStation(crewStation);
-            crewStation.enforceRequirements = true;
         }
 
         if (crewStation != null)
@@ -654,29 +641,34 @@ public class WeaponMount : MonoBehaviour
 
     void ApplyCrewLimitsToStation(CrewStation station)
     {
-        if (station == null)
-            return;
+        if (station == null) return;
 
-        // Per user request: WeaponMount defaults are the AUTHORITATIVE source of truth.
-        // We ignore any profile on the mounted weapon and strictly use the inspector values.
-        int minRequired = Mathf.Max(0, defaultCrewRequired);
-        int maxAllowed = Mathf.Max(0, defaultCrewMax);
+        var profile = mountedWeapon != null 
+            ? mountedWeapon.GetComponentInChildren<CrewStationRequirementProfile>() 
+            : null;
 
-        // Debug logic to diagnose anchor count issues
-        if (enableDebugLogging || Application.isEditor)
+        if (profile != null)
         {
-            if (station.MaximumCrewAllowed != maxAllowed)
+            profile.ApplyTo(station);
+            
+            if (enableDebugLogging)
             {
-                Debug.Log($"[WeaponMount:{name}] Enforcing crew limits. Current: {station.MaximumCrewAllowed}, Target: {maxAllowed} (DefaultMax: {defaultCrewMax})");
+                Debug.Log($"[WeaponMount:{name}] Applied crew profile from '{mountedWeapon.name}'. Min: {profile.MinimumCrewRequired}, Max: {profile.MaximumCrewAllowed}");
             }
         }
-
-        bool changed = station.MinimumCrewRequired != minRequired || station.MaximumCrewAllowed != maxAllowed;
-        if (changed)
+        else
         {
-            station.SetCrewLimits(minRequired, maxAllowed);
-            RequestAnchorRebuild();
+            // When no weapon is mounted, or it lacks a profile, we default to a safe, single-person, non-functional state.
+            // This prevents errors during initialization before persistence loads the real weapon.
+            station.SetCrewLimits(1, 1);
+            station.enforceRequirements = true;
+            if (isOccupied && enableDebugLogging) // Only warn if a weapon is supposed to be there but has no profile
+            {
+                Debug.LogWarning($"[WeaponMount:{name}] No CrewStationRequirementProfile found on mounted weapon '{mountedWeapon.name}'. Using safe defaults.");
+            }
         }
+        
+        RequestAnchorRebuild();
     }
 
 

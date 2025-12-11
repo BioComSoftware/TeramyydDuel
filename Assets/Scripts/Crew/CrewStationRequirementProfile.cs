@@ -8,25 +8,49 @@ using UnityEngine;
 [AddComponentMenu("Teramyyd/Crew/Crew Station Requirement Profile")]
 public class CrewStationRequirementProfile : MonoBehaviour
 {
+    [Header("Requirements")]
+    [Tooltip("Primary skill type required to operate this station.")]
+    public CrewSkill primarySkill = CrewSkill.Gunnery;
+    
+    [Tooltip("Minimum skill level required to accept an assignment.")]
+    [Min(1f)] public float minimumSkillLevel = 1f;
+
     [Min(0)]
     [Tooltip("Minimum crew that must be assigned before the station counts as staffed.")]
     [SerializeField] int minimumCrewRequired = 1;
 
     [Min(1)]
-    [Tooltip("Absolute crew cap for this station.")]
-    [SerializeField] int maximumCrewAllowed = 2;
+    [Tooltip("Absolute crew cap for this station. Determines how many anchors are created.")]
+    [SerializeField] int maximumCrewAllowed = 1;
+
+    [Header("Training")]
+    [Tooltip("Skill used for progression when someone operates this station. Defaults to Primary Skill if set to None.")]
+    public CrewSkill trainingSkill = CrewSkill.None;
+    
+    [Tooltip("Multiplier for how quickly stationed crew gain experience here.")]
+    public float skillGainMultiplier = 1f;
+
+    [Header("Status")] 
+    [Tooltip("If true, the station will not function unless the minimum crew is assigned.")]
+    public bool enforceRequirements = true;
 
     public int MinimumCrewRequired => Mathf.Max(0, minimumCrewRequired);
     public int MaximumCrewAllowed => Mathf.Max(MinimumCrewRequired, maximumCrewAllowed);
 
     /// <summary>
-    /// Applies the configured limits to a station.
+    /// Applies all configured profile settings to a given CrewStation.
     /// </summary>
     public void ApplyTo(CrewStation station)
     {
         if (station == null)
             return;
 
+        station.primarySkill = this.primarySkill;
+        station.minimumSkillLevel = this.minimumSkillLevel;
+        station.trainingSkill = this.trainingSkill == CrewSkill.None ? this.primarySkill : this.trainingSkill;
+        station.skillGainMultiplier = this.skillGainMultiplier;
+        station.enforceRequirements = this.enforceRequirements;
+        
         station.SetCrewLimits(MinimumCrewRequired, MaximumCrewAllowed);
     }
 }

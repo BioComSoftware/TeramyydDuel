@@ -330,10 +330,79 @@ namespace Teramyyd.UI
                 
                 // Skip refresh for icons being actively dragged
                 if (icon.IsDragging)
+                {
                     continue;
-                    
-                ApplyPortrait(icon, crew);
-                ApplyCrewAssignment(icon, crew);
+                }
+
+                CrewStation assignedStation = crew.AssignedStation;
+                if (assignedStation != null)
+                {
+                    CrewHUDStationSlot slot = FindSlotForStation(assignedStation.stationId);
+                    if (slot != null)
+                    {
+                        // Only reattach if icon isn't already at this slot
+                        if (icon.CurrentSlot != slot)
+                        {
+                            string msg2 = $"[CrewHUD] Re-attaching {crew.displayName} to slot {assignedStation.stationId}";
+                            Debug.Log(msg2);
+                            FileLogger.Log(msg2, "CrewHUD");
+                            icon.ClearPendingState();
+                            AttachIconToSlot(icon, slot);
+                        }
+                        continue;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(crew.PendingStationId))
+                {
+                    CrewHUDStationSlot pendingSlot = FindSlotForStation(crew.PendingStationId);
+                    if (pendingSlot != null)
+                    {
+                        if (icon.CurrentSlot != pendingSlot)
+                        {
+                            icon.ClearPendingState();
+                            AttachIconToSlot(icon, pendingSlot);
+                        }
+                        return;
+                    }
+
+                    icon.SetPendingState($"Waiting for {crew.PendingStationId}", pendingColor);
+                    // Still attach to pool while waiting for station
+                    AttachIconToPool(icon);
+                }
+                else
+                {
+                    icon.ClearPendingState();
+                    // No assignment and no pending - ensure icon is in pool
+                    // But only move it if it's not already there
+                    if (icon.CurrentSlot != null)
+                    {
+                        string poolMsg = $"[CrewHUD] Moving {crew.displayName} to pool (was at {icon.CurrentSlot.StationId})";
+                        Debug.Log(poolMsg);
+                        FileLogger.Log(poolMsg, "CrewHUD");
+                        AttachIconToPool(icon);
+                    }
+                    else
+                    {
+                        string alreadyMsg = $"[CrewHUD] {crew.displayName} already in pool (CurrentSlot is null)";
+                        Debug.Log(alreadyMsg);
+                        FileLogger.Log(alreadyMsg, "CrewHUD");
+                        // Icon thinks it's in pool, but make sure it's actually positioned and visible
+                        // This handles the case where icon was just created
+                        RectTransform poolAnchor = RequestCrewSlotAnchor(icon);
+                        if (poolAnchor != null)
+                        {
+                            icon.AttachToParent(poolAnchor, crewSlotIconScale);
+                            if (!icon.gameObject.activeSelf)
+                            {
+                                string enableMsg = $"[CrewHUD] Enabling newly created icon for {crew.displayName}";
+                                Debug.Log(enableMsg);
+                                FileLogger.Log(enableMsg, "CrewHUD");
+                                icon.gameObject.SetActive(true);
+                            }
+                        }
+                    }
+                }
             }
 
             string summaryMsg = $"[CrewHUD] RefreshAssignments complete: processed {crewCount} crew members";

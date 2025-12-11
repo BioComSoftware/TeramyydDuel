@@ -10190,8 +10190,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a226ee01728b43f49a01bf2d468fa32f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CrewStationRequirementProfile
+  primarySkill: 1
+  minimumSkillLevel: 1
   minimumCrewRequired: 1
-  maximumCrewAllowed: 5
+  maximumCrewAllowed: 2
+  trainingSkill: 0
+  skillGainMultiplier: 1
+  enforceRequirements: 1
 --- !u!1 &9049453266903133057
 GameObject:
   m_ObjectHideFlags: 0
