@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-11T19:32:47.0260632Z",
+    "lastSavedUtc": "2025-12-11T20:22:59.7532599Z",
     "crewMembers": [
         {
             "crewId": "crew_ryn_calder",
@@ -36,7 +36,7 @@
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Bow_weapon_mount_01_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_serena_brasswolf",
