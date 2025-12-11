@@ -17,10 +17,6 @@ public class MountHUDMarker : MonoBehaviour
     [Tooltip("Normalized position (0-1) on the ship sprite. Example: (0.5, 0.9) = top center")]
     public Vector2 positionOnHUDSprite = new Vector2(0.5f, 0.5f);
     
-    [Header("Optional Custom Occupied Sprite")]
-    [Tooltip("If set, always use this sprite when occupied (overrides weapon type mapping)")]
-    public Sprite customOccupiedSprite;
-    
     [Header("Health Bar Indicator")]
     [Tooltip("Show health bar for mounted weapon (requires Health component on weapon)")]
     public bool showHealthBar = true;

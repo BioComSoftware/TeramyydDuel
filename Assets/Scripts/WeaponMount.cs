@@ -49,8 +49,6 @@ public class WeaponMount : MonoBehaviour
     public bool autoCreateCrewStation = true;
     [Tooltip("Crew skill focus expected when a runtime station needs to be created automatically.")]
     public CrewSkill defaultCrewSkill = CrewSkill.Gunnery;
-    [Tooltip("Optional fallback requirement profile when the mounted weapon prefab lacks CrewStationRequirementProfile.")]
-    public CrewStationRequirementProfile fallbackCrewProfile;
 
     [Header("Crew Limits (Default)")]
     [Tooltip("Minimum crew required if no specific profile is found on the mounted weapon.")]
@@ -681,17 +679,7 @@ public class WeaponMount : MonoBehaviour
         }
     }
 
-    CrewStationRequirementProfile ResolveActiveCrewProfile()
-    {
-        if (mountedWeapon != null)
-        {
-            var profile = mountedWeapon.GetComponentInChildren<CrewStationRequirementProfile>();
-            if (profile != null)
-                return profile;
-        }
 
-        return fallbackCrewProfile;
-    }
 
     void RequestAnchorRebuild()
     {
