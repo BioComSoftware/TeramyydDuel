@@ -449,6 +449,64 @@ public class WeaponMount : MonoBehaviour
         Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
 
         Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
+
+        // Check for direct-fire solution (high speed, negligible drop)
+        // If aiming directly at the target (center or closest point) is within limits, use that.
+        Collider targetCol = targetTransform.GetComponentInChildren<Collider>();
+        Bounds targetBounds = new Bounds();
+        bool hasBounds = false;
+
+        if (targetCol != null)
+        {
+            targetBounds = targetCol.bounds;
+            hasBounds = true;
+        }
+        else
+        {
+            Renderer targetRend = targetTransform.GetComponentInChildren<Renderer>();
+            if (targetRend != null)
+            {
+                targetBounds = targetRend.bounds;
+                hasBounds = true;
+            }
+        }
+
+        if (hasBounds)
+        {
+            // Candidate points to aim at: Center, then Closest Point (better for steep angles)
+            Vector3[] aimCandidates = new Vector3[] { targetBounds.center, targetBounds.ClosestPoint(origin) };
+            if (targetCol != null) aimCandidates[1] = targetCol.ClosestPoint(origin);
+
+            float vMax = currentLauncher.launchSpeed;
+            float directHalfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+
+            foreach (Vector3 candidate in aimCandidates)
+            {
+                Vector3 directDisplacement = candidate - origin;
+                float dist = directDisplacement.magnitude;
+                if (dist < 0.001f) continue;
+
+                Vector3 directLocalDir = reference.InverseTransformDirection(directDisplacement.normalized);
+                float directYawLOS = Mathf.Atan2(directLocalDir.x, directLocalDir.z) * Mathf.Rad2Deg;
+
+                if (Mathf.Abs(directYawLOS) <= directHalfYaw + 5f)
+                {
+                    float clampedYaw = Mathf.Clamp(directYawLOS, -directHalfYaw, directHalfYaw);
+                    Vector3 directDirAfterYaw = Quaternion.Euler(0f, -clampedYaw, 0f) * directLocalDir;
+                    float directForwardAfterYaw = directDirAfterYaw.z;
+                    float directDesiredPitch = -Mathf.Atan2(directDirAfterYaw.y, directForwardAfterYaw) * Mathf.Rad2Deg;
+
+                    if (directDesiredPitch >= -Mathf.Abs(pitchDownDeg) - 5f && directDesiredPitch <= Mathf.Abs(pitchUpDeg) + 5f)
+                    {
+                        yaw = clampedYaw;
+                        pitch = Mathf.Clamp(directDesiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+                        launchSpeed = vMax;
+                        return true;
+                    }
+                }
+            }
+        }
+
         Vector3 worldUp = -gravityVector.normalized;
         float verticalOffset = Vector3.Dot(displacement, worldUp);
         Vector3 planar = displacement - verticalOffset * worldUp;
