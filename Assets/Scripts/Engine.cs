@@ -3,7 +3,7 @@ using UnityEngine.Events;
 
 /// <summary>
 /// Base engine class: Hermeneutic integration of power generation, thrust, and lift coordination.
-/// Power (possibility) â†’ Force (actuality) â†’ Motion (being-in-the-world)
+/// Power (possibility) → Force (actuality) → Motion (being-in-the-world)
 /// 
 /// Ontological structure:
 /// - Engine generates power from fuel/burn (thrownness into energy)
@@ -12,6 +12,7 @@ using UnityEngine.Events;
 /// - All systems degrade over time (being-towards-breakdown)
 /// </summary>
 [RequireComponent(typeof(Health))]
+[RequireComponent(typeof(CrewStationRequirementProfile))]
 [AddComponentMenu("Teramyyd/Ship Systems/Engine (Base)")]
 public abstract class Engine : MonoBehaviour
 {
@@ -56,12 +57,10 @@ public abstract class Engine : MonoBehaviour
     public bool debugLog = false;
 
     [Header("Crew Requirements")]
-    [Tooltip("Crew station responsible for operating this engine. Auto-located or created at runtime if empty.")]
+    [Tooltip("Crew station responsible for operating this engine. Auto-created at runtime.")]
     public CrewStation crewStation;
-    public bool autoCreateCrewStation = true;
-    public CrewSkill defaultCrewSkill = CrewSkill.PowerEngineering;
-    [Range(1, 4)] public int defaultCrewRequired = 1;
-    [Range(1, 4)] public int defaultCrewMax = 2;
+    
+    CrewStationRequirementProfile _crewProfile;
     
     // Constants
     public const float KNOTS_TO_MPS = 0.514444f;
@@ -93,6 +92,7 @@ public abstract class Engine : MonoBehaviour
     protected virtual void Awake()
     {
         healthComponent = GetComponent<Health>();
+        _crewProfile = GetComponent<CrewStationRequirementProfile>();
         shipCharacteristics = GetComponentInParent<ShipCharacteristics>();
         liftDevice = GetComponentInParent<LiftDevice>();
         EnsureCrewStation();
@@ -115,6 +115,7 @@ public abstract class Engine : MonoBehaviour
     
     protected virtual void Start()
     {
+        EnsureCrewStation(); // Re-apply profile settings after all components initialized
         CalculatePowerOutput();
         
         if (debugLog)
@@ -128,11 +129,17 @@ public abstract class Engine : MonoBehaviour
         if (shipCharacteristics == null || shipRigidbody == null)
             return;
         
+        // ENGINE BEHAVIOR: If engine is undermanned, stop producing thrust
         if (!HasOperationalCrew())
         {
             _currentPowerOutput = 0f;
             _requestedThrustPower = 0f;
             _allocatedThrustPower = 0f;
+            _actualForceNewtons = 0f;
+            _accelerationMPS2 = 0f;
+            _isAccelerating = false;
+            
+            // Ship decelerates naturally via physics (aerodynamic drag)
             return;
         }
 
@@ -535,33 +542,44 @@ public abstract class Engine : MonoBehaviour
             crewStation = GetComponent<CrewStation>();
         }
 
-        if (crewStation == null && autoCreateCrewStation)
+        if (crewStation == null)
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = gameObject.name + " Engine Crew";
-            crewStation.primarySkill = defaultCrewSkill;
-            crewStation.trainingSkill = CrewSkill.None;
-            crewStation.minimumSkillLevel = 1f;
-            ApplyCrewLimitsToStation();
-            crewStation.enforceRequirements = true;
-        }
-
-        if (crewStation != null && string.IsNullOrEmpty(crewStation.stationId))
-        {
             crewStation.stationId = gameObject.name + "_EngineCrew";
         }
 
-        ApplyCrewLimitsToStation();
+        // Apply settings from CrewStationRequirementProfile
+        if (_crewProfile != null)
+        {
+            int previousMax = crewStation.MaximumCrewAllowed;
+            _crewProfile.ApplyTo(crewStation);
+            
+            // Trigger anchor rebuild if crew limits changed
+            if (Application.isPlaying && crewStation.MaximumCrewAllowed != previousMax)
+            {
+                RequestAnchorRebuild();
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[Engine:{name}] No CrewStationRequirementProfile found. Engine will not function properly.");
+        }
     }
-
-    void ApplyCrewLimitsToStation()
+    
+    void RequestAnchorRebuild()
     {
-        if (crewStation == null)
+        if (!Application.isPlaying)
             return;
 
-        int minRequired = Mathf.Max(0, defaultCrewRequired);
-        int maxAllowed = Mathf.Max(minRequired, defaultCrewMax);
-        crewStation.SetCrewLimits(minRequired, maxAllowed);
+        var builders = GetComponents<CrewStationAnchorRuntimeBuilder>();
+        foreach (var builder in builders)
+        {
+            if (builder != null && builder.enabled)
+            {
+                builder.RebuildAnchors();
+            }
+        }
     }
 
     protected bool HasOperationalCrew()
@@ -570,6 +588,29 @@ public abstract class Engine : MonoBehaviour
             return true;
 
         return CrewManager.Instance.MeetsRequirement(crewStation);
+    }
+    
+    /// <summary>
+    /// Returns the best PowerEngineering skill level among assigned crew.
+    /// Hook for future skill-based bonuses.
+    /// </summary>
+    protected float GetBestEngineeringSkill()
+    {
+        if (crewStation == null)
+            return 0f;
+            
+        return crewStation.GetBestSkillLevel();
+    }
+    
+    /// <summary>
+    /// Returns crew staffing ratio (0-1+). Hook for future multi-crew bonuses.
+    /// </summary>
+    protected float GetCrewStaffingRatio()
+    {
+        if (crewStation == null)
+            return 0f;
+            
+        return crewStation.GetStaffingRatio();
     }
 
     float CalculateAerodynamicDrag(float speedMPS)

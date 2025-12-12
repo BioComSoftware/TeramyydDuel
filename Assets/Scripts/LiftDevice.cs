@@ -5,10 +5,11 @@ using UnityEngine.Events;
 /// Base lift device class representing the hermeneutic tension between weight (thrownness-to-earth) 
 /// and lift (projection-upward). Lift devices oppose gravity, creating vertical mobility.
 /// 
-/// Hermeneutic circle: Power consumption â†” Altitude control â†” Weight â†” Tactical choice
+/// Hermeneutic circle: Power consumption ↔ Altitude control ↔ Weight ↔ Tactical choice
 /// Temporal structure: Continuous power drain and damage accumulation over time
 /// </summary>
 [RequireComponent(typeof(Health))]
+[RequireComponent(typeof(CrewStationRequirementProfile))]
 [AddComponentMenu("Teramyyd/Ship Systems/Lift Device (Base)")]
 public abstract class LiftDevice : MonoBehaviour
 {
@@ -54,12 +55,11 @@ public abstract class LiftDevice : MonoBehaviour
     public bool debugLog = false;
 
     [Header("Crew Requirements")]
-    [Tooltip("Crew station that operates this lift device. Auto-located or created at runtime if empty.")]
+    [Tooltip("Crew station that operates this lift device. Auto-created at runtime.")]
     public CrewStation crewStation;
-    public bool autoCreateCrewStation = true;
-    public CrewSkill defaultCrewSkill = CrewSkill.LiftEngineering;
-    [Range(1, 4)] public int defaultCrewRequired = 1;
-    [Range(1, 4)] public int defaultCrewMax = 2;
+    
+    CrewStationRequirementProfile _crewProfile;
+    float _hoverAltitude; // Stores altitude when crew becomes insufficient
     
     // Component references
     protected const float POWER_PER_TON_PER_METER_PER_SECOND = 9.8f;
@@ -89,6 +89,7 @@ public abstract class LiftDevice : MonoBehaviour
     protected virtual void Awake()
     {
         healthComponent = GetComponent<Health>();
+        _crewProfile = GetComponent<CrewStationRequirementProfile>();
         shipCharacteristics = GetComponentInParent<ShipCharacteristics>();
         EnsureCrewStation();
         
@@ -110,6 +111,8 @@ public abstract class LiftDevice : MonoBehaviour
     
     protected virtual void Start()
     {
+        EnsureCrewStation(); // Re-apply profile settings after all components initialized
+        
         // If no power allocated, default to hover power
         if (allocatedPowerPerSecond <= 0f && isActive)
         {
@@ -136,15 +139,55 @@ public abstract class LiftDevice : MonoBehaviour
         if (!isActive || shipCharacteristics == null || shipRigidbody == null)
             return;
 
+        float deltaTime = Time.fixedDeltaTime;
+        
+        // SPECIAL LIFT BEHAVIOR: If lift device is undermanned, hover at current altitude
         if (!HasOperationalCrew())
         {
-            _currentLiftForce = 0f;
+            // Store current altitude when crew becomes insufficient
+            if (_hoverAltitude == 0f || shipRigidbody.useGravity)
+            {
+                _hoverAltitude = shipCharacteristics.currentAltitude;
+                if (debugLog)
+                {
+                    FileLogger.Log($"{gameObject.name} UNDERMANNED - Auto-hovering at altitude {_hoverAltitude:F1}m", "LiftDevice");
+                }
+            }
+            
+            // Disable gravity and maintain current altitude
+            if (shipRigidbody.useGravity)
+            {
+                shipRigidbody.useGravity = false;
+                Vector3 vel = shipRigidbody.linearVelocity;
+                vel.y = 0f;
+                shipRigidbody.linearVelocity = vel;
+            }
+            
+            // Calculate hover power consumption (still consumes power)
+            float shipWeightTons = Mathf.Max(0f, shipCharacteristics.shipWeightTons);
+            float hoverPower = HoverPowerRequirement;
+            _powerConsumption = ClampPowerAllocation(hoverPower);
+            _currentLiftForce = _powerConsumption;
             _verticalVelocityMPS = 0f;
-            _powerConsumption = 0f;
+            _isHovering = true;
+            
+            // Maintain altitude via direct position adjustment
+            float currentAltitude = shipCharacteristics.currentAltitude;
+            float altitudeDelta = _hoverAltitude - currentAltitude;
+            if (Mathf.Abs(altitudeDelta) > 0.01f)
+            {
+                // Gently correct altitude drift
+                Vector3 correction = Vector3.up * altitudeDelta * 0.1f;
+                shipRigidbody.position += correction;
+            }
+            
+            // Apply usage damage while hovering
+            ApplyUsageDamage(deltaTime);
             return;
         }
         
-        float deltaTime = Time.fixedDeltaTime;
+        // Crew is operational - reset hover altitude and allow normal control
+        _hoverAltitude = 0f;
         
         // Calculate lift parameters
         CalculateLift(deltaTime);
@@ -384,33 +427,44 @@ public abstract class LiftDevice : MonoBehaviour
             crewStation = GetComponent<CrewStation>();
         }
 
-        if (crewStation == null && autoCreateCrewStation)
+        if (crewStation == null)
         {
             crewStation = gameObject.AddComponent<CrewStation>();
             crewStation.displayName = gameObject.name + " Lift Crew";
-            crewStation.primarySkill = defaultCrewSkill;
-            crewStation.trainingSkill = CrewSkill.None;
-            crewStation.minimumSkillLevel = 1f;
-            ApplyCrewLimitsToStation();
-            crewStation.enforceRequirements = true;
-        }
-
-        if (crewStation != null && string.IsNullOrEmpty(crewStation.stationId))
-        {
             crewStation.stationId = gameObject.name + "_LiftCrew";
         }
 
-        ApplyCrewLimitsToStation();
+        // Apply settings from CrewStationRequirementProfile
+        if (_crewProfile != null)
+        {
+            int previousMax = crewStation.MaximumCrewAllowed;
+            _crewProfile.ApplyTo(crewStation);
+            
+            // Trigger anchor rebuild if crew limits changed
+            if (Application.isPlaying && crewStation.MaximumCrewAllowed != previousMax)
+            {
+                RequestAnchorRebuild();
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[LiftDevice:{name}] No CrewStationRequirementProfile found. Lift device will not function properly.");
+        }
     }
-
-    void ApplyCrewLimitsToStation()
+    
+    void RequestAnchorRebuild()
     {
-        if (crewStation == null)
+        if (!Application.isPlaying)
             return;
 
-        int minRequired = Mathf.Max(0, defaultCrewRequired);
-        int maxAllowed = Mathf.Max(minRequired, defaultCrewMax);
-        crewStation.SetCrewLimits(minRequired, maxAllowed);
+        var builders = GetComponents<CrewStationAnchorRuntimeBuilder>();
+        foreach (var builder in builders)
+        {
+            if (builder != null && builder.enabled)
+            {
+                builder.RebuildAnchors();
+            }
+        }
     }
 
     protected bool HasOperationalCrew()
@@ -420,4 +474,28 @@ public abstract class LiftDevice : MonoBehaviour
 
         return CrewManager.Instance.MeetsRequirement(crewStation);
     }
+    
+    /// <summary>
+    /// Returns the best LiftEngineering skill level among assigned crew.
+    /// Hook for future skill-based bonuses.
+    /// </summary>
+    protected float GetBestLiftEngineeringSkill()
+    {
+        if (crewStation == null)
+            return 0f;
+            
+        return crewStation.GetBestSkillLevel();
+    }
+    
+    /// <summary>
+    /// Returns crew staffing ratio (0-1+). Hook for future multi-crew bonuses.
+    /// </summary>
+    protected float GetCrewStaffingRatio()
+    {
+        if (crewStation == null)
+            return 0f;
+            
+        return crewStation.GetStaffingRatio();
+    }
 }
+
