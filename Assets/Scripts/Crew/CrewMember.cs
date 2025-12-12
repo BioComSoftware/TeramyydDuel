@@ -99,23 +99,18 @@ public class CrewMember : MonoBehaviour
         if (AssignedStation == null)
             return;
 
+        // Only process time-based accrual in Update
+        if (AssignedStation.accrualMethod != SkillAccrualMethod.Time)
+            return;
+
         CrewSkill skill = AssignedStation.trainingSkill != CrewSkill.None
             ? AssignedStation.trainingSkill
             : AssignedStation.primarySkill;
 
-        if (skill == CrewSkill.None || skill == CrewSkill.Gunnery)
-            return; // Gunnery trains on weapon fire, not station time
-
-        // Calculate XP gain based on skill-specific progression rate
-        float secondsFor1to10 = GetSecondsFor1to10(skill);
-        if (secondsFor1to10 <= 0f)
+        if (skill == CrewSkill.None)
             return;
 
-        // 9 skill points needed to go from 1 to 10
-        float skillPointsPerSecond = 9f / secondsFor1to10;
-        float gain = Time.deltaTime * skillPointsPerSecond;
-        gain *= Mathf.Max(0.1f, AssignedStation.skillGainMultiplier);
-        
+        float gain = Time.deltaTime * AssignedStation.skillGainPerSecond;
         AddSkillProgress(skill, gain);
     }
     
@@ -258,16 +253,28 @@ public class CrewMember : MonoBehaviour
     
     /// <summary>
     /// Called by weapon systems when this crew member fires a weapon.
-    /// Grants gunnery XP based on configured progression rate.
+    /// Grants skill XP based on station's configured event-based progression.
     /// </summary>
     public void OnWeaponFired()
     {
-        if (gunnery >= maxSkillLevel)
+        if (AssignedStation == null)
+            return;
+
+        // Only process if station uses event-based accrual with PerFiring event
+        if (AssignedStation.accrualMethod != SkillAccrualMethod.Event)
             return;
         
-        // 9 skill points needed to go from 1 to 10
-        float skillPointsPerShot = 9f / Mathf.Max(1f, gunneryActionsFor1to10);
-        AddSkillProgress(CrewSkill.Gunnery, skillPointsPerShot);
+        if (AssignedStation.accrualEvent != SkillAccrualEvent.PerFiring)
+            return;
+
+        CrewSkill skill = AssignedStation.trainingSkill != CrewSkill.None
+            ? AssignedStation.trainingSkill
+            : AssignedStation.primarySkill;
+
+        if (skill == CrewSkill.None)
+            return;
+
+        AddSkillProgress(skill, AssignedStation.skillGainPerEvent);
     }
 
     void UpdateHealthColor()

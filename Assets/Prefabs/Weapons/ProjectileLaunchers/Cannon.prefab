@@ -10194,8 +10194,11 @@ MonoBehaviour:
   minimumSkillLevel: 1
   minimumCrewRequired: 1
   maximumCrewAllowed: 2
-  trainingSkill: 0
-  skillGainMultiplier: 1
+  trainingSkill: 1
+  accrualMethod: 1
+  skillGainPerSecond: 0.01
+  accrualEvent: 0
+  skillGainPerEvent: 0.1
   enforceRequirements: 1
 --- !u!1 &9049453266903133057
 GameObject:

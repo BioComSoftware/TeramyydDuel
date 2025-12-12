@@ -14,7 +14,10 @@ public class CrewStation : MonoBehaviour
     [System.NonSerialized] public CrewSkill primarySkill = CrewSkill.Gunnery;
     [System.NonSerialized] public float minimumSkillLevel = 1f;
     [System.NonSerialized] public CrewSkill trainingSkill = CrewSkill.None;
-    [System.NonSerialized] public float skillGainMultiplier = 1f;
+    [System.NonSerialized] public SkillAccrualMethod accrualMethod = SkillAccrualMethod.Event;
+    [System.NonSerialized] public float skillGainPerSecond = 0.01f;
+    [System.NonSerialized] public SkillAccrualEvent accrualEvent = SkillAccrualEvent.PerFiring;
+    [System.NonSerialized] public float skillGainPerEvent = 0.1f;
     
     bool _enforceRequirements = true;
     public bool enforceRequirements 

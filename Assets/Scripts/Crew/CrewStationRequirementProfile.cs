@@ -27,8 +27,17 @@ public class CrewStationRequirementProfile : MonoBehaviour
     [Tooltip("Skill used for progression when someone operates this station. Defaults to Primary Skill if set to None.")]
     public CrewSkill trainingSkill = CrewSkill.None;
     
-    [Tooltip("Multiplier for how quickly stationed crew gain experience here.")]
-    public float skillGainMultiplier = 1f;
+    [Tooltip("How crew members gain experience at this station.")]
+    public SkillAccrualMethod accrualMethod = SkillAccrualMethod.Event;
+    
+    [Tooltip("Skill gain per game second (for Time-based accrual).")]
+    [Min(0f)] public float skillGainPerSecond = 0.01f;
+    
+    [Tooltip("Event type that triggers skill gain (for Event-based accrual).")]
+    public SkillAccrualEvent accrualEvent = SkillAccrualEvent.PerFiring;
+    
+    [Tooltip("Skill gain per event occurrence (for Event-based accrual).")]
+    [Min(0f)] public float skillGainPerEvent = 0.1f;
 
     [Header("Status")] 
     [Tooltip("If true, the station will not function unless the minimum crew is assigned.")]
@@ -48,9 +57,30 @@ public class CrewStationRequirementProfile : MonoBehaviour
         station.primarySkill = this.primarySkill;
         station.minimumSkillLevel = this.minimumSkillLevel;
         station.trainingSkill = this.trainingSkill == CrewSkill.None ? this.primarySkill : this.trainingSkill;
-        station.skillGainMultiplier = this.skillGainMultiplier;
+        station.accrualMethod = this.accrualMethod;
+        station.skillGainPerSecond = this.skillGainPerSecond;
+        station.accrualEvent = this.accrualEvent;
+        station.skillGainPerEvent = this.skillGainPerEvent;
         station.enforceRequirements = this.enforceRequirements;
         
         station.SetCrewLimits(MinimumCrewRequired, MaximumCrewAllowed);
     }
+}
+
+/// <summary>
+/// Defines how crew members gain experience at a station.
+/// </summary>
+public enum SkillAccrualMethod
+{
+    Time,   // Skill increases per game second
+    Event   // Skill increases when specific events occur
+}
+
+/// <summary>
+/// Defines specific event types that can trigger skill gain.
+/// </summary>
+public enum SkillAccrualEvent
+{
+    PerFiring  // For weapons: skill increases each time the weapon fires
+    // Future: PerRepair, PerNavUpdate, PerEngineAdjustment, etc.
 }
