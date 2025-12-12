@@ -357,15 +357,225 @@ unOnStart.
 - **CrewManager** (`Assets/Scripts/Crew/CrewManager.cs`): Singleton registry that wires stations and crew together, enforces min crew + skill thresholds, and exposes helper APIs such as `TryAssignCrewToStationId`, `RegisteredCrew`, and `GetUnassignedCrew()`. When `enforceCrewRequirements` is enabled it becomes the gatekeeper for engines, lifts, and weapon mounts.
 - **CrewPersistenceManager** (`Assets/Scripts/Systems/CrewPersistenceManager.cs`): Serializes skill floats, health, and assignments to `Assets/Resources/CrewPersistence.json` in the Editor (or `Application.persistentDataPath` in builds). Exists as a `DontDestroyOnLoad` singleton so leveling progress survives scene loads.
 
-### Authoring Workflow
-1. **Prep crew prefabs**: Add `Health`, then `CrewMember`. Fill the display name and all skill sliders (Gunnery/Nav/Repair/Power/Lift); leave `crewId` blank unless you need deterministic IDs across variants.
-2. **Place crew in the scene**: Drop crew prefabs anywhere under the ship. Physical hierarchy does not matter for assignments. Optionally set `initialStationId` to auto-seat them.
-3. **Create crew stations**: For every subsystem needing staff, add `CrewStation` (often as a child of the subsystem). Give stable `stationId`s (`Engine_Main_Crew`, `BowGun_Port`) and configure `primarySkill` + `minimumSkillLevel`. Headcount limits come from the subsystem component, not the station itself.
-4. **Hook stations into systems**: `WeaponMount`, `Engine`, and `LiftDevice` expose `crewStation`, `autoCreateCrewStation`, `defaultCrewSkill`, and min/max crew fields.
-  - Preferred: author a dedicated `CrewStation`, set `primarySkill` + `minimumSkillLevel`, assign it to the component, and disable `autoCreateCrewStation` once the scene object is stable.
-  - Temporary/testing: leave the reference empty with `autoCreateCrewStation = true`. The component will spawn a basic station that targets `defaultCrewSkill`, requires at least `defaultCrewRequired` crew, and enforces minimum skill 1. Tweak those defaults per prefab so designers know which skill improves that subsystem.
-5. **Verify runtime wiring**: Enter Play Mode. The first crew/station registration spawns `CrewManager`. Watch the Console (set `CrewManager.debugLog = true`) to confirm registrations. Use `CrewManager.GetUnassignedCrew()` in a temporary `Debug.Log` to see who still needs a seat.
-6. **UI/interaction**: The HUD or in-world consoles should call `CrewManager.TryAssignCrewToStationId(crew, stationId)` when the designer drags/drops crew icons. The manager queues requests if the station loads later.
+### Complete Setup Workflow (Step-by-Step)
+
+#### Phase 1: Scene Prerequisites (Do This First)
+These singleton managers must exist before any crew systems work:
+
+1. **Verify ShipCharacteristics**:
+   - Select `Ship` root in Hierarchy
+   - Ensure it has `ShipCharacteristics` component
+   - If missing: **Add Component → Ship Characteristics**
+
+2. **Add CrewPersistenceManager**:
+   - Create empty GameObject in scene root: **GameObject → Create Empty**
+   - Rename to `CrewPersistenceManager`
+   - **Add Component → Crew Persistence Manager**
+   - Configure:
+     - Auto Save Enabled: ✓
+     - Save Interval Seconds: 30.0
+
+3. **Add CrewRuntimeSpawner**:
+   - Create empty GameObject in scene root: **GameObject → Create Empty**
+   - Rename to `CrewRuntimeSpawner`
+   - **Add Component → Crew Runtime Spawner**
+   - Crew Prefab: Drag `Assets/Prefabs/CrewMember_Default.prefab`
+
+4. **Add UnassignedCrewAnchorBuilder**:
+   - Under `Ship`, create child: **Right-click Ship → Create Empty**
+   - Rename to `UnassignedCrewAnchors`
+   - **Add Component → Unassigned Crew Anchor Builder**
+   - Configure:
+     - Anchors Per Row: 10
+     - Crew Footprint Size: 1.0
+     - Spacing Multiplier: 1.2
+     - World Anchor Parent: Drag `Ship/UnassignedCrewAnchors` (itself)
+   - Position where unassigned crew should stand
+
+#### Phase 2: CrewStationRequirementProfile (Configure Prefabs FIRST)
+**CRITICAL**: Do this BEFORE adding HUD slots or anchor builders.
+
+For each weapon/engine/lift prefab:
+
+1. **Open prefab** in Prefab Mode (double-click in Project)
+2. Select prefab root
+3. **Add Component → Crew Station Requirement Profile**
+4. Configure:
+   - **Primary Skill**: `Gunnery` (weapons), `PowerEngineering` (engines), `LiftEngineering` (lifts)
+   - **Minimum Skill Level**: 1.0-10.0 (e.g., 3.0 for training guns)
+   - **Minimum Crew Required**: 1 (how many must be assigned)
+   - **Maximum Crew Allowed**: 4 (total seats)
+   - **Training Skill**: Same as Primary Skill (or different if cross-training)
+   - **Accrual Method**: `Time` (per-second) or `Event` (per-action)
+   - **Skill Gain Per Second**: 0.01 (if Time)
+   - **Accrual Event**: `PerFiring` (if Event)
+   - **Skill Gain Per Event**: 0.05 (if Event)
+5. **Save prefab**: Ctrl+S
+
+**Example (Cannon)**:
+- Primary Skill: Gunnery
+- Minimum Skill Level: 3.0
+- Minimum Crew Required: 1
+- Maximum Crew Allowed: 4
+- Training Skill: Gunnery
+- Accrual Method: Event
+- Accrual Event: PerFiring
+- Skill Gain Per Event: 0.05
+
+#### Phase 3: HUD Station Slot (Do This BEFORE Anchor Builder)
+**WHY**: Anchor builder needs to reference the slot component.
+
+For each station needing HUD icons:
+
+1. Navigate to `HUD_Canvas/HUD_Root/ShipRepresentation/ShipOutline`
+2. Find existing icon (e.g., `Bow_weapon_mount`)
+3. Right-click → **Duplicate**
+4. Rename to `Bow_weapon_mount_CrewSlot`
+5. Position near original icon
+6. Right-click slot → **UI → Image**
+7. Rename child to `IconAnchor`
+8. Resize to ~40x40 pixels
+9. Select slot root
+10. **Add Component → Crew HUD Station Slot**
+11. Configure:
+    - **Station**: Leave EMPTY (assign in Phase 4)
+    - **Station Id Override**: Type exact ID (e.g., `BowWeaponMount_Crew`)
+    - **Icon Anchor**: Drag `IconAnchor` child
+    - **Highlight Image**: Drag slot's border Image
+12. **Save scene**: Ctrl+S
+
+#### Phase 4: Subsystem Integration (Hook Up Stations)
+**IMPORTANT**: Profile applies settings automatically.
+
+For each weapon/engine/lift in scene:
+
+1. Locate subsystem (e.g., `Ship/Model/Bow_weapon_mount/Weapon_mount`)
+2. Select GameObject with `WeaponMount`/`Engine`/`LiftDevice`
+3. **Add Component → Crew Station**
+4. Configure:
+   - **Station Id**: Must match Phase 3's `stationIdOverride` (e.g., `BowWeaponMount_Crew`)
+   - **Display Name**: Human-readable (e.g., `Bow Weapon Mount`)
+   - **Enforce Requirements**: ✓
+5. On subsystem component (`WeaponMount`/`Engine`/`LiftDevice`):
+   - **Crew Station**: Drag the `CrewStation` component
+   - **Auto Create Crew Station**: ✗ (uncheck)
+6. Go back to HUD slot (`HUD_Canvas/.../Bow_weapon_mount_CrewSlot`)
+7. On `CrewHUDStationSlot`:
+   - **Station**: Drag `CrewStation` from `Ship/Model/Bow_weapon_mount/Weapon_mount`
+
+#### Phase 5: CrewStationAnchorRuntimeBuilder (Add AFTER HUD Slot)
+**WHY**: Builder references Phase 3's HUD slot.
+
+For each multi-crew station:
+
+1. Select subsystem (e.g., `Ship/Model/Bow_weapon_mount/Weapon_mount`)
+2. **Add Component → Crew Station Anchor Runtime Builder**
+3. Configure:
+   - **Crew Station**: Drag `CrewStation` (same GameObject)
+   - **Station HUD Slot**: Drag Phase 3 slot (e.g., `HUD_Canvas/.../Bow_weapon_mount_CrewSlot`)
+   - **World Anchor Parent**: Create child:
+     1. Right-click subsystem → **Create Empty**
+     2. Rename to `CrewAnchor_World`
+     3. Position where crew should stand
+     4. Drag into field
+   - **HUD Anchor Parent**: Drag HUD slot's `IconAnchor` child
+   - **Crew Footprint Size**: 1.0
+   - **Icon Spacing**: 40.0
+4. **Save scene**: Ctrl+S
+
+#### Phase 6: Crew Prefabs and Persistence
+
+1. **Create crew prefab** (if not exists):
+   - **GameObject → 3D Object → Capsule**
+   - Rename to `CrewMember_Default`
+   - **Add Component → Health**
+     - Max Health: 100.0
+     - Current Health: 100.0
+   - **Add Component → Crew Member**
+     - Crew Id: Leave blank
+     - Display Name: "Crew Member"
+     - Skills: Set to 5.0 each
+     - Initial Station Id: Leave blank
+   - Drag to `Assets/Prefabs/`
+   - Delete from scene
+
+2. **Seed crew data**:
+   - Create `Assets/Resources/CrewPersistence.json`:
+
+```json
+{
+  "version": "1.0.0",
+  "lastSavedUtc": "2025-01-01T00:00:00.0000000Z",
+  "crewMembers": [
+    {
+      "crewId": "crew_001",
+      "displayName": "Ryn Calder",
+      "gunnery": 4.5,
+      "navigation": 6.2,
+      "repair": 5.0,
+      "powerEngineering": 3.8,
+      "liftEngineering": 4.1,
+      "maxHealth": 100.0,
+      "currentHealth": 100.0,
+      "assignedStationId": ""
+    },
+    {
+      "crewId": "crew_002",
+      "displayName": "Mira Voss",
+      "gunnery": 7.0,
+      "navigation": 4.0,
+      "repair": 5.5,
+      "powerEngineering": 6.0,
+      "liftEngineering": 3.5,
+      "maxHealth": 100.0,
+      "currentHealth": 100.0,
+      "assignedStationId": ""
+    }
+  ]
+}
+```
+
+3. Verify `CrewRuntimeSpawner` has prefab assigned
+
+#### Phase 7: Testing and Verification
+
+1. **Enter Play Mode**
+2. **Check Console**:
+   - `[CrewManager] Initialized`
+   - `[CrewPersistenceManager] Loaded X crew members`
+3. **Verify crew spawning**:
+   - Expand `CrewRuntimeSpawner` in Hierarchy
+   - Should see `CrewMember_Default(Clone)` instances
+4. **Verify unassigned anchors**:
+   - Expand `Ship/UnassignedCrewAnchors`
+   - Should see `UnassignedAnchor_0`, `UnassignedAnchor_1`, etc.
+   - Crew prefabs should be positioned there
+5. **Verify station anchors**:
+   - Expand weapon/engine with `CrewStationAnchorRuntimeBuilder`
+   - Should see `CrewAnchor_HUD_0`, `CrewAnchor_HUD_1` (up to `maximumCrewAllowed`)
+   - Should see world anchors under `CrewAnchor_World`
+6. **Test assignment** (via Inspector):
+   - Select `CrewMember_Default(Clone)`
+   - Set `Pending Station Id` to `BowWeaponMount_Crew`
+   - Crew should move to world anchor
+   - HUD icon should appear
+7. **Test skill effects**:
+   - Assign crew with different skills
+   - Fire weapon, observe spread/reload differences
+8. **Test persistence**:
+   - Assign crew, wait 30s
+   - Stop Play Mode
+   - Check `CrewPersistence.json` updated
+   - Re-enter Play Mode
+   - Crew should auto-assign to saved stations
+
+### Authoring Workflow (Quick Reference)
+1. **Prep crew prefabs**: Add `Health`, then `CrewMember`. Fill skills; leave `crewId` blank.
+2. **Place crew**: Drop anywhere under ship. Set `initialStationId` for auto-seating.
+3. **Create stations**: Add `CrewStation` to subsystems. Set stable `stationId`s. Configure `primarySkill` + `minimumSkillLevel`.
+4. **Hook stations**: Link `CrewStation` to `WeaponMount`/`Engine`/`LiftDevice`. Disable `autoCreateCrewStation` if manually assigned.
+5. **Verify wiring**: Enter Play Mode. Enable `CrewManager.debugLog` to watch registrations.
+6. **UI interaction**: HUD should call `CrewManager.TryAssignCrewToStationId()` on drag/drop.
 
 #### Skill Wiring Checklist
 1. **Author station requirements**

@@ -424,14 +424,49 @@ public class WeaponMount : MonoBehaviour
 
         Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
 
-        Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
+        // ========================================================================
+        // CHECK 1: Is the target's POSITION within the yaw arc of the cannon?
+        // This check happens FIRST, before any ballistic calculations.
+        // ========================================================================
+        Vector3 toTargetForAiming = aimPoint - origin;
+        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
+        float targetPositionYaw = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
 
-        // PRIMARY: Try ballistic lob solution first (proper arc with pitch and launch speed)
+        if (Mathf.Abs(targetPositionYaw) > halfYaw)
+        {
+            // Target is outside the yaw arc - no valid firing solution possible
+            // Set aim values to turn towards target, but return false
+            yaw = Mathf.Clamp(targetPositionYaw, -halfYaw, halfYaw);
+            Vector3 clampedLocalDir = Quaternion.Euler(0f, -yaw, 0f) * localDir;
+            float clampedPitch = -Mathf.Atan2(clampedLocalDir.y, clampedLocalDir.z) * Mathf.Rad2Deg;
+            pitch = Mathf.Clamp(clampedPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+            launchSpeed = currentLauncher.launchSpeed;
+            
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 1 FAILED: Target outside yaw arc. TargetYaw={targetPositionYaw:F1}° Limit=±{halfYaw:F1}°");
+            }
+            
+            return false;
+        }
+
+        if (enableDebugLogging)
+        {
+            LogDebug($"CHECK 1 PASSED: Target within yaw arc. TargetYaw={targetPositionYaw:F1}° Limit=±{halfYaw:F1}°");
+        }
+
+        // ========================================================================
+        // CHECK 2: Can a ballistic lob solution (LPLS) intercept the target?
+        // This is the preferred solution when available.
+        // ========================================================================
+        Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
         Vector3 worldUp = -gravityVector.normalized;
         float verticalOffset = Vector3.Dot(displacement, worldUp);
         Vector3 planar = displacement - verticalOffset * worldUp;
         float horizontalDistance = planar.magnitude;
         Vector3 planarDir;
+        
         if (horizontalDistance > 0.0005f)
         {
             planarDir = planar / horizontalDistance;
@@ -446,13 +481,6 @@ public class WeaponMount : MonoBehaviour
             planarDir = projectedForward.sqrMagnitude > 1e-6f ? projectedForward.normalized : reference.forward.normalized;
         }
 
-        Vector3 toTargetForAiming = aimPoint - origin;
-        Vector3 localDir = reference.InverseTransformDirection(toTargetForAiming.normalized);
-
-        float desiredYawLOS = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
-        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
-        float clampedYawLOS = Mathf.Clamp(desiredYawLOS, -halfYaw, halfYaw);
-
         float gravityMag = Physics.gravity.magnitude;
         if (gravityMag < 0.0001f)
             gravityMag = 9.81f;
@@ -464,7 +492,7 @@ public class WeaponMount : MonoBehaviour
 
         float solvedLaunchSpeedValue;
         float launchAngleRad;
-        bool solved = BallisticsSolver.SolveWithUnityDrag(
+        bool lobSolved = BallisticsSolver.SolveWithUnityDrag(
             horizontalDistance,
             verticalOffset,
             gravityMag,
@@ -475,8 +503,9 @@ public class WeaponMount : MonoBehaviour
             out solvedLaunchSpeedValue,
             out launchAngleRad);
 
-        if (solved)
+        if (lobSolved)
         {
+            // Calculate the aim direction required for the lob shot
             Vector3 worldAimDir;
             if (horizontalDistance > 0.0005f)
             {
@@ -497,98 +526,111 @@ public class WeaponMount : MonoBehaviour
             }
 
             Vector3 localAimDir = reference.InverseTransformDirection(worldAimDir);
-            float rawYaw = Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg;
+            float lobYaw = Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg;
             
-            // If the target is outside our yaw limits, we don't have a valid firing solution
-            if (Mathf.Abs(rawYaw) > halfYaw + 5f) // 5 degrees tolerance for edge cases
+            // Check if the lob's required yaw is within limits
+            // Note: This is different from CHECK 1 - the lob trajectory may need a different yaw than pointing at the target
+            if (Mathf.Abs(lobYaw) <= halfYaw)
             {
-                // We still clamp and return true-ish values so the turret turns TOWARDS the target,
-                // but we return false to indicate no valid solution.
-                yaw = Mathf.Clamp(rawYaw, -halfYaw, halfYaw);
+                Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -lobYaw, 0f) * localAimDir;
+                float lobPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
                 
-                Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -yaw, 0f) * localAimDir;
-                float desiredPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
-                pitch = Mathf.Clamp(desiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-                launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
-                
-                return false;
+                // Check if the lob's required pitch is within limits
+                if (lobPitch >= -Mathf.Abs(pitchDownDeg) && lobPitch <= Mathf.Abs(pitchUpDeg))
+                {
+                    yaw = lobYaw;
+                    pitch = Mathf.Clamp(lobPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+                    launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
+                    
+                    if (enableDebugLogging)
+                    {
+                        LogDebug($"CHECK 2 PASSED: Lob solution found. Yaw={yaw:F1}° Pitch={pitch:F1}° Speed={launchSpeed:F1}");
+                    }
+                    
+                    return true;
+                }
             }
-
-            yaw = Mathf.Clamp(rawYaw, -halfYaw, halfYaw);
-
-            Vector3 yawAlignedAimDir2 = Quaternion.Euler(0f, -yaw, 0f) * localAimDir;
-            float desiredPitch2 = -Mathf.Atan2(yawAlignedAimDir2.y, yawAlignedAimDir2.z) * Mathf.Rad2Deg;
-            pitch = Mathf.Clamp(desiredPitch2, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-            launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
-            return true;
-        }
-
-        // FALLBACK: If ballistic lob fails, try direct-fire solution (point straight at target)
-        // This is useful for close-range combat where the target is within 4 units
-        Collider targetCol = targetTransform.GetComponentInChildren<Collider>();
-        Bounds targetBounds = new Bounds();
-        bool hasBounds = false;
-
-        if (targetCol != null)
-        {
-            targetBounds = targetCol.bounds;
-            hasBounds = true;
+            
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 2 PARTIAL: Lob calculated but outside limits. LobYaw={lobYaw:F1}° LobPitch not checked. Limit=±{halfYaw:F1}°");
+            }
         }
         else
         {
-            Renderer targetRend = targetTransform.GetComponentInChildren<Renderer>();
-            if (targetRend != null)
+            if (enableDebugLogging)
             {
-                targetBounds = targetRend.bounds;
-                hasBounds = true;
+                LogDebug($"CHECK 2 FAILED: No lob solution exists for distance={horizontalDistance:F1}m vertical={verticalOffset:F1}m");
             }
         }
 
-        if (hasBounds)
+        // ========================================================================
+        // CHECK 3: Can direct-fire at maximum speed reach the target?
+        // This validates that a straight shot can actually reach the target.
+        // ========================================================================
+        float directDistance = displacement.magnitude;
+        
+        // Calculate time of flight for direct shot at max speed
+        float flightTime = directDistance / maxSpeed;
+        
+        // Calculate gravity drop during flight
+        float gravityDrop = 0.5f * gravityMag * flightTime * flightTime;
+        
+        // For direct fire to work, we need to compensate for gravity drop with pitch
+        // Calculate the pitch angle needed to compensate for gravity
+        Vector3 directDisplacement = aimPoint - origin;
+        Vector3 directLocalDir = reference.InverseTransformDirection(directDisplacement.normalized);
+        float directYaw = Mathf.Atan2(directLocalDir.x, directLocalDir.z) * Mathf.Rad2Deg;
+        
+        // Verify direct yaw is within limits (should be, since CHECK 1 passed)
+        if (Mathf.Abs(directYaw) <= halfYaw)
         {
-            // Candidate points to aim at: Center, then Closest Point (better for steep angles)
-            Vector3[] aimCandidates = new Vector3[] { targetBounds.center, targetBounds.ClosestPoint(origin) };
-            if (targetCol != null) aimCandidates[1] = targetCol.ClosestPoint(origin);
-
-            float vMax = currentLauncher.launchSpeed;
-            float directHalfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
-
-            foreach (Vector3 candidate in aimCandidates)
+            // Calculate the pitch required to hit the target with a straight shot
+            // accounting for gravity drop
+            Vector3 directDirAfterYaw = Quaternion.Euler(0f, -directYaw, 0f) * directLocalDir;
+            float directForwardComponent = directDirAfterYaw.z;
+            float directBasePitch = -Mathf.Atan2(directDirAfterYaw.y, directForwardComponent) * Mathf.Rad2Deg;
+            
+            // Add pitch compensation for gravity drop
+            // The compensation angle is arctan(gravityDrop / horizontal distance)
+            float horizontalDist = Mathf.Sqrt(directDistance * directDistance - (aimPoint.y - origin.y) * (aimPoint.y - origin.y));
+            float gravityCompensationAngle = Mathf.Atan2(gravityDrop, horizontalDist) * Mathf.Rad2Deg;
+            float directPitchWithGravity = directBasePitch + gravityCompensationAngle;
+            
+            // Check if the compensated pitch is within limits
+            if (directPitchWithGravity >= -Mathf.Abs(pitchDownDeg) && directPitchWithGravity <= Mathf.Abs(pitchUpDeg))
             {
-                Vector3 directDisplacement = candidate - origin;
-                float dist = directDisplacement.magnitude;
-                if (dist < 0.001f) continue;
-
-                Vector3 directLocalDir = reference.InverseTransformDirection(directDisplacement.normalized);
-                float directYawLOS = Mathf.Atan2(directLocalDir.x, directLocalDir.z) * Mathf.Rad2Deg;
-
-                if (Mathf.Abs(directYawLOS) <= directHalfYaw + 5f)
+                yaw = directYaw;
+                pitch = Mathf.Clamp(directPitchWithGravity, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+                launchSpeed = maxSpeed;
+                
+                if (enableDebugLogging)
                 {
-                    float clampedYaw = Mathf.Clamp(directYawLOS, -directHalfYaw, directHalfYaw);
-                    Vector3 directDirAfterYaw = Quaternion.Euler(0f, -clampedYaw, 0f) * directLocalDir;
-                    float directForwardAfterYaw = directDirAfterYaw.z;
-                    float directDesiredPitch = -Mathf.Atan2(directDirAfterYaw.y, directForwardAfterYaw) * Mathf.Rad2Deg;
-
-                    if (directDesiredPitch >= -Mathf.Abs(pitchDownDeg) - 5f && directDesiredPitch <= Mathf.Abs(pitchUpDeg) + 5f)
-                    {
-                        yaw = clampedYaw;
-                        pitch = Mathf.Clamp(directDesiredPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-                        launchSpeed = vMax;
-                        return true;
-                    }
+                    LogDebug($"CHECK 3 PASSED: Direct-fire solution. Yaw={yaw:F1}° Pitch={pitch:F1}° (base={directBasePitch:F1}° +gravity={gravityCompensationAngle:F1}°) Drop={gravityDrop:F1}m");
                 }
+                
+                return true;
+            }
+            
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 3 FAILED: Direct-fire pitch out of range. RequiredPitch={directPitchWithGravity:F1}° Limit={pitchUpDeg:F1}° to {-pitchDownDeg:F1}°");
             }
         }
 
-        // FINAL FALLBACK: Just aim in the general direction
-        Vector3 dirAfterYaw = Quaternion.Euler(0f, -clampedYawLOS, 0f) * localDir;
-        float forwardAfterYaw = dirAfterYaw.z;
-        float fallbackPitch = -Mathf.Atan2(dirAfterYaw.y, forwardAfterYaw) * Mathf.Rad2Deg;
-        fallbackPitch = Mathf.Clamp(fallbackPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-
-        yaw = clampedYawLOS;
-        pitch = fallbackPitch;
+        // All checks failed - no valid firing solution
+        // Set aim values to point towards target for visual feedback
+        yaw = Mathf.Clamp(targetPositionYaw, -halfYaw, halfYaw);
+        Vector3 fallbackLocalDir = Quaternion.Euler(0f, -yaw, 0f) * localDir;
+        pitch = -Mathf.Atan2(fallbackLocalDir.y, fallbackLocalDir.z) * Mathf.Rad2Deg;
+        pitch = Mathf.Clamp(pitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
         launchSpeed = currentLauncher.launchSpeed;
+        
+        if (enableDebugLogging)
+        {
+            LogDebug($"ALL CHECKS FAILED: No valid firing solution. Target unreachable.");
+        }
+        
         return false;
     }
 

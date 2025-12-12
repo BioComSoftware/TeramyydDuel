@@ -2077,6 +2077,288 @@ Purpose: Addressed remaining jitter/under-deflection by removing interpolation f
 
 ---
 
+## Session 10 (2025-12-12) - Crew System Integration: Requirements, Training, and Anchors
+
+### Major Systems Added
+
+**1. CrewStationRequirementProfile.cs** - Prefab-Attached Crew Requirements
+- **Purpose**: Authoritative configuration for crew requirements on weapon/engine/lift prefabs
+- **Key Fields**:
+  - `primarySkill`: Required skill type (Gunnery, PowerEngineering, LiftEngineering, etc.)
+  - `minimumSkillLevel`: Minimum skill rating to accept assignment (1-10 scale)
+  - `minimumCrewRequired`: Minimum crew for operation
+  - `maximumCrewAllowed`: Maximum crew capacity (determines anchor count)
+  - `trainingSkill`: Skill that increases through station operation
+  - `accrualMethod`: Time-based or Event-based skill progression
+  - `skillGainPerSecond` / `skillGainPerEvent`: Training rate configuration
+- **Architecture**: Uses `[RequireComponent]` pattern, applied via `ApplyTo(CrewStation)` at runtime
+- **Why**: Allows designers to configure crew requirements directly on prefabs without scene-specific wiring
+
+**2. Skill Training System Refactor**
+- **Old System** (Removed): Single `skillGainMultiplier` field with unclear behavior
+- **New System**: Explicit time-based or event-based accrual with clear designer controls
+
+**SkillAccrualMethod Enum**:
+- `Time`: Skill increases per game second (passive training while stationed)
+- `Event`: Skill increases when specific events occur (active training through actions)
+
+**SkillAccrualEvent Enum**:
+- `PerFiring`: Weapon crew gains skill each time weapon fires
+- Extensible for future events (PerRepair, PerNavUpdate, PerEngineAdjustment, etc.)
+
+**CrewStationRequirementProfileEditor.cs**:
+- Custom inspector with conditional field visibility
+- Shows `skillGainPerSecond` only when `accrualMethod = Time`
+- Shows `accrualEvent` and `skillGainPerEvent` only when `accrualMethod = Event`
+- Clear designer workflow with contextual tooltips
+
+**3. CrewStation.cs Updates**
+- **Skill System Integration**:
+  - `GetBestSkillLevel()`: Returns highest skill rating among assigned crew for `primarySkill`
+  - Automatically selects best-qualified crew member for bonuses
+  - Example: 2 crew at LiftEngineering, ratings 2.5 and 3.5 → uses 3.5 for performance calculations
+- **NonSerialized Fields**: Removed crew settings from inspector (now controlled by profile)
+  - `primarySkill`, `minimumSkillLevel`, `trainingSkill` marked `[System.NonSerialized]`
+  - `accrualMethod`, `skillGainPerSecond`, `accrualEvent`, `skillGainPerEvent` marked `[System.NonSerialized]`
+- **Why**: Enforces CrewStationRequirementProfile as single source of truth
+
+**4. Engine and LiftDevice Crew Integration**
+- **RequireComponent Pattern**: Both now require `CrewStationRequirementProfile`
+- **Auto-Creation**: `EnsureCrewStation()` creates CrewStation if missing, applies profile settings
+- **Station ID Generation**: 
+  - Engine: `{gameObject.name}_EngineCrew`
+  - LiftDevice: `{gameObject.name}_LiftCrew`
+- **Crew Requirement Enforcement**:
+  - Engine: No thrust if crew requirements not met
+  - LiftDevice: Hovers at current altitude if undermanned (special hover behavior)
+- **Skill Bonus Hooks**:
+  - `GetBestEngineeringSkill()`: Returns best PowerEngineering rating from assigned crew
+  - `GetBestLiftEngineeringSkill()`: Returns best LiftEngineering rating from assigned crew
+  - Ready for future performance modifiers (efficiency, damage mitigation, etc.)
+
+**5. Multi-Crew Anchor System**
+- **CrewStationAnchorRuntimeBuilder.cs**: Dynamic anchor generation for multi-crew stations
+  - Reads `MaximumCrewAllowed` from CrewStation to determine anchor count
+  - Creates both HUD anchors (UI icons) and world anchors (3D crew positions)
+  - Auto-distributes HUD anchors with configurable spacing
+  - Supports 1-4+ crew per station with smart grid layout
+- **Anchor Rebuild System**:
+  - `RebuildAnchors()`: Public method to regenerate anchors when crew limits change
+  - `RequestAnchorRebuild()`: Helper in Engine/LiftDevice to trigger rebuilds
+  - Monitors `previousMax` vs current `MaximumCrewAllowed` to detect changes
+- **Layout Algorithms**:
+  - World anchors: 2-column grid with row spacing for 4+ crew
+  - HUD anchors: Horizontal distribution with padding and min-spacing controls
+- **Integration**: Registers anchors with `CrewRuntimeSpawner` for 3D crew prefab placement
+
+**6. Unassigned Crew 3D World Anchors**
+- **UnassignedCrewAnchorBuilder.cs**: Grid-based anchor system for unassigned crew
+  - **Grid Layout**: Distributes crew in rows/columns based on total crew count
+  - **Configurable Parameters**:
+    - `anchorsPerRow`: Number of crew per row (default: 10, user-adjustable 3-10)
+    - `crewFootprintSize`: Size each crew occupies in meters (default: 1m)
+    - `spacingMultiplier`: Space between crew positions (default: 1.2x)
+  - **Auto-Calculation**: Reads crew count from `CrewPersistenceManager` at Awake
+  - **Centered Grid**: Automatically centers grid at parent origin
+  - **Example**: 50 crew with anchorsPerRow=10 → 5 rows × 10 columns, evenly spaced
+- **Integration with CrewRuntimeSpawner**:
+  - Registers anchors under station ID `"unassigned_crew"`
+  - CrewMember_Default.prefab spawns at grid positions when unassigned
+  - Moves to station anchors when assigned, returns to grid when unassigned
+
+**7. CrewRuntimeSpawner.cs Updates**
+- **Removed Obsolete System**: Station Anchors serialized array (manual configuration)
+  - Deleted `StationAnchorBinding` struct
+  - Deleted `stationAnchors` field
+  - Deleted `RebuildAnchorLookup()` method
+  - Deleted `EnumerateAnchors()` helper
+  - Deleted `OnValidate()` method
+- **Why**: Runtime builders (`CrewStationAnchorRuntimeBuilder`, `UnassignedCrewAnchorBuilder`) now register all anchors dynamically
+- **Unassigned Crew Support**:
+  - `PositionCrewAtAnchor()`: Now tries unassigned_crew anchors if no station assigned
+  - `HandleVisualAnchorChanged()`: Routes unassigned crew to grid anchors
+  - Visibility management: Shows crew at unassigned anchors, hides if no anchors available
+- **Architecture**: Purely dynamic registration via `RegisterStationAnchors(stationId, anchors)`
+
+### Workflow Changes
+
+**For Designers - Configuring Multi-Crew Stations**:
+1. Add `CrewStationRequirementProfile` to weapon/engine/lift prefab
+2. Set crew requirements in inspector:
+   - Primary skill type (Gunnery, PowerEngineering, LiftEngineering)
+   - Minimum skill level (1-10)
+   - Min/Max crew (determines operational capacity and anchor count)
+3. Configure training:
+   - Choose Time or Event-based accrual
+   - Set skill gain rate
+   - Select training skill (defaults to primary skill)
+4. Engine/LiftDevice automatically creates anchors based on MaximumCrewAllowed
+5. CrewRuntimeSpawner spawns 3D crew at anchors when assigned
+
+**For Designers - Configuring Unassigned Crew Area**:
+1. Create empty GameObject on ship (e.g., "UnassignedCrewArea")
+2. Add `UnassignedCrewAnchorBuilder` component
+3. Set `worldAnchorParent` to ship location for crew (e.g., deck area)
+4. Set `worldAnchorPrefab` to CrewWorldAnchor prefab (or leave empty)
+5. Configure grid layout:
+   - `anchorsPerRow`: How many crew per row (3, 5, 10, etc.)
+   - `crewFootprintSize`: Size of each crew in meters
+   - `spacingMultiplier`: Spacing between crew
+6. System auto-detects crew count and generates grid
+
+**For Programmers - Skill Bonus Implementation**:
+```csharp
+// In Engine or LiftDevice Update():
+float engineeringSkill = GetBestEngineeringSkill(); // 0-10 scale
+float efficiencyBonus = 1.0f + (engineeringSkill * 0.05f); // +5% per skill level
+float actualOutput = baseOutput * efficiencyBonus;
+```
+
+### Architecture Decisions
+
+**Why CrewStationRequirementProfile?**
+- Prefab-attached configuration survives scene reloads
+- Designers configure once on prefab, applies to all instances
+- Separates authoring (profile) from runtime state (CrewStation)
+- Supports asset-based workflow (can create profiles in project view)
+
+**Why Separate Training from Skill Requirements?**
+- Primary skill = what's needed to operate station
+- Training skill = what improves through use
+- Example: PowerEngineering required, but also trains Repair skill
+- Extensible for complex progression (e.g., gunnery training improves leadership)
+
+**Why Runtime Anchor Builders?**
+- Dynamic generation based on crew capacity prevents manual sync errors
+- MaximumCrewAllowed changes → anchors automatically rebuild
+- Supports procedural ship generation (future)
+- Scene designers don't manually create/wire dozens of anchor transforms
+
+**Why Grid Layout for Unassigned Crew?**
+- Scalable to any crew roster size (10 crew or 100 crew)
+- Visual organization (rows/columns easier to read than random/linear)
+- Configurable spacing prevents crew overlap
+- Centered grid maintains visual balance
+
+### Breaking Changes
+
+**CrewStation Inspector**:
+- ❌ Removed editable crew settings (min/max crew, skills)
+- ✅ Now read-only at runtime (controlled by profile)
+- Migration: Move settings from CrewStation to CrewStationRequirementProfile on prefab
+
+**Engine/LiftDevice Requirements**:
+- ❌ No longer use `defaultCrewRequired` or `defaultCrewMax` fields (removed)
+- ✅ Must have CrewStationRequirementProfile component on same GameObject
+- Migration: Add profile component, configure min/max crew
+
+**CrewRuntimeSpawner**:
+- ❌ Removed "Station Anchors" serialized array from inspector
+- ✅ All anchors registered dynamically via builders
+- Migration: Remove manual anchor configurations, rely on runtime builders
+
+### Testing Checklist
+
+**Multi-Crew Weapons**:
+- ✅ Set MaximumCrewAllowed = 4 on weapon profile
+- ✅ Verify 4 HUD anchors appear in crew HUD
+- ✅ Verify 4 world anchors appear on weapon mount
+- ✅ Assign 4 crew members, verify icons distribute across anchors
+- ✅ Verify 4 CrewMember_Default.prefabs spawn at world anchors
+
+**Engine/Lift Crew**:
+- ✅ Set MinCrew=2, MaxCrew=4 on Engine profile
+- ✅ Verify engine does not produce thrust with 0-1 crew
+- ✅ Verify engine operates normally with 2+ crew
+- ✅ Set MinCrew=2, MaxCrew=4 on LiftDevice profile
+- ✅ Verify lift hovers at altitude with 0-1 crew (special behavior)
+- ✅ Verify lift responds to controls with 2+ crew
+
+**Unassigned Crew Grid**:
+- ✅ Configure anchorsPerRow = 10
+- ✅ Start with 50 unassigned crew
+- ✅ Verify 5 rows × 10 columns of anchors created
+- ✅ Verify 50 CrewMember_Default.prefabs spawn in grid
+- ✅ Assign crew to station, verify prefab moves from grid to station
+- ✅ Unassign crew, verify prefab returns to grid
+
+**Skill Training**:
+- ✅ Set weapon to Event-based, PerFiring, gain=0.1
+- ✅ Assign crew with Gunnery=5.0
+- ✅ Fire weapon 10 times
+- ✅ Verify crew Gunnery increases to 6.0
+- ✅ Set engine to Time-based, gain=0.01/sec
+- ✅ Assign crew with PowerEngineering=3.0
+- ✅ Run for 100 seconds
+- ✅ Verify crew PowerEngineering increases to 4.0
+
+**Skill Best-Selection**:
+- ✅ Assign 2 crew to LiftDevice
+- ✅ Crew 1: LiftEngineering = 2.5
+- ✅ Crew 2: LiftEngineering = 3.5
+- ✅ Call GetBestLiftEngineeringSkill()
+- ✅ Verify returns 3.5 (highest rating)
+
+### Files Modified
+
+**New Files**:
+1. `Assets/Scripts/Crew/CrewStationRequirementProfile.cs`
+2. `Assets/Scripts/Crew/UnassignedCrewAnchorBuilder.cs`
+3. `Assets/Editor/CrewStationRequirementProfileEditor.cs`
+
+**Modified Files**:
+1. `Assets/Scripts/Crew/CrewStation.cs` - NonSerialized fields, GetBestSkillLevel()
+2. `Assets/Scripts/Crew/CrewStationAnchorRuntimeBuilder.cs` - Anchor rebuild integration
+3. `Assets/Scripts/Crew/CrewMember.cs` - Event-based skill accrual
+4. `Assets/Scripts/Engine.cs` - Profile integration, EnsureCrewStation(), RequestAnchorRebuild()
+5. `Assets/Scripts/LiftDevice.cs` - Profile integration, hover behavior, RequestAnchorRebuild()
+6. `Assets/Scripts/Systems/CrewRuntimeSpawner.cs` - Removed station anchors array, unassigned support
+7. `Assets/Scripts/UI/CrewHUDController.cs` - Anchor change events
+8. `Assets/Scripts/WeaponMount.cs` - Anchor rebuild when crew limits change
+
+### Known Issues
+
+**Resolved**:
+- ✅ Weapon mount crew icons flickering during drag - Fixed by reordering anchor rebuild logic
+- ✅ Only 1 anchor created despite MaxCrew=4 - Fixed by adding RequestAnchorRebuild() to Engine/Lift
+- ✅ Crew portraits showing as white boxes - Fixed by restoring UpdateVisuals() call
+- ✅ Ballistic lob not working at distance - Fixed by reordering TrySolveBallisticArc() to try lob first
+
+**Open**:
+- Unassigned crew grid doesn't rebuild dynamically if crew roster changes at runtime
+- No visual feedback for undermanned stations (planned: warning indicators)
+- Skill training rates need balancing pass (current values are placeholders)
+
+### Next Steps
+
+1. **Visual Polish**:
+   - Add warning indicators for undermanned stations
+   - Glow/highlight anchors when crew can be assigned
+   - Show skill progression feedback when crew gains levels
+
+2. **Skill System Expansion**:
+   - Implement efficiency bonuses based on skill levels
+   - Add skill requirements for advanced actions (complex maneuvers, special weapons)
+   - Create skill prerequisites (must have Gunnery 5 to train Advanced Gunnery)
+
+3. **Crew Management UI**:
+   - Drag-and-drop crew assignment between stations
+   - Crew roster panel with filtering and sorting
+   - Training progress indicators
+
+4. **Performance Optimizations**:
+   - Object pooling for CrewMember_Default.prefabs
+   - Batch anchor position updates
+   - Optimize GetBestSkillLevel() calls (cache results per frame)
+
+5. **Additional Features**:
+   - Crew fatigue system (reduces skill effectiveness over time)
+   - Crew morale (affects all skills)
+   - Crew injuries (temporary skill penalties)
+   - Crew promotion system (unlock new skills)
+
+---
+
 ## Session 9 (2025-11-20) - Lift Chadburn Controller Implementation
 
 Purpose: Created telegraph-style UI controller for lift device power allocation, mirroring the engine Chadburn design.
