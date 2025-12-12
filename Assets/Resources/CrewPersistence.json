@@ -1,102 +1,54 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-12T14:37:30.1151060Z",
+    "lastSavedUtc": "2025-12-12T15:59:24.0199994Z",
     "crewMembers": [
         {
-            "crewId": "crew_ryn_calder",
-            "displayName": "Ryn Calder",
-            "gunnery": 2.9999992847442629,
+            "crewId": "crew_serena_brasswolf",
+            "displayName": "Serena Brasswolf",
+            "gunnery": 7.875004291534424,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 1.6232669353485108,
-            "liftEngineering": 1.0,
+            "powerEngineering": 1.0,
+            "liftEngineering": 1.1133694648742676,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_400f4506ccb44d5a922bcccfbf649d35"
+            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 5.199998378753662,
+            "gunnery": 3.119999647140503,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 1.5350302457809449,
-            "liftEngineering": 1.0,
+            "powerEngineering": 1.6315761804580689,
+            "liftEngineering": 1.3073112964630128,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_400f4506ccb44d5a922bcccfbf649d35"
+            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 9.290009498596192,
+            "gunnery": 6.350005149841309,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 1.1115639209747315,
-            "liftEngineering": 2.2131266593933107,
+            "powerEngineering": 1.6864873170852662,
+            "liftEngineering": 1.3072773218154908,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_be37bd3eefd54f78b435718808d057a4"
-        },
-        {
-            "crewId": "crew_serena_brasswolf",
-            "displayName": "Serena Brasswolf",
-            "gunnery": 8.18000602722168,
-            "navigation": 1.0,
-            "repair": 1.0,
-            "powerEngineering": 1.1033445596694947,
-            "liftEngineering": 2.6761436462402345,
-            "maxHealth": 100.0,
-            "currentHealth": 100.0,
-            "assignedStationId": "station_be37bd3eefd54f78b435718808d057a4"
-        },
-        {
-            "crewId": "crew_serena_brasswolf",
-            "displayName": "Serena Brasswolf",
-            "gunnery": 6.175005912780762,
-            "navigation": 1.0,
-            "repair": 1.0,
-            "powerEngineering": 1.0,
-            "liftEngineering": 1.0,
-            "maxHealth": 100.0,
-            "currentHealth": 100.0,
-            "assignedStationId": ""
-        },
-        {
-            "crewId": "crew_jens_nordstrom",
-            "displayName": "Jens Nordstrom",
-            "gunnery": 2.620000123977661,
-            "navigation": 1.0,
-            "repair": 1.0,
-            "powerEngineering": 1.0,
-            "liftEngineering": 1.0,
-            "maxHealth": 100.0,
-            "currentHealth": 100.0,
-            "assignedStationId": ""
-        },
-        {
-            "crewId": "crew_morgan_lee",
-            "displayName": "Morgan Lee",
-            "gunnery": 5.950005531311035,
-            "navigation": 1.0,
-            "repair": 1.0,
-            "powerEngineering": 1.0,
-            "liftEngineering": 1.0,
-            "maxHealth": 100.0,
-            "currentHealth": 100.0,
-            "assignedStationId": ""
+            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 1.8999991416931153,
+            "gunnery": 3.5999977588653566,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": ""
+            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
         }
     ]
 }

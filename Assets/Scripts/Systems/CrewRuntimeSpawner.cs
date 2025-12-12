@@ -10,23 +10,11 @@ using Teramyyd.UI;
 [AddComponentMenu("Teramyyd/Crew/Crew Runtime Spawner")]
 public class CrewRuntimeSpawner : MonoBehaviour
 {
-    [Serializable]
-    public struct StationAnchorBinding
-    {
-        [Tooltip("CrewStation.stationId this anchor represents (case-sensitive).")]
-        public string stationId;
-        public Transform anchor;
-        [Tooltip("Optional extra anchors for stations that support more than one crew member.")]
-        public Transform[] additionalAnchors;
-    }
-
     [Header("Setup")]
     [Tooltip("Prefab that contains a CrewMember component (and any visuals) to clone per saved crew entry.")]
     [SerializeField] CrewMember defaultCrewPrefab;
     [Tooltip("Optional override for where spawned crew GameObjects are parented.")]
     [SerializeField] Transform crewParent;
-    [Tooltip("World anchors that correspond to station identifiers so spawned crew can snap into place.")]
-    [SerializeField] StationAnchorBinding[] stationAnchors;
 
     [Header("Visuals")]
     [Tooltip("Hide renderer components while a crew member is unassigned.")]
@@ -43,12 +31,7 @@ public class CrewRuntimeSpawner : MonoBehaviour
 
     void Awake()
     {
-        RebuildAnchorLookup();
-    }
-
-    void OnValidate()
-    {
-        RebuildAnchorLookup();
+        // Anchor lookup is now populated exclusively via RegisterStationAnchors() at runtime
     }
 
     void OnEnable()
@@ -72,40 +55,9 @@ public class CrewRuntimeSpawner : MonoBehaviour
         SpawnPersistedCrew();
     }
 
-    void RebuildAnchorLookup()
-    {
-        _anchorLookup.Clear();
-        _stationAnchorNextIndex.Clear();
-        if (stationAnchors == null)
-            return;
-
-        foreach (var binding in stationAnchors)
-        {
-            if (string.IsNullOrWhiteSpace(binding.stationId))
-                continue;
-
-            foreach (var anchor in EnumerateAnchors(binding))
-            {
-                if (anchor == null)
-                    continue;
-
-                if (!_anchorLookup.TryGetValue(binding.stationId, out var list))
-                {
-                    list = new List<Transform>();
-                    _anchorLookup[binding.stationId] = list;
-                }
-
-                if (!list.Contains(anchor))
-                {
-                    list.Add(anchor);
-                }
-            }
-        }
-    }
-
     /// <summary>
-    /// Allows runtime systems (e.g., CrewStationAnchorRuntimeBuilder) to override anchors for a station.
-    /// Passing null or an empty list removes the override and falls back to serialized values.
+    /// Allows runtime systems (e.g., CrewStationAnchorRuntimeBuilder) to register anchors for a station.
+    /// Passing null or an empty list removes the registration.
     /// </summary>
     public void RegisterStationAnchors(string stationId, IList<Transform> anchors)
     {
@@ -180,10 +132,8 @@ public class CrewRuntimeSpawner : MonoBehaviour
                 continue;
 
             _spawnedCrewById[state.crewId] = crew;
-            if (hideUnassignedVisuals && string.IsNullOrEmpty(state.assignedStationId))
-            {
-                SetCrewVisualActive(crew, false);
-            }
+            // Note: PositionCrewAtAnchor (called in SpawnCrewFromState) already handles visibility
+            // based on whether valid anchors exist. No need to hide here.
         }
     }
 
@@ -224,6 +174,25 @@ public class CrewRuntimeSpawner : MonoBehaviour
             return;
         }
 
+        // If no station assigned, try unassigned crew anchors
+        if (string.IsNullOrEmpty(stationId))
+        {
+            if (TryGetNextAnchor("unassigned_crew", out var unassignedAnchor) && unassignedAnchor != null)
+            {
+                crew.transform.SetPositionAndRotation(unassignedAnchor.position, unassignedAnchor.rotation);
+                // Show visuals if we have a valid unassigned anchor
+                SetCrewVisualActive(crew, true);
+                return;
+            }
+            
+            // No unassigned anchor available - respect hideUnassignedVisuals setting
+            if (hideUnassignedVisuals)
+            {
+                SetCrewVisualActive(crew, false);
+            }
+        }
+
+        // Fallback to parent origin
         if (crewParent != null)
         {
             crew.transform.localPosition = Vector3.zero;
@@ -307,10 +276,21 @@ public class CrewRuntimeSpawner : MonoBehaviour
             }
         }
 
-        if (station == null && hideUnassignedVisuals)
+        // Crew is unassigned - try to position at an unassigned anchor
+        if (station == null)
         {
-            SetCrewVisualActive(trackedCrew, false);
-            return;
+            if (TryGetNextAnchor("unassigned_crew", out var unassignedAnchor) && unassignedAnchor != null)
+            {
+                trackedCrew.transform.SetPositionAndRotation(unassignedAnchor.position, unassignedAnchor.rotation);
+                SetCrewVisualActive(trackedCrew, true);
+                return;
+            }
+            
+            if (hideUnassignedVisuals)
+            {
+                SetCrewVisualActive(trackedCrew, false);
+                return;
+            }
         }
 
         if (hideUnassignedVisuals)
@@ -335,22 +315,6 @@ public class CrewRuntimeSpawner : MonoBehaviour
         }
 
         return -1;
-    }
-
-    IEnumerable<Transform> EnumerateAnchors(StationAnchorBinding binding)
-    {
-        if (binding.anchor != null)
-            yield return binding.anchor;
-
-        if (binding.additionalAnchors == null)
-            yield break;
-
-        for (int i = 0; i < binding.additionalAnchors.Length; i++)
-        {
-            var extra = binding.additionalAnchors[i];
-            if (extra != null)
-                yield return extra;
-        }
     }
 
     void SetCrewVisualActive(CrewMember crew, bool isActive)
