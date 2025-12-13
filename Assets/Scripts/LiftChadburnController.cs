@@ -58,6 +58,20 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
     [Header("Debug")]
     public bool debugLog = false;
 
+    [Header("Messages")]
+    [Tooltip("Reference to the MessageBoxController for displaying unmanned warnings")]
+    public MessageBoxController messageBox;
+    
+    [Tooltip("Messages shown when player moves lift chadburn but no crew assigned to lift")]
+    public string[] unmannedLiftMessages = new string[]
+    {
+        "The lift controls are unmanned!",
+        "Nobody is at the lift station.",
+        "We need crew at the lift controls!",
+        "The lift station is empty - assign crew!",
+        "There's no one manning the lift!"
+    };
+
     // Components
     private Image handleImage;
     private AudioSource audioSource;
@@ -66,6 +80,10 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
     // State
     private bool isDragging = false;
     private float lastLoggedPercent = -1f;
+    
+    // Message throttling
+    private float _lastMessageTime = -999f;
+    private const float MESSAGE_COOLDOWN = 2f;
 
     // Public accessors
     public float CurrentRotation => _currentRotation;
@@ -347,6 +365,16 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
             _allocatedPowerPerSecond = 0f;
             return;
         }
+        
+        // Check if lift is unmanned when trying to change altitude
+        bool tryingToChangeLift = _isIncreasingLift || _isReducingLift;
+        bool liftUnmanned = targetLiftDevice.crewStation != null && targetLiftDevice.crewStation.AssignedCrewCount == 0;
+        
+        if (tryingToChangeLift && liftUnmanned && Time.time - _lastMessageTime > MESSAGE_COOLDOWN)
+        {
+            ShowUnmannedMessage();
+            _lastMessageTime = Time.time;
+        }
 
         float hoverPower = Mathf.Max(targetLiftDevice.HoverPowerPerSecond, 0f);
         float referenceHover = (hoverPower > 0f) ? hoverPower : Mathf.Max(hoverPowerFallback, 0f);
@@ -405,6 +433,17 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
             float maxRequestedPower = referenceHover + referenceHover * Mathf.Max(0f, ascendPowerMultiple);
             FileLogger.Log($"Lift Chadburn [{mode}] {_currentPercentage:F0}% -> {_allocatedPowerPerSecond:F1}/s (hover {hoverPower:F1}/s, req<=~{maxRequestedPower:F1}/s)", "LiftChadburn");
             lastLoggedPercent = _currentPercentage;
+        }
+    }
+    
+    /// <summary>
+    /// Display a random message indicating the lift is unmanned.
+    /// </summary>
+    private void ShowUnmannedMessage()
+    {
+        if (messageBox != null && unmannedLiftMessages != null && unmannedLiftMessages.Length > 0)
+        {
+            messageBox.ShowRandomMessage(unmannedLiftMessages);
         }
     }
 }

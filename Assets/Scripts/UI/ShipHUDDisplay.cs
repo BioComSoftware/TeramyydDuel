@@ -377,7 +377,7 @@ public class ShipHUDDisplay : MonoBehaviour
         if (mount == null)
             return;
 
-        mount.TryFire();
+        mount.TryFire(ignoreTargetLock: false, showUnmannedMessage: true);
     }
 
     void EnsureHealthBarRuntime(ShipHUDMountDisplay binding)

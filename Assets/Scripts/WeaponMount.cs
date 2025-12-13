@@ -85,7 +85,7 @@ public class WeaponMount : MonoBehaviour
     /// <summary>
     /// Attempt to fire the currently mounted weapon. Returns true if a fire command was issued.
     /// </summary>
-    public bool TryFire(bool ignoreTargetLock = false)
+    public bool TryFire(bool ignoreTargetLock = false, bool showUnmannedMessage = false)
     {
         if (!HasOperationalCrew())
         {
@@ -93,6 +93,14 @@ public class WeaponMount : MonoBehaviour
             int assigned = crewStation != null ? crewStation.AssignedCrewCount : 0;
             int required = crewStation != null ? crewStation.MinimumCrewRequired : 0;
             LogDebug($"TryFire blocked - no crew assigned (station={stationId}, assigned={assigned}, required={required}).");
+            
+            // Show message only when manually fired (not from Fire-at-Will or F key)
+            // Delegate to the launcher so each weapon type can have custom messages
+            if (showUnmannedMessage && currentLauncher != null)
+            {
+                currentLauncher.ShowUnmannedWeaponMessage();
+            }
+            
             return false;
         }
 

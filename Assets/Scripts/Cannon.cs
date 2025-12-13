@@ -9,6 +9,21 @@ public class Cannon : ProjectileLauncher
 {
     [Header("Audio")]
     [SerializeField] private AudioSource fireAudioSource;
+    
+    [Header("Messages")]
+    [Tooltip("Reference to the MessageBoxController for displaying unmanned warnings")]
+    public MessageBoxController messageBox;
+    
+    [Tooltip("Messages shown when player tries to manually fire this cannon with no crew assigned")]
+    public string[] unmannedCannonMessages = new string[]
+    {
+        "This cannon has no crew assigned!",
+        "The cannon is unmanned.",
+        "We need crew at this gun!",
+        "Nobody is manning this weapon!",
+        "Assign crew to this cannon first!"
+    };
+    
     [Header("Usage wear and tear")]
     [Tooltip("Health component that receives self-damage each time the cannon fires. Leave empty to auto-detect on the mesh child.")]
     [SerializeField] private Health wearTarget;
@@ -101,6 +116,17 @@ public class Cannon : ProjectileLauncher
         if (wearTarget != null)
         {
             wearTarget.TakeDamage(damagePerShot);
+        }
+    }
+    
+    /// <summary>
+    /// Display a random cannon-specific message when trying to fire unmanned.
+    /// </summary>
+    public override void ShowUnmannedWeaponMessage()
+    {
+        if (messageBox != null && unmannedCannonMessages != null && unmannedCannonMessages.Length > 0)
+        {
+            messageBox.ShowRandomMessage(unmannedCannonMessages);
         }
     }
 }

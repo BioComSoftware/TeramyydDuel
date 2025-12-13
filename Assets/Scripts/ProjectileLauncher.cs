@@ -390,4 +390,14 @@ public class ProjectileLauncher : MonoBehaviour
 
         return rb.linearDamping; // fallback for older Unity versions
     }
+    
+    /// <summary>
+    /// Display a random message indicating this weapon is unmanned.
+    /// Called by WeaponMount when player attempts manual fire with no crew.
+    /// Override in child classes to customize messages per weapon type.
+    /// </summary>
+    public virtual void ShowUnmannedWeaponMessage()
+    {
+        // Base implementation does nothing - override in child classes
+    }
 }

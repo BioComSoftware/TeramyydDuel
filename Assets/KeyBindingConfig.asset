@@ -32,6 +32,9 @@ MonoBehaviour:
   _wheelLeft: 0
   _wheelRight: 0
   _autoReturnSpeedDegPerSec: 90
+  _liftUp: 0
+  _liftDown: 0
+  _liftChadburnRotationSpeed: 45
   _snapRequiresCtrl: 1
   _zoomRequiresCtrl: 1
-  debugLog: 1
+  debugLog: 0

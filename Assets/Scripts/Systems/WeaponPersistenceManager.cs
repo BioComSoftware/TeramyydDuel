@@ -60,7 +60,8 @@ public class WeaponPersistenceManager : MonoBehaviour
     public bool autoSaveEnabled = true;
 
     [Header("Weapon Registry")]
-    [Tooltip("List of weapon prefabs that can be restored from persistence. The prefab name (minus ' (Clone)') must match the saved weaponName.")]
+    [Space(10)]
+    [Tooltip("⚠️ IMPORTANT: Add weapon prefabs here that can be mounted on weapon mounts. The system matches prefabs by NAME: if GamePersistence.json contains 'Cannon(Clone)', the prefab must be named 'Cannon' (system strips '(Clone)' automatically). Example: prefab named 'Ballista' matches 'Ballista(Clone)' in the JSON file.")]
     public List<GameObject> weaponPrefabs = new List<GameObject>();
 
     private WeaponPersistenceSnapshot _snapshot = new WeaponPersistenceSnapshot();

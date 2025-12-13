@@ -59,11 +59,29 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
     [Header("Debug")]
     public bool debugLog = false;
     
+    [Header("Messages")]
+    [Tooltip("Reference to the MessageBoxController for displaying unmanned warnings")]
+    public MessageBoxController messageBox;
+    
+    [Tooltip("Messages shown when player moves chadburn but no crew assigned to engine")]
+    public string[] unmannedEngineMessages = new string[]
+    {
+        "The engine room is unmanned!",
+        "Nobody is at the engine controls.",
+        "We need crew in the engine room!",
+        "The engine room is empty - assign crew!",
+        "There's no one manning the engine!"
+    };
+    
     // Component references
     private Image handleImage;
     private AudioSource audioSource;
     private Canvas canvas;
     private ShipCharacteristics shipCharacteristics;
+    
+    // Message throttling
+    private float _lastMessageTime = -999f;
+    private const float MESSAGE_COOLDOWN = 2f;
     
     // Dragging state
     private bool isDragging = false;
@@ -353,6 +371,16 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         
         if (targetEngine != null)
         {
+            // Check if engine is unmanned when trying to change speed
+            bool tryingToMove = Mathf.Abs(_currentRotation) > DEAD_ZONE;
+            bool engineUnmanned = targetEngine.crewStation != null && targetEngine.crewStation.AssignedCrewCount == 0;
+            
+            if (tryingToMove && engineUnmanned && Time.time - _lastMessageTime > MESSAGE_COOLDOWN)
+            {
+                ShowUnmannedMessage();
+                _lastMessageTime = Time.time;
+            }
+            
             // Send commands to engine
             if (_isAhead)
             {
@@ -460,6 +488,17 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
     {
         float angle = -Mathf.Clamp(percentage, 0f, 100f) * (maxRotationDegrees / 100f);
         SetRotation(angle);
+    }
+    
+    /// <summary>
+    /// Display a random message indicating the engine is unmanned.
+    /// </summary>
+    private void ShowUnmannedMessage()
+    {
+        if (messageBox != null && unmannedEngineMessages != null && unmannedEngineMessages.Length > 0)
+        {
+            messageBox.ShowRandomMessage(unmannedEngineMessages);
+        }
     }
     
 }
