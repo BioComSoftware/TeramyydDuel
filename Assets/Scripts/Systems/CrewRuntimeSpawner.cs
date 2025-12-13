@@ -52,6 +52,15 @@ public class CrewRuntimeSpawner : MonoBehaviour
 
     void Start()
     {
+        // Delay spawning to ensure all CrewStationAnchorRuntimeBuilder components
+        // have registered their anchors in OnEnable() before we try to use them
+        StartCoroutine(SpawnPersistedCrewDelayed());
+    }
+
+    System.Collections.IEnumerator SpawnPersistedCrewDelayed()
+    {
+        // Wait one frame to allow all anchor builders to register
+        yield return null;
         SpawnPersistedCrew();
     }
 

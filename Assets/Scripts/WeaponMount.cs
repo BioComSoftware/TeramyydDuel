@@ -748,7 +748,14 @@ public class WeaponMount : MonoBehaviour
         if (!CrewManager.HasInstance)
             return true;
 
-        return CrewManager.Instance.MeetsRequirement(crewStation);
+        bool meetsReq = CrewManager.Instance.MeetsRequirement(crewStation);
+        
+        if (enableDebugLogging && crewStation != null)
+        {
+            LogDebug($"HasOperationalCrew check: Station={crewStation.stationId}, AssignedCrew={crewStation.AssignedCrewCount}, MinRequired={crewStation.MinimumCrewRequired}, MeetsReq={meetsReq}");
+        }
+        
+        return meetsReq;
     }
 
     void SyncAimTargetsToCurrentPose()
@@ -967,6 +974,12 @@ public class WeaponMount : MonoBehaviour
         // Simple crew-based reload: 1 crew = 1.0x, 2+ crew = 0.5x (half reload time)
         int assignedCrewCount = crewStation != null ? crewStation.AssignedCrewCount : 0;
         float desiredReloadScale = (assignedCrewCount >= 2) ? 0.5f : 1.0f;
+        
+        if (enableDebugLogging && (_lastReloadScale < 0f || !Mathf.Approximately(desiredReloadScale, _lastReloadScale)))
+        {
+            LogDebug($"Reload scale update: {assignedCrewCount} crew -> scale {desiredReloadScale}x (1.0=normal, 0.5=double speed)");
+        }
+        
         ApplyReloadScale(desiredReloadScale);
     }
 
