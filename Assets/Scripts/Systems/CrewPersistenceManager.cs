@@ -72,6 +72,10 @@ public class CrewPersistenceManager : MonoBehaviour
     public string resourceFileName = "CrewPersistence";
     public float saveIntervalSeconds = 30f;
     public bool autoSaveEnabled = true;
+    
+    [Header("Debug")]
+    [Tooltip("Enable debug logging to Console and log file")]
+    public bool debugLog = false;
 
     readonly Dictionary<string, CrewMemberState> _crewLookup = new Dictionary<string, CrewMemberState>();
     readonly Dictionary<Health, UnityAction<float>> _healthChangeHandlers = new Dictionary<Health, UnityAction<float>>();
@@ -175,8 +179,18 @@ public class CrewPersistenceManager : MonoBehaviour
             string newValue = string.IsNullOrEmpty(stationId) ? string.Empty : stationId;
             if (state.assignedStationId != newValue)
             {
+                string oldStation = string.IsNullOrEmpty(state.assignedStationId) ? "UNASSIGNED" : state.assignedStationId;
+                string newStation = string.IsNullOrEmpty(newValue) ? "UNASSIGNED" : newValue;
+                
                 state.assignedStationId = newValue;
                 MarkDirty();
+                
+                if (debugLog)
+                {
+                    string msg = $"[CrewPersistence] UpdateCrewAssignment: {crewId} moved from {oldStation} to {newStation} (forceSave={forceSave})";
+                    Debug.Log(msg);
+                    FileLogger.Log(msg, "CrewPersistence");
+                }
                 
                 // Immediately save when force flag is set to prevent race conditions
                 if (forceSave)
@@ -184,6 +198,12 @@ public class CrewPersistenceManager : MonoBehaviour
                     SaveSnapshot();
                 }
             }
+        }
+        else if (debugLog)
+        {
+            string msg = $"[CrewPersistence] UpdateCrewAssignment: WARNING - crew {crewId} not found in lookup!";
+            Debug.LogWarning(msg);
+            FileLogger.Log(msg, "CrewPersistence");
         }
     }
 
@@ -281,6 +301,13 @@ public class CrewPersistenceManager : MonoBehaviour
     {
         string json = null;
         string diskPath = GetResourceDiskPath();
+        
+        if (debugLog)
+        {
+            string msg = $"[CrewPersistence] LoadSnapshot: Attempting to load from {diskPath}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewPersistence");
+        }
 
         if (File.Exists(diskPath))
         {
@@ -300,6 +327,13 @@ public class CrewPersistenceManager : MonoBehaviour
             try
             {
                 _snapshot = JsonUtility.FromJson<CrewPersistenceSnapshot>(json);
+                
+                if (debugLog)
+                {
+                    string msg = $"[CrewPersistence] LoadSnapshot: Successfully loaded {_snapshot.crewMembers.Count} crew members from JSON";
+                    Debug.Log(msg);
+                    FileLogger.Log(msg, "CrewPersistence");
+                }
             }
             catch (Exception ex)
             {
@@ -321,6 +355,14 @@ public class CrewPersistenceManager : MonoBehaviour
             if (!_crewLookup.ContainsKey(entry.crewId))
             {
                 _crewLookup.Add(entry.crewId, entry);
+                
+                if (debugLog)
+                {
+                    string station = string.IsNullOrEmpty(entry.assignedStationId) ? "UNASSIGNED" : entry.assignedStationId;
+                    string msg = $"[CrewPersistence] Loaded crew: {entry.crewId} ({entry.displayName}) -> Station: {station}";
+                    Debug.Log(msg);
+                    FileLogger.Log(msg, "CrewPersistence");
+                }
             }
         }
     }
@@ -333,6 +375,21 @@ public class CrewPersistenceManager : MonoBehaviour
         _snapshot.lastSavedUtc = DateTime.UtcNow.ToString("O");
         string json = JsonUtility.ToJson(_snapshot, true);
         string path = GetResourceDiskPath();
+        
+        if (debugLog)
+        {
+            string msg = $"[CrewPersistence] SaveSnapshot: Saving {_snapshot.crewMembers.Count} crew members to {path}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewPersistence");
+            
+            foreach (var entry in _snapshot.crewMembers)
+            {
+                string station = string.IsNullOrEmpty(entry.assignedStationId) ? "UNASSIGNED" : entry.assignedStationId;
+                string msg2 = $"[CrewPersistence]   - {entry.crewId} ({entry.displayName}) -> Station: {station}";
+                Debug.Log(msg2);
+                FileLogger.Log(msg2, "CrewPersistence");
+            }
+        }
         string directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
         {

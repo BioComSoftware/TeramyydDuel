@@ -141,7 +141,40 @@ public class CrewStation : MonoBehaviour
         if (!string.IsNullOrEmpty(stationId))
             return;
 
-        stationId = $"station_{Guid.NewGuid().ToString("N")}";
+        // Try to generate a stable ID based on GameObject hierarchy
+        // This makes IDs persistent across game sessions for objects with stable names
+        string stableId = GenerateStableId();
+        if (!string.IsNullOrEmpty(stableId))
+        {
+            stationId = stableId;
+        }
+        else
+        {
+            // Fallback to GUID if we can't generate a stable ID
+            stationId = $"station_{Guid.NewGuid().ToString("N")}";
+        }
+    }
+
+    string GenerateStableId()
+    {
+        // Build a stable path from root to this object
+        // This ensures same GameObject always gets same ID
+        List<string> pathParts = new List<string>();
+        Transform current = transform;
+        
+        while (current != null)
+        {
+            pathParts.Insert(0, current.gameObject.name);
+            current = current.parent;
+        }
+        
+        // Create a simple stable ID from the path
+        // Remove spaces and special characters for cleaner IDs
+        string path = string.Join("_", pathParts);
+        path = System.Text.RegularExpressions.Regex.Replace(path, @"[^a-zA-Z0-9_]", "");
+        
+        // Add station suffix to make it clear this is a crew station
+        return $"station_{path}_crew";
     }
 
     public void SetCrewLimits(int minimumRequired, int maximumAllowed)
