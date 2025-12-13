@@ -303,29 +303,11 @@ public class WeaponMount : MonoBehaviour
         if (!_hasAimSolution)
             return;
 
-        // Calculate line-of-sight pitch (pointing directly at target)
-        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
-        if (muzzle != null)
-        {
-            Vector3 origin = muzzle.position;
-            Vector3 aimPoint = GetTargetAimPoint(target.transform);
-            Vector3 displacement = aimPoint - origin;
-            
-            Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
-            Vector3 localDir = reference.InverseTransformDirection(displacement.normalized);
-            
-            // Apply yaw rotation first
-            Vector3 yawAlignedDir = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localDir;
-            float lineOfSightPitch = -Mathf.Atan2(yawAlignedDir.y, yawAlignedDir.z) * Mathf.Rad2Deg;
-            float clampedLOSPitch = Mathf.Clamp(lineOfSightPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-            
-            // Smoothly track yaw and line-of-sight pitch
-            float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
-            float pitchStep = autoAimPitchSpeedDegPerSec * Time.deltaTime;
-            _yaw = Mathf.MoveTowards(_yaw, _aimYawTarget, yawStep);
-            _pitch = Mathf.MoveTowards(_pitch, clampedLOSPitch, pitchStep);
-            ApplyRotations();
-        }
+        // Only track yaw continuously - pitch remains at last firing angle
+        // Pitch will snap to firing solution immediately before firing
+        float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
+        _yaw = Mathf.MoveTowards(_yaw, _aimYawTarget, yawStep);
+        ApplyRotations();
 
         if (currentLauncher != null)
         {
@@ -538,77 +520,88 @@ public class WeaponMount : MonoBehaviour
 
         float maxSpeed = currentLauncher.launchSpeed;
         float minSpeed = currentLauncher.minimumLaunchSpeed;
-        float maxPitchDeg = Mathf.Abs(pitchUpDeg);
-        float maxPitchRad = maxPitchDeg * Mathf.Deg2Rad;
+        float maxPitchUpDeg = Mathf.Abs(pitchUpDeg);
+        float maxPitchDownDeg = Mathf.Abs(pitchDownDeg);
         
         // ========================================================================
-        // LPLS CALCULATION: Use maximum pitch, adjust speed to hit target
+        // LPLS CALCULATION: Test pitch angles in 8 equal segments from max up to max down
+        // Select the solution with the LOWEST launch speed that hits the target
         // NOTE: In this coordinate system, NEGATIVE pitch values aim UP, POSITIVE pitch values aim DOWN
+        // Example: If cannon can pitch ±15°, tests at: -15°, -11.25°, -7.5°, -3.75°, 0°, +3.75°, +7.5°, +11.25°, +15°
         // ========================================================================
         
-        // Calculate required launch speed at maximum pitch to hit the target
-        // Using projectile motion: h = R*tan(θ) - (g*R²)/(2*v²*cos²(θ))
-        // Solving for v: v² = (g*R²)/(2*cos²(θ)*(R*tan(θ) - h))
+        const int numSegments = 8;
+        float pitchRangeTotal = maxPitchUpDeg + maxPitchDownDeg; // Total range from max up to max down
+        float pitchStep = pitchRangeTotal / numSegments;
         
-        float cosTheta = Mathf.Cos(maxPitchRad);
-        float sinTheta = Mathf.Sin(maxPitchRad);
-        float tanTheta = Mathf.Tan(maxPitchRad);
+        bool foundValidSolution = false;
+        float bestPitchDeg = -maxPitchUpDeg; // Start at max pitch (negative = up)
+        float bestSpeed = float.MaxValue;
         
-        // Calculate the vertical term: how much higher the projectile would go at this angle
-        // compared to the target's vertical offset
-        float verticalTerm = horizontalDistance * tanTheta - verticalOffset;
-        
-        if (verticalTerm <= 0f)
+        // Test pitch angles from maximum upward (-maxPitchUpDeg) to maximum downward (+maxPitchDownDeg)
+        for (int i = 0; i <= numSegments; i++)
         {
-            // At max pitch, we still can't get high enough to clear the target's altitude
+            float testPitchDeg = -maxPitchUpDeg + (i * pitchStep); // Start negative (up), go to positive (down)
+            
+            // CRITICAL: Negate the angle for physics calculations
+            // Unity: negative = up, positive = down
+            // Physics: positive = up, negative = down
+            float physicsAngleRad = -testPitchDeg * Mathf.Deg2Rad;
+            float cosTheta = Mathf.Cos(physicsAngleRad);
+            float tanTheta = Mathf.Tan(physicsAngleRad);
+            
+            // Calculate required launch speed at this pitch angle
+            // Using projectile motion: h = R*tan(θ) - (g*R²)/(2*v²*cos²(θ))
+            // Solving for v: v² = (g*R²)/(2*cos²(θ)*(R*tan(θ) - h))
+            
+            float verticalTerm = horizontalDistance * tanTheta - verticalOffset;
+            
+            // Skip if we can't reach the target altitude at this angle
+            if (verticalTerm <= 0f)
+                continue;
+            
+            float cos2 = cosTheta * cosTheta;
+            float requiredSpeed2 = (gravityMag * horizontalDistance * horizontalDistance) / (2f * cos2 * verticalTerm);
+            
+            if (requiredSpeed2 <= 0f)
+                continue;
+            
+            float requiredSpeed = Mathf.Sqrt(requiredSpeed2);
+            
+            // Check if this speed is within our launcher's capabilities
+            if (requiredSpeed >= minSpeed && requiredSpeed <= maxSpeed)
+            {
+                // Valid solution - check if it's better (lower speed) than previous best
+                if (requiredSpeed < bestSpeed)
+                {
+                    foundValidSolution = true;
+                    bestSpeed = requiredSpeed;
+                    bestPitchDeg = testPitchDeg;
+                }
+            }
+        }
+        
+        if (!foundValidSolution)
+        {
+            // No valid firing solution found at any pitch angle
             if (enableDebugLogging)
             {
-                LogDebug($"CHECK 2 FAILED: Max pitch {maxPitchDeg:F1}° cannot reach target altitude (H={horizontalDistance:F1}m V={verticalOffset:F1}m, vertical_term={verticalTerm:F3})");
+                LogDebug($"CHECK 2 FAILED: No valid pitch angle found. Speed range=[{minSpeed:F1}, {maxSpeed:F1}] Pitch range=[{-maxPitchUpDeg:F1}, {maxPitchDownDeg:F1}]° H={horizontalDistance:F1}m V={verticalOffset:F1}m");
             }
             yaw = solutionYaw;
-            pitch = -maxPitchDeg; // Negative = pitch up
+            pitch = -maxPitchUpDeg; // Negative = pitch up (default to max)
             launchSpeed = maxSpeed;
             return false;
         }
         
-        float cos2 = cosTheta * cosTheta;
-        float requiredSpeed2 = (gravityMag * horizontalDistance * horizontalDistance) / (2f * cos2 * verticalTerm);
-        
-        if (requiredSpeed2 <= 0f)
-        {
-            if (enableDebugLogging)
-            {
-                LogDebug($"CHECK 2 FAILED: Invalid speed calculation (v²={requiredSpeed2:F3})");
-            }
-            yaw = solutionYaw;
-            pitch = -maxPitchDeg; // Negative = pitch up
-            launchSpeed = maxSpeed;
-            return false;
-        }
-        
-        float requiredSpeed = Mathf.Sqrt(requiredSpeed2);
-        
-        // Check if required speed is within our launcher's capabilities
-        if (requiredSpeed < minSpeed || requiredSpeed > maxSpeed)
-        {
-            if (enableDebugLogging)
-            {
-                LogDebug($"CHECK 2 FAILED: Required speed {requiredSpeed:F1} outside range [{minSpeed:F1}, {maxSpeed:F1}] (H={horizontalDistance:F1}m V={verticalOffset:F1}m Pitch={maxPitchDeg:F1}°)");
-            }
-            yaw = solutionYaw;
-            pitch = -maxPitchDeg; // Negative = pitch up
-            launchSpeed = Mathf.Clamp(requiredSpeed, minSpeed, maxSpeed);
-            return false;
-        }
-        
-        // Success! We have a valid firing solution
+        // Success! We found the optimal firing solution
         yaw = solutionYaw;
-        pitch = -maxPitchDeg; // Negative = pitch up
-        launchSpeed = requiredSpeed;
+        pitch = bestPitchDeg; // Already negative (aiming up)
+        launchSpeed = bestSpeed;
         
         if (enableDebugLogging)
         {
-            LogDebug($"CHECK 2 PASSED: LPLS solution. Yaw={yaw:F1}° Pitch={pitch:F1}° Speed={launchSpeed:F1} | Target: H={horizontalDistance:F1}m V={verticalOffset:F1}m | Vertical_term={verticalTerm:F3} | Formula: v²={(gravityMag * horizontalDistance * horizontalDistance):F1} / (2*{cos2:F3}*{verticalTerm:F3}) = {requiredSpeed2:F1}");
+            LogDebug($"CHECK 2 PASSED: Optimal LPLS solution. Yaw={yaw:F1}° Pitch={pitch:F1}° Speed={launchSpeed:F1} | Target: H={horizontalDistance:F1}m V={verticalOffset:F1}m");
         }
         
         return true;
