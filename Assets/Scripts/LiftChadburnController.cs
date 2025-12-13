@@ -119,6 +119,112 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
         SetRotation(0f);
     }
 
+    void Update()
+    {
+        HandleKeyboardInput();
+    }
+
+    /// <summary>
+    /// Handle keyboard controls for lift chadburn rotation.
+    /// Q = increase lift (clockwise), E = decrease lift (counter-clockwise)
+    /// CTRL+Q/E = snap to max, LEFT-SHIFT+Q/E = snap to zero
+    /// </summary>
+    void HandleKeyboardInput()
+    {
+        // Don't process keyboard input while mouse dragging
+        if (isDragging)
+            return;
+
+        KeyBindingConfig kb = KeyBindingConfig.Instance;
+        if (kb == null)
+            return;
+
+        bool ctrlHeld = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift);
+
+        // Up controls (Q key - clockwise/increase lift)
+        if (Input.GetKey(kb.liftUp))
+        {
+            if (ctrlHeld && shiftHeld)
+            {
+                // CTRL+SHIFT+Q: Snap to max lift
+                if (Input.GetKeyDown(kb.liftUp))
+                {
+                    SetRotation(maxRotationDegrees);
+                    if (debugLog)
+                    {
+                        FileLogger.Log($"Lift Chadburn: CTRL+SHIFT+Q - Snapped to MAX LIFT ({maxRotationDegrees}°)", "LiftChadburn");
+                    }
+                }
+            }
+            else if (shiftHeld)
+            {
+                // SHIFT+Q: Snap to zero
+                if (Input.GetKeyDown(kb.liftUp))
+                {
+                    SetRotation(0f);
+                    if (debugLog)
+                    {
+                        FileLogger.Log("Lift Chadburn: SHIFT+Q - Snapped to IDLE (0°)", "LiftChadburn");
+                    }
+                }
+            }
+            else if (ctrlHeld)
+            {
+                // CTRL+Q: Rotate clockwise continuously at speed
+                float newAngle = Mathf.Min(_currentRotation + kb.liftChadburnRotationSpeed * Time.deltaTime, maxRotationDegrees);
+                SetRotation(newAngle);
+            }
+            else
+            {
+                // Q alone: Rotate clockwise continuously
+                float newAngle = Mathf.Min(_currentRotation + kb.liftChadburnRotationSpeed * Time.deltaTime, maxRotationDegrees);
+                SetRotation(newAngle);
+            }
+        }
+
+        // Down controls (E key - counter-clockwise/decrease lift)
+        if (Input.GetKey(kb.liftDown))
+        {
+            if (ctrlHeld && shiftHeld)
+            {
+                // CTRL+SHIFT+E: Snap to max reverse (minimum rotation)
+                if (Input.GetKeyDown(kb.liftDown))
+                {
+                    SetRotation(-maxRotationDegrees);
+                    if (debugLog)
+                    {
+                        FileLogger.Log($"Lift Chadburn: CTRL+SHIFT+E - Snapped to MAX REVERSE (-{maxRotationDegrees}°)", "LiftChadburn");
+                    }
+                }
+            }
+            else if (shiftHeld)
+            {
+                // SHIFT+E: Snap to zero
+                if (Input.GetKeyDown(kb.liftDown))
+                {
+                    SetRotation(0f);
+                    if (debugLog)
+                    {
+                        FileLogger.Log("Lift Chadburn: SHIFT+E - Snapped to IDLE (0°)", "LiftChadburn");
+                    }
+                }
+            }
+            else if (ctrlHeld)
+            {
+                // CTRL+E: Rotate counter-clockwise continuously at speed
+                float newAngle = Mathf.Max(_currentRotation - kb.liftChadburnRotationSpeed * Time.deltaTime, -maxRotationDegrees);
+                SetRotation(newAngle);
+            }
+            else
+            {
+                // E alone: Rotate counter-clockwise continuously
+                float newAngle = Mathf.Max(_currentRotation - kb.liftChadburnRotationSpeed * Time.deltaTime, -maxRotationDegrees);
+                SetRotation(newAngle);
+            }
+        }
+    }
+
     public void OnBeginDrag(PointerEventData eventData)
     {
         isDragging = true;

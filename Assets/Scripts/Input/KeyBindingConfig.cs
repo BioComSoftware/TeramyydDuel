@@ -66,6 +66,11 @@ public class KeyBindingData
     // Ship wheel controls
     public string wheelLeft = "A";
     public string wheelRight = "D";
+    
+    // Lift chadburn controls
+    public string liftUp = "Q";
+    public string liftDown = "E";
+    public float liftChadburnRotationSpeed = 45f;
 
     // Ship wheel controls (not exposed in KeyBindingConfig Inspector)
     public float autoReturnSpeedDegPerSec = 90f;
@@ -119,6 +124,11 @@ public class KeyBindingConfig : ScriptableObject
     [SerializeField] private KeyCode _wheelRight;
     [Tooltip("This value is loaded from keybindings.json only - no Inspector default field.")]
     [SerializeField] private float _autoReturnSpeedDegPerSec = 90f;
+    
+    [Header("Active Lift Chadburn Controls (Runtime)")]
+    [SerializeField] private KeyCode _liftUp;
+    [SerializeField] private KeyCode _liftDown;
+    [SerializeField] private float _liftChadburnRotationSpeed = 45f;
 
     [Header("Active Modifier Flags (Runtime)")]
     [SerializeField] private bool _snapRequiresCtrl;
@@ -148,6 +158,9 @@ public class KeyBindingConfig : ScriptableObject
     public float engineChadburnRotationSpeed => _engineChadburnRotationSpeed;
     public KeyCode wheelLeft => _wheelLeft;
     public KeyCode wheelRight => _wheelRight;
+    public KeyCode liftUp => _liftUp;
+    public KeyCode liftDown => _liftDown;
+    public float liftChadburnRotationSpeed => _liftChadburnRotationSpeed;
     public float autoReturnSpeedDegPerSec => _autoReturnSpeedDegPerSec;
     public bool snapRequiresCtrl => _snapRequiresCtrl;
     public bool zoomRequiresCtrl => _zoomRequiresCtrl;
@@ -236,10 +249,13 @@ public class KeyBindingConfig : ScriptableObject
             _engineChadburnRotationSpeed = data.engineChadburnRotationSpeed;
             _wheelLeft = ParseKeyCode(data.wheelLeft, defaults?.defaultWheelLeft ?? KeyCode.A);
             _wheelRight = ParseKeyCode(data.wheelRight, defaults?.defaultWheelRight ?? KeyCode.D);
+            _liftUp = ParseKeyCode(data.liftUp, defaults?.defaultLiftUp ?? KeyCode.Q);
+            _liftDown = ParseKeyCode(data.liftDown, defaults?.defaultLiftDown ?? KeyCode.E);
+            _liftChadburnRotationSpeed = data.liftChadburnRotationSpeed;
             
             if (debugLog)
             {
-                string msg = $"KeyBindingConfig: Loaded wheelLeft={_wheelLeft}, wheelRight={_wheelRight}";
+                string msg = $"KeyBindingConfig: Loaded wheelLeft={_wheelLeft}, wheelRight={_wheelRight}, liftUp={_liftUp}, liftDown={_liftDown}";
                 Debug.Log(msg);
                 FileLogger.Log(msg, "KeyBindings");
             }
@@ -288,6 +304,9 @@ public class KeyBindingConfig : ScriptableObject
             _engineChadburnRotationSpeed = 45f;
             _wheelLeft = KeyCode.A;
             _wheelRight = KeyCode.D;
+            _liftUp = KeyCode.Q;
+            _liftDown = KeyCode.E;
+            _liftChadburnRotationSpeed = 45f;
             _snapRequiresCtrl = true;
             _zoomRequiresCtrl = true;
         }
@@ -312,6 +331,9 @@ public class KeyBindingConfig : ScriptableObject
             _engineChadburnRotationSpeed = defaults.defaultEngineChadburnRotationSpeed;
             _wheelLeft = defaults.defaultWheelLeft;
             _wheelRight = defaults.defaultWheelRight;
+            _liftUp = defaults.defaultLiftUp;
+            _liftDown = defaults.defaultLiftDown;
+            _liftChadburnRotationSpeed = defaults.defaultLiftChadburnRotationSpeed;
             _snapRequiresCtrl = defaults.defaultSnapRequiresCtrl;
             _zoomRequiresCtrl = defaults.defaultZoomRequiresCtrl;
         }
@@ -349,6 +371,9 @@ public class KeyBindingConfig : ScriptableObject
             engineChadburnRotationSpeed = _engineChadburnRotationSpeed,
             wheelLeft = _wheelLeft.ToString(),
             wheelRight = _wheelRight.ToString(),
+            liftUp = _liftUp.ToString(),
+            liftDown = _liftDown.ToString(),
+            liftChadburnRotationSpeed = _liftChadburnRotationSpeed,
             autoReturnSpeedDegPerSec = _autoReturnSpeedDegPerSec,
             snapRequiresCtrl = _snapRequiresCtrl,
             zoomRequiresCtrl = _zoomRequiresCtrl
@@ -413,6 +438,10 @@ public class KeyBindingConfig : ScriptableObject
             case "instrumentZoom": _instrumentZoom = newValue; break;
             case "engineForward": _engineForward = newValue; break;
             case "engineReverse": _engineReverse = newValue; break;
+            case "wheelLeft": _wheelLeft = newValue; break;
+            case "wheelRight": _wheelRight = newValue; break;
+            case "liftUp": _liftUp = newValue; break;
+            case "liftDown": _liftDown = newValue; break;
             default:
                 Debug.LogWarning($"KeyBindingConfig: Unknown key name '{keyName}'");
                 break;
@@ -428,6 +457,7 @@ public class KeyBindingConfig : ScriptableObject
         {
             case "autoReturnSpeedDegPerSec": _autoReturnSpeedDegPerSec = newValue; break;
             case "engineChadburnRotationSpeed": _engineChadburnRotationSpeed = newValue; break;
+            case "liftChadburnRotationSpeed": _liftChadburnRotationSpeed = newValue; break;
             default:
                 Debug.LogWarning($"KeyBindingConfig: Unknown float value '{valueName}'");
                 break;

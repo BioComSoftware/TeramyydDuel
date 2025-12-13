@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-13T15:03:34.0630385Z",
+    "lastSavedUtc": "2025-12-13T17:50:24.9279881Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -33,10 +33,10 @@
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 6.753292083740234,
-            "liftEngineering": 6.033567905426025,
+            "liftEngineering": 6.473944664001465,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_b0e3a4b36ae645e9900d73b1925d5c0c"
+            "assignedStationId": "station_d30127ec91bf4406b3939180e6670065"
         },
         {
             "crewId": "crew_ryn_calder",

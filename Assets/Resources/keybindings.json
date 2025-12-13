@@ -18,6 +18,9 @@
     "engineChadburnRotationSpeed": 45.0,
     "wheelLeft": "A",
     "wheelRight": "D",
+    "liftUp": "Q",
+    "liftDown": "E",
+    "liftChadburnRotationSpeed": 45.0,
     "autoReturnSpeedDegPerSec": 90.0,
     "snapRequiresCtrl": true,
     "zoomRequiresCtrl": true
