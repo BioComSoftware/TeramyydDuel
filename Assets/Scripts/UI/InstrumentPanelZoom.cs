@@ -9,8 +9,10 @@
 public class InstrumentPanelZoom : MonoBehaviour
 {
     [Header("Zoom Controls")]
-    [Tooltip("Key that triggers the zoom when held.")]
+    [Tooltip("Deprecated: Use KeyBindingConfig.instrumentZoom instead. This field is kept for backward compatibility.")]
     public KeyCode zoomKey = KeyCode.Z;
+    [Tooltip("When true, uses KeyBindingConfig.instrumentZoom. When false, uses the zoomKey field.")]
+    public bool useConfigurableKey = true;
 
     [Tooltip("Scale multiplier applied when zoomed in.")]
     public float zoomScaleMultiplier = 3f;
@@ -38,7 +40,17 @@ public class InstrumentPanelZoom : MonoBehaviour
 
     void Update()
     {
-        bool zoomHeld = Input.GetKey(zoomKey);
+        KeyCode effectiveZoomKey = zoomKey;
+        if (useConfigurableKey)
+        {
+            var kb = KeyBindingConfig.Instance;
+            if (kb != null)
+            {
+                effectiveZoomKey = kb.instrumentZoom;
+            }
+        }
+
+        bool zoomHeld = Input.GetKey(effectiveZoomKey);
         Vector3 targetScale = zoomHeld ? _originalScale * zoomScaleMultiplier : _originalScale;
         Vector2 targetPosition = zoomHeld ? zoomAnchoredPosition : _originalAnchoredPosition;
 

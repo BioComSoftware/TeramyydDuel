@@ -11,6 +11,9 @@
     "lookDown": "DownArrow",
     "zoomIn": "UpArrow",
     "zoomOut": "DownArrow",
+    "fireAllWeapons": "F",
+    "instrumentZoom": "Z",
+    "autoReturnSpeedDegPerSec": 90.0,
     "snapRequiresCtrl": true,
     "zoomRequiresCtrl": true
 }

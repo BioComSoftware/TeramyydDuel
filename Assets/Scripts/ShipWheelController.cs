@@ -66,6 +66,9 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     [Tooltip("Degrees per second the wheel will spring back toward center when the player releases it (0 disables auto return).")]
     public float autoReturnSpeedDegPerSec = 90f;
     
+    [Tooltip("If enabled, uses the value from KeyBindingConfig instead of the field above.")]
+    public bool useConfigurableSpeed = true;
+    
     [Header("Debug")]
     public bool debugLog = false;
     
@@ -412,7 +415,12 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
 
     void HandleAutoReturn()
     {
-        if (autoReturnSpeedDegPerSec <= 0f)
+        // Determine which speed value to use
+        float effectiveSpeed = useConfigurableSpeed 
+            ? KeyBindingConfig.Instance.autoReturnSpeedDegPerSec 
+            : autoReturnSpeedDegPerSec;
+
+        if (effectiveSpeed <= 0f)
             return;
 
         if (isDragging || wheelLatched)
@@ -424,7 +432,7 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
         float newAngle = Mathf.MoveTowards(
             _currentWheelRotation,
             0f,
-            autoReturnSpeedDegPerSec * Time.deltaTime);
+            effectiveSpeed * Time.deltaTime);
 
         if (!Mathf.Approximately(newAngle, _currentWheelRotation))
         {

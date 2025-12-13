@@ -57,11 +57,6 @@ public class ProjectileLauncherMount : MonoBehaviour
     [Tooltip("Invert pitch delta application if your mount pitches opposite of expected.")]
     public bool invertPitchDirection = false;
 
-    [Header("Debug Input (temporary)")]
-    public bool debugKeypadControl = false;
-    public float yawSpeedDegPerSec = 60f;
-    public float pitchSpeedDegPerSec = 45f;
-
     void Reset()
     {
         if (yawBase == null) yawBase = transform;
@@ -80,18 +75,6 @@ public class ProjectileLauncherMount : MonoBehaviour
             Mount(autoPopulatePrefab);
         }
         ApplyRotations();
-    }
-
-    void Update()
-    {
-        if (!debugKeypadControl) return;
-        float dt = Time.deltaTime;
-        // Yaw left/right: j / l
-        if (Input.GetKey(KeyCode.J)) ApplyYawDelta((invertYawDirection ? 1f : -1f) * yawSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.L)) ApplyYawDelta((invertYawDirection ? -1f : 1f) * yawSpeedDegPerSec * dt);
-        // Pitch up/down: i / k
-        if (Input.GetKey(KeyCode.I)) ApplyPitchDelta((invertPitchDirection ? -1f : 1f) * pitchSpeedDegPerSec * dt);
-        if (Input.GetKey(KeyCode.K)) ApplyPitchDelta((invertPitchDirection ? 1f : -1f) * pitchSpeedDegPerSec * dt);
     }
 
     public bool Mount(GameObject prefab)

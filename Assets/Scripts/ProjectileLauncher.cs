@@ -11,7 +11,10 @@ public class ProjectileLauncher : MonoBehaviour
     [FormerlySerializedAs("Muxxleblast")] public ParticleSystem MuzzleBlast;    // Optional: muzzle blast effect (user-assignable)
 
     [Header("Input")]
+    [Tooltip("Deprecated: Use KeyBindingConfig.fireAllWeapons instead. This field is kept for backward compatibility.")]
     public KeyCode fireKey = KeyCode.F;
+    [Tooltip("When true, uses KeyBindingConfig.fireAllWeapons. When false, uses the fireKey field.")]
+    public bool useConfigurableKey = true;
 
     [Header("Projectile Settings")]
     [Tooltip("Maximum launch speed. Runtime systems may lower the actual muzzle speed, but it will never exceed this value.")]
@@ -110,7 +113,17 @@ public class ProjectileLauncher : MonoBehaviour
     
     void Update()
     {
-        if (Input.GetKeyDown(fireKey))
+        KeyCode effectiveFireKey = fireKey;
+        if (useConfigurableKey)
+        {
+            var kb = KeyBindingConfig.Instance;
+            if (kb != null)
+            {
+                effectiveFireKey = kb.fireAllWeapons;
+            }
+        }
+
+        if (Input.GetKeyDown(effectiveFireKey))
         {
             if (_owningMount != null)
             {
