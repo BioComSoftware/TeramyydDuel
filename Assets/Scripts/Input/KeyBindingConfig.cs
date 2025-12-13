@@ -58,7 +58,7 @@ public class KeyBindingData
     // UI controls
     public string instrumentZoom = "Z";
 
-    // Ship wheel controls
+    // Ship wheel controls (not exposed in KeyBindingConfig Inspector)
     public float autoReturnSpeedDegPerSec = 90f;
 
     // Modifiers
@@ -69,46 +69,6 @@ public class KeyBindingData
 [CreateAssetMenu(menuName = "Teramyyd/Key Binding Config", fileName = "KeyBindingConfig")] 
 public class KeyBindingConfig : ScriptableObject
 {
-    [Header("===== DEVELOPER DEFAULTS (Inspector Only) =====")]
-    [Header("These values are set by the developer and serve as the 'factory defaults'")]
-    [Header("They are NOT changed when players modify their keybindings")]
-    [Space(10)]
-    
-    [Header("View Switching Defaults")]
-    public KeyCode defaultBridgeView = KeyCode.F1;
-    public KeyCode defaultFollowView = KeyCode.F2;
-    public KeyCode defaultOverheadView = KeyCode.F3;
-
-    [Header("View Snap Defaults (require Ctrl)")]
-    public KeyCode defaultBridgeSnap = KeyCode.F1;
-    public KeyCode defaultFollowSnap = KeyCode.F2;
-    public KeyCode defaultOverheadSnap = KeyCode.F3;
-
-    [Header("Camera Look/Pan Defaults")]
-    public KeyCode defaultLookLeft = KeyCode.LeftArrow;
-    public KeyCode defaultLookRight = KeyCode.RightArrow;
-    public KeyCode defaultLookUp = KeyCode.UpArrow;
-    public KeyCode defaultLookDown = KeyCode.DownArrow;
-
-    [Header("Zoom Defaults (require Ctrl)")]
-    public KeyCode defaultZoomIn = KeyCode.UpArrow;
-    public KeyCode defaultZoomOut = KeyCode.DownArrow;
-
-    [Header("Weapon Control Defaults")]
-    public KeyCode defaultFireAllWeapons = KeyCode.F;
-
-    [Header("UI Control Defaults")]
-    public KeyCode defaultInstrumentZoom = KeyCode.Z;
-
-    [Header("Ship Wheel Control Defaults")]
-    [Tooltip("Degrees per second the wheel will spring back toward center when the player releases it (0 disables auto return).")]
-    public float defaultAutoReturnSpeedDegPerSec = 90f;
-
-    [Header("Modifier Flag Defaults")]
-    public bool defaultSnapRequiresCtrl = true;
-    public bool defaultZoomRequiresCtrl = true;
-
-    [Space(20)]
     [Header("===== RUNTIME PLAYER SETTINGS (Read Only) =====")]
     [Header("These values are loaded from keybindings.json at runtime")]
     [Header("DO NOT edit these in Inspector - they will be overwritten")]
@@ -141,7 +101,8 @@ public class KeyBindingConfig : ScriptableObject
     [SerializeField] private KeyCode _instrumentZoom;
 
     [Header("Active Ship Wheel Controls (Runtime)")]
-    [SerializeField] private float _autoReturnSpeedDegPerSec;
+    [Tooltip("This value is loaded from keybindings.json only - no Inspector default field.")]
+    [SerializeField] private float _autoReturnSpeedDegPerSec = 90f;
 
     [Header("Active Modifier Flags (Runtime)")]
     [SerializeField] private bool _snapRequiresCtrl;
@@ -222,27 +183,28 @@ public class KeyBindingConfig : ScriptableObject
         try
         {
             KeyBindingData data = JsonUtility.FromJson<KeyBindingData>(jsonFile.text);
+            DefaultKeybindings defaults = DefaultKeybindings.Instance;
             
             // Load into RUNTIME variables (_fields) - developer defaults remain unchanged
-            _bridgeView = ParseKeyCode(data.bridgeView, defaultBridgeView);
-            _followView = ParseKeyCode(data.followView, defaultFollowView);
-            _overheadView = ParseKeyCode(data.overheadView, defaultOverheadView);
+            _bridgeView = ParseKeyCode(data.bridgeView, defaults?.defaultBridgeView ?? KeyCode.F1);
+            _followView = ParseKeyCode(data.followView, defaults?.defaultFollowView ?? KeyCode.F2);
+            _overheadView = ParseKeyCode(data.overheadView, defaults?.defaultOverheadView ?? KeyCode.F3);
 
-            _bridgeSnap = ParseKeyCode(data.bridgeSnap, defaultBridgeSnap);
-            _followSnap = ParseKeyCode(data.followSnap, defaultFollowSnap);
-            _overheadSnap = ParseKeyCode(data.overheadSnap, defaultOverheadSnap);
+            _bridgeSnap = ParseKeyCode(data.bridgeSnap, defaults?.defaultBridgeSnap ?? KeyCode.F1);
+            _followSnap = ParseKeyCode(data.followSnap, defaults?.defaultFollowSnap ?? KeyCode.F2);
+            _overheadSnap = ParseKeyCode(data.overheadSnap, defaults?.defaultOverheadSnap ?? KeyCode.F3);
 
-            _lookLeft = ParseKeyCode(data.lookLeft, defaultLookLeft);
-            _lookRight = ParseKeyCode(data.lookRight, defaultLookRight);
-            _lookUp = ParseKeyCode(data.lookUp, defaultLookUp);
-            _lookDown = ParseKeyCode(data.lookDown, defaultLookDown);
+            _lookLeft = ParseKeyCode(data.lookLeft, defaults?.defaultLookLeft ?? KeyCode.LeftArrow);
+            _lookRight = ParseKeyCode(data.lookRight, defaults?.defaultLookRight ?? KeyCode.RightArrow);
+            _lookUp = ParseKeyCode(data.lookUp, defaults?.defaultLookUp ?? KeyCode.UpArrow);
+            _lookDown = ParseKeyCode(data.lookDown, defaults?.defaultLookDown ?? KeyCode.DownArrow);
 
-            _zoomIn = ParseKeyCode(data.zoomIn, defaultZoomIn);
-            _zoomOut = ParseKeyCode(data.zoomOut, defaultZoomOut);
+            _zoomIn = ParseKeyCode(data.zoomIn, defaults?.defaultZoomIn ?? KeyCode.UpArrow);
+            _zoomOut = ParseKeyCode(data.zoomOut, defaults?.defaultZoomOut ?? KeyCode.DownArrow);
 
-            _fireAllWeapons = ParseKeyCode(data.fireAllWeapons, defaultFireAllWeapons);
+            _fireAllWeapons = ParseKeyCode(data.fireAllWeapons, defaults?.defaultFireAllWeapons ?? KeyCode.F);
 
-            _instrumentZoom = ParseKeyCode(data.instrumentZoom, defaultInstrumentZoom);
+            _instrumentZoom = ParseKeyCode(data.instrumentZoom, defaults?.defaultInstrumentZoom ?? KeyCode.Z);
 
             _autoReturnSpeedDegPerSec = data.autoReturnSpeedDegPerSec;
 
@@ -264,23 +226,50 @@ public class KeyBindingConfig : ScriptableObject
     /// </summary>
     private void InitializeFromDefaults()
     {
-        _bridgeView = defaultBridgeView;
-        _followView = defaultFollowView;
-        _overheadView = defaultOverheadView;
-        _bridgeSnap = defaultBridgeSnap;
-        _followSnap = defaultFollowSnap;
-        _overheadSnap = defaultOverheadSnap;
-        _lookLeft = defaultLookLeft;
-        _lookRight = defaultLookRight;
-        _lookUp = defaultLookUp;
-        _lookDown = defaultLookDown;
-        _zoomIn = defaultZoomIn;
-        _zoomOut = defaultZoomOut;
-        _fireAllWeapons = defaultFireAllWeapons;
-        _instrumentZoom = defaultInstrumentZoom;
-        _autoReturnSpeedDegPerSec = defaultAutoReturnSpeedDegPerSec;
-        _snapRequiresCtrl = defaultSnapRequiresCtrl;
-        _zoomRequiresCtrl = defaultZoomRequiresCtrl;
+        DefaultKeybindings defaults = DefaultKeybindings.Instance;
+        if (defaults == null)
+        {
+            Debug.LogWarning("DefaultKeybindings not found! Using hardcoded fallbacks.");
+            // Hardcoded fallbacks
+            _bridgeView = KeyCode.F1;
+            _followView = KeyCode.F2;
+            _overheadView = KeyCode.F3;
+            _bridgeSnap = KeyCode.F1;
+            _followSnap = KeyCode.F2;
+            _overheadSnap = KeyCode.F3;
+            _lookLeft = KeyCode.LeftArrow;
+            _lookRight = KeyCode.RightArrow;
+            _lookUp = KeyCode.UpArrow;
+            _lookDown = KeyCode.DownArrow;
+            _zoomIn = KeyCode.UpArrow;
+            _zoomOut = KeyCode.DownArrow;
+            _fireAllWeapons = KeyCode.F;
+            _instrumentZoom = KeyCode.Z;
+            _snapRequiresCtrl = true;
+            _zoomRequiresCtrl = true;
+        }
+        else
+        {
+            _bridgeView = defaults.defaultBridgeView;
+            _followView = defaults.defaultFollowView;
+            _overheadView = defaults.defaultOverheadView;
+            _bridgeSnap = defaults.defaultBridgeSnap;
+            _followSnap = defaults.defaultFollowSnap;
+            _overheadSnap = defaults.defaultOverheadSnap;
+            _lookLeft = defaults.defaultLookLeft;
+            _lookRight = defaults.defaultLookRight;
+            _lookUp = defaults.defaultLookUp;
+            _lookDown = defaults.defaultLookDown;
+            _zoomIn = defaults.defaultZoomIn;
+            _zoomOut = defaults.defaultZoomOut;
+            _fireAllWeapons = defaults.defaultFireAllWeapons;
+            _instrumentZoom = defaults.defaultInstrumentZoom;
+            _snapRequiresCtrl = defaults.defaultSnapRequiresCtrl;
+            _zoomRequiresCtrl = defaults.defaultZoomRequiresCtrl;
+        }
+        
+        // autoReturnSpeedDegPerSec comes from ShipWheelController, use hardcoded default
+        _autoReturnSpeedDegPerSec = 90f;
         
         Debug.Log("KeyBindingConfig: Initialized runtime values from developer defaults.");
     }

@@ -107,26 +107,34 @@ public class KeyBindingExample : MonoBehaviour
     // EXAMPLE: Get the developer's default value (for showing in UI)
     public void ShowDefaultValue()
     {
-        // Access developer defaults directly (these never change)
-        KeyCode defaultFireKey = KeyBindingConfig.Instance.defaultFireAllWeapons;
-        
-        Debug.Log($"Developer default fire key is: {defaultFireKey}");
-        Debug.Log("This value never changes regardless of player settings");
+        // Access developer defaults from DefaultKeybindings component (these never change)
+        DefaultKeybindings defaults = DefaultKeybindings.Instance;
+        if (defaults != null)
+        {
+            KeyCode defaultFireKey = defaults.defaultFireAllWeapons;
+            Debug.Log($"Developer default fire key is: {defaultFireKey}");
+            Debug.Log("This value never changes regardless of player settings");
+        }
     }
 
     // EXAMPLE: Check what the player's current setting is vs the default
     public void CompareCurrentToDefault()
     {
         KeyCode playerCurrent = KeyBindingConfig.Instance.fireAllWeapons;
-        KeyCode developerDefault = KeyBindingConfig.Instance.defaultFireAllWeapons;
+        DefaultKeybindings defaults = DefaultKeybindings.Instance;
         
-        if (playerCurrent != developerDefault)
+        if (defaults != null)
         {
-            Debug.Log($"Player has customized fire key: {playerCurrent} (default: {developerDefault})");
-        }
-        else
-        {
-            Debug.Log("Player is using default fire key");
+            KeyCode developerDefault = defaults.defaultFireAllWeapons;
+            
+            if (playerCurrent != developerDefault)
+            {
+                Debug.Log($"Player has customized fire key: {playerCurrent} (default: {developerDefault})");
+            }
+            else
+            {
+                Debug.Log("Player is using default fire key");
+            }
         }
     }
 }

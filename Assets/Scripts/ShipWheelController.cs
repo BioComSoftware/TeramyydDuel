@@ -63,10 +63,10 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     [SerializeField] private bool _turningRight = false;
     [SerializeField] private bool _turningLeft = false;
     [Header("Auto Return")]
-    [Tooltip("Degrees per second the wheel will spring back toward center when the player releases it (0 disables auto return).")]
+    [Tooltip("DEFAULT VALUE: Degrees per second the wheel will spring back toward center (0 disables). This is the developer default - player setting comes from keybindings.json.")]
     public float autoReturnSpeedDegPerSec = 90f;
     
-    [Tooltip("If enabled, uses the value from KeyBindingConfig instead of the field above.")]
+    [Tooltip("When true, reads from keybindings.json (player setting). When false, uses the field above (developer default only).")]
     public bool useConfigurableSpeed = true;
     
     [Header("Debug")]
