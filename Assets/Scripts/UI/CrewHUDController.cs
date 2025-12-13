@@ -9,13 +9,6 @@ namespace Teramyyd.UI
     /// and coordinates drag/drop plus tooltip forwarding.
     /// </summary>
     [AddComponentMenu("Teramyyd/UI/Crew HUD Controller")]
-    [Serializable]
-    public struct CrewPortraitMapping
-    {
-        public string crewId;
-        public Sprite portrait;
-    }
-
     public class CrewHUDController : MonoBehaviour
     {
         [Header("References")]
@@ -40,16 +33,11 @@ namespace Teramyyd.UI
         public Vector2 crewSlotIconScale = new Vector2(0.5f, 0.5f);
         public Color pendingColor = new Color(1f, 0.9f, 0.4f, 1f);
 
-        [Header("Portrait Overrides")]
-        [Tooltip("Optional per-crew portraits. If no entry exists, the prefab's default sprite is used.")]
-        public CrewPortraitMapping[] portraitOverrides;
-
         [Header("Refresh")] public float refreshInterval = 0.4f;
 
         public event Action<CrewMember, CrewStation, Transform> OnVisualAnchorChanged;
 
         readonly Dictionary<string, CrewHUDCrewIcon> _iconsByCrewId = new Dictionary<string, CrewHUDCrewIcon>();
-        readonly Dictionary<string, Sprite> _portraitLookup = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         readonly HashSet<string> _scratchIds = new HashSet<string>();
         readonly HashSet<CrewHUDCrewIcon> _processedIcons = new HashSet<CrewHUDCrewIcon>();
         readonly Dictionary<CrewHUDCrewIcon, RectTransform> _crewIconToAnchor = new Dictionary<CrewHUDCrewIcon, RectTransform>();
@@ -67,13 +55,10 @@ namespace Teramyyd.UI
             {
                 dragCanvas = GetComponentInParent<Canvas>();
             }
-
-            RebuildPortraitLookup();
         }
 
         void OnValidate()
         {
-            RebuildPortraitLookup();
         }
 
         void OnEnable()
@@ -509,21 +494,6 @@ namespace Teramyyd.UI
             _scratchIds.Clear();
         }
 
-        void RebuildPortraitLookup()
-        {
-            _portraitLookup.Clear();
-            if (portraitOverrides == null)
-                return;
-
-            foreach (var entry in portraitOverrides)
-            {
-                if (string.IsNullOrWhiteSpace(entry.crewId) || entry.portrait == null)
-                    continue;
-
-                _portraitLookup[entry.crewId] = entry.portrait;
-            }
-        }
-
         RectTransform RequestCrewSlotAnchor(CrewHUDCrewIcon icon)
         {
             if (icon == null)
@@ -574,11 +544,15 @@ namespace Teramyyd.UI
                 return null;
             }
 
-            if (_portraitLookup.TryGetValue(crew.crewId, out Sprite portrait))
+            // Get portrait from CrewManager (centralized portrait registry)
+            if (CrewManager.HasInstance)
             {
-                return portrait;
+                Sprite portrait = CrewManager.Instance.GetPortraitForCrew(crew);
+                if (portrait != null)
+                    return portrait;
             }
 
+            // Fallback to icon prefab's default sprite
             if (iconPrefab != null && iconPrefab.portraitImage != null)
             {
                 return iconPrefab.portraitImage.sprite;

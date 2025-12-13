@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -29,6 +30,8 @@ public class CrewManager : MonoBehaviour
     [Tooltip("When enabled, engines, lift devices, and weapon mounts will refuse to operate without the required crew assignments.")]
     public bool enforceCrewRequirements = false;
 
+    const string CrewPortraitsPath = "UI/Crew";
+
     public IEnumerable<CrewMember> RegisteredCrew => _crewById.Values;
     public IEnumerable<CrewStation> RegisteredStations => _stationsById.Values;
 
@@ -36,6 +39,7 @@ public class CrewManager : MonoBehaviour
     readonly Dictionary<string, CrewStation> _stationsById = new Dictionary<string, CrewStation>();
     readonly Dictionary<CrewMember, string> _pendingCrewTargets = new Dictionary<CrewMember, string>();
     readonly Dictionary<string, List<CrewMember>> _pendingByStation = new Dictionary<string, List<CrewMember>>();
+    readonly Dictionary<string, Sprite> _portraitLookup = new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
 
     void Awake()
     {
@@ -47,6 +51,7 @@ public class CrewManager : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        LoadCrewPortraits();
     }
 
     void Start()
@@ -359,5 +364,41 @@ public class CrewManager : MonoBehaviour
                 yield return member;
             }
         }
+    }
+
+    void LoadCrewPortraits()
+    {
+        _portraitLookup.Clear();
+        
+        // Load all sprites from the UI/Crew folder in Resources
+        Sprite[] portraits = Resources.LoadAll<Sprite>(CrewPortraitsPath);
+        
+        string msg = $"[CrewManager] Loaded {portraits.Length} crew portraits from Resources/{CrewPortraitsPath}";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "CrewManager");
+        
+        foreach (Sprite sprite in portraits)
+        {
+            if (sprite == null || string.IsNullOrEmpty(sprite.name))
+                continue;
+            
+            // The sprite name should match the crewId (e.g., "crew_ryn_calder")
+            _portraitLookup[sprite.name] = sprite;
+            
+            string spriteMsg = $"[CrewManager] Registered portrait: {sprite.name}";
+            Debug.Log(spriteMsg);
+            FileLogger.Log(spriteMsg, "CrewManager");
+        }
+    }
+
+    public Sprite GetPortraitForCrew(CrewMember crew)
+    {
+        if (crew == null || string.IsNullOrEmpty(crew.crewId))
+            return null;
+
+        if (_portraitLookup.TryGetValue(crew.crewId, out Sprite portrait))
+            return portrait;
+
+        return null;
     }
 }
