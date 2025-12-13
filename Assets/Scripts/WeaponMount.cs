@@ -113,6 +113,13 @@ public class WeaponMount : MonoBehaviour
         if (!ignoreTargetLock && !IsTargetFullyAcquired)
             return false;
 
+        // Snap to ballistic pitch immediately before firing
+        if (_hasAimSolution)
+        {
+            _pitch = _aimPitchTarget;
+            ApplyRotations();
+        }
+
         currentLauncher.TriggerFireCommand(ignoreTargetLock);
         
         // Grant gunnery XP to all crew members assigned to this weapon
@@ -296,11 +303,29 @@ public class WeaponMount : MonoBehaviour
         if (!_hasAimSolution)
             return;
 
-        float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
-        float pitchStep = autoAimPitchSpeedDegPerSec * Time.deltaTime;
-        _yaw = Mathf.MoveTowards(_yaw, _aimYawTarget, yawStep);
-        _pitch = Mathf.MoveTowards(_pitch, _aimPitchTarget, pitchStep);
-        ApplyRotations();
+        // Calculate line-of-sight pitch (pointing directly at target)
+        Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
+        if (muzzle != null)
+        {
+            Vector3 origin = muzzle.position;
+            Vector3 aimPoint = GetTargetAimPoint(target.transform);
+            Vector3 displacement = aimPoint - origin;
+            
+            Transform reference = yawBase != null ? (yawBase.parent != null ? yawBase.parent : yawBase) : transform;
+            Vector3 localDir = reference.InverseTransformDirection(displacement.normalized);
+            
+            // Apply yaw rotation first
+            Vector3 yawAlignedDir = Quaternion.Euler(0f, -_aimYawTarget, 0f) * localDir;
+            float lineOfSightPitch = -Mathf.Atan2(yawAlignedDir.y, yawAlignedDir.z) * Mathf.Rad2Deg;
+            float clampedLOSPitch = Mathf.Clamp(lineOfSightPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
+            
+            // Smoothly track yaw and line-of-sight pitch
+            float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
+            float pitchStep = autoAimPitchSpeedDegPerSec * Time.deltaTime;
+            _yaw = Mathf.MoveTowards(_yaw, _aimYawTarget, yawStep);
+            _pitch = Mathf.MoveTowards(_pitch, clampedLOSPitch, pitchStep);
+            ApplyRotations();
+        }
 
         if (currentLauncher != null)
         {
@@ -465,166 +490,128 @@ public class WeaponMount : MonoBehaviour
         }
 
         // ========================================================================
-        // CHECK 2: Can a ballistic lob solution (LPLS) intercept the target?
-        // This is the preferred solution when available.
+        // CHECK 2: Calculate LPLS (Launch Pitch & Launch Speed) to intercept target
+        // Strategy: Start at maximum pitch, adjust speed to hit target
+        // Only reduce pitch if overshooting at minimum speed
         // ========================================================================
-        Vector3 gravityVector = Physics.gravity.sqrMagnitude > 0.0001f ? Physics.gravity : Vector3.down * 9.81f;
-        Vector3 worldUp = -gravityVector.normalized;
-        float verticalOffset = Vector3.Dot(displacement, worldUp);
-        Vector3 planar = displacement - verticalOffset * worldUp;
-        float horizontalDistance = planar.magnitude;
-        Vector3 planarDir;
         
-        if (horizontalDistance > 0.0005f)
-        {
-            planarDir = planar / horizontalDistance;
-        }
-        else
-        {
-            Vector3 projectedForward = Vector3.ProjectOnPlane(reference.forward, worldUp);
-            if (projectedForward.sqrMagnitude < 1e-6f)
-            {
-                projectedForward = Vector3.ProjectOnPlane(reference.up, worldUp);
-            }
-            planarDir = projectedForward.sqrMagnitude > 1e-6f ? projectedForward.normalized : reference.forward.normalized;
-        }
-
         float gravityMag = Physics.gravity.magnitude;
         if (gravityMag < 0.0001f)
             gravityMag = 9.81f;
 
-        float thetaMaxRad = Mathf.Deg2Rad * Mathf.Clamp(Mathf.Abs(pitchUpDeg), 1f, 85f);
-        float drag = currentLauncher.ProjectileDrag;
-        float damping = currentLauncher.ProjectileLinearDamping;
+        // Calculate yaw to point horizontally at target
+        Vector3 planarDisplacement = displacement;
+        planarDisplacement.y = 0f;
+        float horizontalDistance = planarDisplacement.magnitude;
+        
+        if (horizontalDistance < 0.1f)
+        {
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 2 FAILED: Target too close horizontally (distance={horizontalDistance:F2}m)");
+            }
+            yaw = targetPositionYaw;
+            pitch = 0f;
+            launchSpeed = currentLauncher.launchSpeed;
+            return false;
+        }
+
+        float verticalOffset = aimPoint.y - origin.y;
+        
+        // Calculate yaw in local space
+        Vector3 horizontalDir = planarDisplacement.normalized;
+        Vector3 localHorizontalDir = reference.InverseTransformDirection(horizontalDir);
+        float solutionYaw = Mathf.Atan2(localHorizontalDir.x, localHorizontalDir.z) * Mathf.Rad2Deg;
+        
+        // Verify yaw is within limits (should be, since CHECK 1 passed)
+        if (Mathf.Abs(solutionYaw) > halfYaw)
+        {
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 2 FAILED: Solution yaw {solutionYaw:F1}° outside limits ±{halfYaw:F1}°");
+            }
+            yaw = Mathf.Clamp(solutionYaw, -halfYaw, halfYaw);
+            pitch = 0f;
+            launchSpeed = currentLauncher.launchSpeed;
+            return false;
+        }
+
         float maxSpeed = currentLauncher.launchSpeed;
-
-        float solvedLaunchSpeedValue;
-        float launchAngleRad;
-        bool lobSolved = BallisticsSolver.SolveWithUnityDrag(
-            horizontalDistance,
-            verticalOffset,
-            gravityMag,
-            maxSpeed,
-            thetaMaxRad,
-            drag,
-            damping,
-            out solvedLaunchSpeedValue,
-            out launchAngleRad);
-
-        if (lobSolved)
-        {
-            // Calculate the aim direction required for the lob shot
-            Vector3 worldAimDir;
-            if (horizontalDistance > 0.0005f)
-            {
-                float cos = Mathf.Cos(launchAngleRad);
-                float sin = Mathf.Sin(launchAngleRad);
-                worldAimDir = (planarDir * cos + worldUp * sin).normalized;
-            }
-            else
-            {
-                if (Mathf.Abs(verticalOffset) < 0.0005f)
-                {
-                    worldAimDir = planarDir;
-                }
-                else
-                {
-                    worldAimDir = verticalOffset >= 0f ? worldUp : -worldUp;
-                }
-            }
-
-            Vector3 localAimDir = reference.InverseTransformDirection(worldAimDir);
-            float lobYaw = Mathf.Atan2(localAimDir.x, localAimDir.z) * Mathf.Rad2Deg;
-            
-            // Check if the lob's required yaw is within limits
-            // Note: This is different from CHECK 1 - the lob trajectory may need a different yaw than pointing at the target
-            if (Mathf.Abs(lobYaw) <= halfYaw)
-            {
-                Vector3 yawAlignedAimDir = Quaternion.Euler(0f, -lobYaw, 0f) * localAimDir;
-                float lobPitch = -Mathf.Atan2(yawAlignedAimDir.y, yawAlignedAimDir.z) * Mathf.Rad2Deg;
-                
-                // Check if the lob's required pitch is within limits
-                if (lobPitch >= -Mathf.Abs(pitchDownDeg) && lobPitch <= Mathf.Abs(pitchUpDeg))
-                {
-                    yaw = lobYaw;
-                    pitch = Mathf.Clamp(lobPitch, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-                    launchSpeed = Mathf.Clamp(solvedLaunchSpeedValue, currentLauncher.minimumLaunchSpeed, currentLauncher.launchSpeed);
-                    
-                    if (enableDebugLogging)
-                    {
-                        LogDebug($"CHECK 2 PASSED: Lob solution found. Yaw={yaw:F1}° Pitch={pitch:F1}° Speed={launchSpeed:F1}");
-                    }
-                    
-                    return true;
-                }
-            }
-            
-            if (enableDebugLogging)
-            {
-                LogDebug($"CHECK 2 PARTIAL: Lob calculated but outside limits. LobYaw={lobYaw:F1}° LobPitch not checked. Limit=±{halfYaw:F1}°");
-            }
-        }
-        else
-        {
-            if (enableDebugLogging)
-            {
-                LogDebug($"CHECK 2 FAILED: No lob solution exists for distance={horizontalDistance:F1}m vertical={verticalOffset:F1}m");
-            }
-        }
-
+        float minSpeed = currentLauncher.minimumLaunchSpeed;
+        float maxPitchDeg = Mathf.Abs(pitchUpDeg);
+        float maxPitchRad = maxPitchDeg * Mathf.Deg2Rad;
+        
         // ========================================================================
-        // CHECK 3: Can direct-fire at maximum speed reach the target?
-        // This validates that a straight shot can actually reach the target.
+        // LPLS CALCULATION: Use maximum pitch, adjust speed to hit target
+        // NOTE: In this coordinate system, NEGATIVE pitch values aim UP, POSITIVE pitch values aim DOWN
         // ========================================================================
-        float directDistance = displacement.magnitude;
         
-        // Calculate time of flight for direct shot at max speed
-        float flightTime = directDistance / maxSpeed;
+        // Calculate required launch speed at maximum pitch to hit the target
+        // Using projectile motion: h = R*tan(θ) - (g*R²)/(2*v²*cos²(θ))
+        // Solving for v: v² = (g*R²)/(2*cos²(θ)*(R*tan(θ) - h))
         
-        // Calculate gravity drop during flight
-        float gravityDrop = 0.5f * gravityMag * flightTime * flightTime;
+        float cosTheta = Mathf.Cos(maxPitchRad);
+        float sinTheta = Mathf.Sin(maxPitchRad);
+        float tanTheta = Mathf.Tan(maxPitchRad);
         
-        // For direct fire to work, we need to compensate for gravity drop with pitch
-        // Calculate the pitch angle needed to compensate for gravity
-        Vector3 directDisplacement = aimPoint - origin;
-        Vector3 directLocalDir = reference.InverseTransformDirection(directDisplacement.normalized);
-        float directYaw = Mathf.Atan2(directLocalDir.x, directLocalDir.z) * Mathf.Rad2Deg;
+        // Calculate the vertical term: how much higher the projectile would go at this angle
+        // compared to the target's vertical offset
+        float verticalTerm = horizontalDistance * tanTheta - verticalOffset;
         
-        // Verify direct yaw is within limits (should be, since CHECK 1 passed)
-        if (Mathf.Abs(directYaw) <= halfYaw)
+        if (verticalTerm <= 0f)
         {
-            // Calculate the pitch required to hit the target with a straight shot
-            // accounting for gravity drop
-            Vector3 directDirAfterYaw = Quaternion.Euler(0f, -directYaw, 0f) * directLocalDir;
-            float directForwardComponent = directDirAfterYaw.z;
-            float directBasePitch = -Mathf.Atan2(directDirAfterYaw.y, directForwardComponent) * Mathf.Rad2Deg;
-            
-            // Add pitch compensation for gravity drop
-            // The compensation angle is arctan(gravityDrop / horizontal distance)
-            float horizontalDist = Mathf.Sqrt(directDistance * directDistance - (aimPoint.y - origin.y) * (aimPoint.y - origin.y));
-            float gravityCompensationAngle = Mathf.Atan2(gravityDrop, horizontalDist) * Mathf.Rad2Deg;
-            float directPitchWithGravity = directBasePitch + gravityCompensationAngle;
-            
-            // Check if the compensated pitch is within limits
-            if (directPitchWithGravity >= -Mathf.Abs(pitchDownDeg) && directPitchWithGravity <= Mathf.Abs(pitchUpDeg))
-            {
-                yaw = directYaw;
-                pitch = Mathf.Clamp(directPitchWithGravity, -Mathf.Abs(pitchDownDeg), Mathf.Abs(pitchUpDeg));
-                launchSpeed = maxSpeed;
-                
-                if (enableDebugLogging)
-                {
-                    LogDebug($"CHECK 3 PASSED: Direct-fire solution. Yaw={yaw:F1}° Pitch={pitch:F1}° (base={directBasePitch:F1}° +gravity={gravityCompensationAngle:F1}°) Drop={gravityDrop:F1}m");
-                }
-                
-                return true;
-            }
-            
+            // At max pitch, we still can't get high enough to clear the target's altitude
             if (enableDebugLogging)
             {
-                LogDebug($"CHECK 3 FAILED: Direct-fire pitch out of range. RequiredPitch={directPitchWithGravity:F1}° Limit={pitchUpDeg:F1}° to {-pitchDownDeg:F1}°");
+                LogDebug($"CHECK 2 FAILED: Max pitch {maxPitchDeg:F1}° cannot reach target altitude (H={horizontalDistance:F1}m V={verticalOffset:F1}m, vertical_term={verticalTerm:F3})");
             }
+            yaw = solutionYaw;
+            pitch = -maxPitchDeg; // Negative = pitch up
+            launchSpeed = maxSpeed;
+            return false;
         }
+        
+        float cos2 = cosTheta * cosTheta;
+        float requiredSpeed2 = (gravityMag * horizontalDistance * horizontalDistance) / (2f * cos2 * verticalTerm);
+        
+        if (requiredSpeed2 <= 0f)
+        {
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 2 FAILED: Invalid speed calculation (v²={requiredSpeed2:F3})");
+            }
+            yaw = solutionYaw;
+            pitch = -maxPitchDeg; // Negative = pitch up
+            launchSpeed = maxSpeed;
+            return false;
+        }
+        
+        float requiredSpeed = Mathf.Sqrt(requiredSpeed2);
+        
+        // Check if required speed is within our launcher's capabilities
+        if (requiredSpeed < minSpeed || requiredSpeed > maxSpeed)
+        {
+            if (enableDebugLogging)
+            {
+                LogDebug($"CHECK 2 FAILED: Required speed {requiredSpeed:F1} outside range [{minSpeed:F1}, {maxSpeed:F1}] (H={horizontalDistance:F1}m V={verticalOffset:F1}m Pitch={maxPitchDeg:F1}°)");
+            }
+            yaw = solutionYaw;
+            pitch = -maxPitchDeg; // Negative = pitch up
+            launchSpeed = Mathf.Clamp(requiredSpeed, minSpeed, maxSpeed);
+            return false;
+        }
+        
+        // Success! We have a valid firing solution
+        yaw = solutionYaw;
+        pitch = -maxPitchDeg; // Negative = pitch up
+        launchSpeed = requiredSpeed;
+        
+        if (enableDebugLogging)
+        {
+            LogDebug($"CHECK 2 PASSED: LPLS solution. Yaw={yaw:F1}° Pitch={pitch:F1}° Speed={launchSpeed:F1} | Target: H={horizontalDistance:F1}m V={verticalOffset:F1}m | Vertical_term={verticalTerm:F3} | Formula: v²={(gravityMag * horizontalDistance * horizontalDistance):F1} / (2*{cos2:F3}*{verticalTerm:F3}) = {requiredSpeed2:F1}");
+        }
+        
+        return true;
 
         // All checks failed - no valid firing solution
         // Set aim values to point towards target for visual feedback

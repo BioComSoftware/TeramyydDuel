@@ -50,6 +50,7 @@ MonoBehaviour:
   muzzleSmoke: {fileID: 0}
   MuzzleBlast: {fileID: 0}
   fireKey: 102
+  useConfigurableKey: 1
   launchSpeed: 50
   minimumLaunchSpeed: 1
   spawnOffset: 1
@@ -60,7 +61,7 @@ MonoBehaviour:
   projectileLinearDampingOverride: -1
   reloadTime: 10
   startReady: 1
-  debugLog: 0
+  debugLog: 1
   requireValidMountTargetLock: 1
 --- !u!1 &7202491767298042434
 GameObject:

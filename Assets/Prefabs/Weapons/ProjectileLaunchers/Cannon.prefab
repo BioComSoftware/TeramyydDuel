@@ -10087,7 +10087,7 @@ MonoBehaviour:
   projectileLinearDampingOverride: -1
   reloadTime: 10
   startReady: 1
-  debugLog: 0
+  debugLog: 1
   requireValidMountTargetLock: 1
   fireAudioSource: {fileID: 0}
   messageBox: {fileID: 0}
