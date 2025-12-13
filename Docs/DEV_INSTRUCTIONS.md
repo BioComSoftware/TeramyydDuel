@@ -1,5 +1,7 @@
 ﻿# Developer Instructions
 
+**Last Updated:** 2025-12-14
+
 This document explains how to place, wire, and test the main scripts in this project. It is written for designers/devs authoring ships, mounts, and prefabs — not for players. The goal is a predictable authoring contract with minimal surprises.
 
 ## Table of Contents
@@ -1282,5 +1284,169 @@ otateClockwise setting
 - All instruments use Update() loop
 - Damping reduces visual jitter
 - Consider lower update rates if needed (modify scripts)
+
+---
+
+## Weapon Targeting & Ballistics (Updated 2025-12-14)
+
+### LPLS Multi-Angle Targeting System
+
+**Purpose**: WeaponMount calculates optimal firing solutions by testing multiple pitch angles and selecting the one requiring the lowest launch speed.
+
+**How It Works**:
+1. Tests 8 equal segments between max pitch up and max pitch down (9 total test points)
+2. For each angle, calculates required launch speed using ballistic formula
+3. Selects angle with lowest speed that stays within launcher's speed range
+4. If no valid solution found, displays "Target Not Acquired"
+
+**Example Pitch Tests** (±15° cannon):
+```
+-15.00° (max up)
+-11.25°
+ -7.50°
+ -3.75°
+  0.00° (level)
+ +3.75°
+ +7.50°
++11.25°
++15.00° (max down)
+```
+
+**Pitch Coordinate System (CRITICAL)**:
+```csharp
+// Unity GameObject rotation
+float pitch = -15f;  // Aims barrel UP (negative = up)
+float pitch = +15f;  // Aims barrel DOWN (positive = down)
+
+// Physics calculations require NEGATION
+float physicsAngle = -pitch;  // Convert for ballistic formulas
+// Because physics formulas expect positive angle = up
+```
+
+**Cannon Movement Behavior**:
+- **Yaw (horizontal)**: Continuously tracks target
+- **Pitch (vertical)**: Stays at last firing angle between shots
+- **Just before firing**: Pitch snaps to calculated ballistic angle
+- **After firing**: Pitch remains at firing angle (no reset)
+
+**Configuration** (WeaponMount Inspector):
+- `pitchUpDeg`: Maximum upward pitch angle (e.g., 15°)
+- `pitchDownDeg`: Maximum downward pitch angle (e.g., 15°)
+- `yawLimitDeg`: Horizontal arc (e.g., 60° for ±30°)
+- `autoAimYawSpeedDegPerSec`: How fast yaw tracks (e.g., 45°/s)
+- `autoAimPitchSpeedDegPerSec`: Not used during tracking, only for manual control
+
+**Debug Logging** (enable on WeaponMount):
+```
+CHECK 1 PASSED: Target within yaw arc. TargetYaw=12.3° Limit=±30.0°
+CHECK 2 PASSED: Optimal LPLS solution. Yaw=12.3° Pitch=-8.5° Speed=45.2 | Target: H=120.5m V=15.3m
+```
+
+### Crew Skill Impact on Accuracy
+
+**Accuracy Scale Formula** (CrewSkillUtility.cs):
+- Skill 10 → 0.0 scale → Perfect accuracy (no spread/jitter)
+- Skill 7 → 0.25 scale → 25% of base spread/jitter
+- Skill 5 → 0.5 scale → 50% of base spread/jitter
+- Skill 1 → 1.0 scale → Full spread/jitter
+
+**ProjectileLauncher Configuration**:
+- `angleSpreadDegrees`: Base cone spread (e.g., 5°)
+- `speedJitterPercent`: Launch speed variance (e.g., 10%)
+- `disableAccuracyError`: Override to disable all spread/jitter
+
+**Effective Calculation**:
+```csharp
+float effectiveSpread = angleSpreadDegrees * crewAccuracyScale;
+float effectiveJitter = speedJitterPercent * crewAccuracyScale * 0.01f;
+```
+
+**Debug Logging** (enable on ProjectileLauncher):
+```
+[ProjectileLauncher] Fire accuracy: angleSpread=5.00°, crewScale=1.000, finalSpread=5.00°, disableError=False
+```
+
+---
+
+## Crew Persistence & Save System (Updated 2025-12-14)
+
+### CrewPersistence.json Structure
+
+**Location**: `Assets/Resources/CrewPersistence.json`
+
+**JSON Format**:
+```json
+{
+    "version": "1.0.0",
+    "lastSavedUtc": "2025-12-14T12:34:56Z",
+    "crewMembers": [
+        {
+            "crewId": "crew_serena_brasswolf",
+            "displayName": "Serena Brasswolf",
+            "gunnery": 1.0,
+            "navigation": 1.0,
+            "repair": 1.0,
+            "powerEngineering": 5.5,
+            "liftEngineering": 3.2,
+            "maxHealth": 100.0,
+            "currentHealth": 85.0,
+            "assignedStationId": "Bow_weapon_mount_01_crew_slot"
+        }
+    ]
+}
+```
+
+**Authority Rules**:
+1. **At Game Start**: JSON is AUTHORITATIVE - all skill values loaded from JSON override prefab defaults
+2. **During Gameplay**: CrewMember runtime values are authoritative - saved back to JSON on quit/autosave
+3. **Prefab Values**: Only used for NEW crew members not in JSON
+
+**Save Timing**:
+- **Auto-save**: Every 30 seconds (if changes made)
+- **On Quit**: Forced save via `OnApplicationQuit()`
+- **Manual**: Call `CrewPersistenceManager.Instance.SaveSnapshot()`
+
+### Common Issues & Solutions
+
+**Issue: Crew showing wrong skill values**
+- **Symptom**: JSON has `gunnery: 1.0` but game shows `gunnery: 10.0`
+- **Cause**: JSON file wasn't saved properly after editing
+- **Solution**: Edit JSON in external editor, save, verify file timestamp updated, reload Unity
+
+**Issue: Duplicate crew entries in JSON**
+- **Symptom**: Same crew appears multiple times in JSON
+- **Cause**: Previous bug (now fixed) that allowed duplicates
+- **Solution**: System auto-deduplicates on load, logs warnings, saves clean version
+
+**Issue: Crew not spawning at assigned stations**
+- **Symptom**: Crew assigned in JSON but spawns in unassigned zone
+- **Cause**: Anchors not registered before crew spawning
+- **Solution**: System now waits one frame for anchor registration (auto-fixed)
+
+### Debug Logging
+
+**CrewPersistenceManager** (enable debugLog):
+```
+[CrewPersistence] LoadSnapshot: Successfully loaded 10 crew members from JSON
+[CrewPersistence] Loaded crew: crew_serena_brasswolf (Serena Brasswolf) -> Station: Bow_weapon_mount_01_crew_slot
+[CrewPersistence] ApplySkillState to crew_serena_brasswolf: Before=(G:10.0 N:1.0), JSON=(G:1.0 N:1.0)
+[CrewPersistence] ApplySkillState to crew_serena_brasswolf: After=(G:1.0 N:1.0)
+[CrewPersistence] WARNING: Duplicate crew ID 'crew_morgan_lee' found in JSON and removed
+```
+
+### Station ID Best Practices
+
+**Naming Convention**:
+- WeaponMount: `{GameObject.name}_crew_slot` (e.g., "Bow_weapon_mount_01_crew_slot")
+- Engine: `{GameObject.name}_EngineCrew` (e.g., "Port_Engine_EngineCrew")
+- LiftDevice: `{GameObject.name}_LiftCrew` (e.g., "Main_AntiGravity_LiftCrew")
+
+**Critical Rule**: Use GameObject.name for uniqueness, NOT mountId (which may be duplicated across multiple mounts)
+
+**Setup Verification**:
+1. Select weapon mount/engine/lift device in Hierarchy
+2. Check GameObject name at top of Inspector (must be unique)
+3. Play game and check Console for "CrewStation registered: {stationId}"
+4. Verify no "WARNING: Station {stationId} already registered" messages
 
 ---

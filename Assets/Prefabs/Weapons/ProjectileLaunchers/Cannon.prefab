@@ -10237,5 +10237,5 @@ MonoBehaviour:
   accrualMethod: 1
   skillGainPerSecond: 0.01
   accrualEvent: 0
-  skillGainPerEvent: 0.1
+  skillGainPerEvent: 0.02
   enforceRequirements: 1

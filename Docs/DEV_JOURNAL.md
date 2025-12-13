@@ -1,3 +1,141 @@
+## 2025-12-14 — Cannon Targeting, Crew Systems, and Persistence Fixes
+
+### Cannon LPLS Targeting System - Multi-Angle Optimization
+**Problem:** Cannons were using single maximum pitch angle for all shots, not finding optimal firing solutions.
+
+**Solution:** Implemented multi-angle LPLS calculation that tests 8 equal segments from max pitch up to max pitch down:
+- Tests pitch angles in 8 segments (9 test points total) between maximum upward and maximum downward pitch
+- Example: ±15° cannon tests at -15°, -11.25°, -7.5°, -3.75°, 0°, +3.75°, +7.5°, +11.25°, +15°
+- Selects firing solution with **lowest required launch speed** that still hits target
+- Uses ballistic formula: `v² = (g*R²)/(2*cos²(θ)*(R*tan(θ) - h))`
+
+**Pitch Coordinate System (CRITICAL):**
+- Unity: **NEGATIVE pitch = aim UP**, **POSITIVE pitch = aim DOWN**
+- Physics formulas: **POSITIVE angle = aim UP**, **NEGATIVE angle = aim DOWN**
+- Solution: Negate Unity pitch angle when calculating physics: `physicsAngleRad = -testPitchDeg * Mathf.Deg2Rad`
+
+**Cannon Movement Behavior:**
+- **Yaw:** Continuously tracks target in horizontal direction
+- **Pitch:** Remains at last firing angle between shots (no movement)
+- **On Fire:** Pitch snaps to calculated ballistic angle immediately before projectile launch
+- **After Fire:** Pitch stays at firing angle, ready for next calculation
+
+**Code Location:** `WeaponMount.cs` - `TrySolveBallisticArc()` method around line 540
+
+### Crew Persistence System Fixes
+
+**Problem 1: Duplicate Crew Entries in JSON**
+- `LoadSnapshot()` was loading all entries from JSON into list, but only first occurrence into lookup dictionary
+- `SaveSnapshot()` saved entire list including duplicates
+- Each game restart added more duplicates
+
+**Solution:**
+- Added deduplication during `LoadSnapshot()` - builds `uniqueCrewMembers` list
+- Only first occurrence of each `crewId` is kept
+- Logs warning for each duplicate detected
+- Replaces `_snapshot.crewMembers` with deduplicated version
+- Auto-saves cleaned version
+
+**Problem 2: JSON Not Authoritative for Skill Values**
+- `GetOrCreateState()` was overwriting JSON values with prefab values when crew already existed
+- After loading JSON with `gunnery: 1.0`, code would overwrite state with prefab's `gunnery: 10.0`
+
+**Solution:**
+- Modified `GetOrCreateState()` else block to NOT copy skill values from prefab to state
+- JSON remains authoritative - only display name syncs from prefab
+- Skill values from JSON are preserved and applied via `ApplySkillState()`
+
+**Problem 3: Crew Spawning Before Anchors Registered**
+- `CrewRuntimeSpawner.Start()` called `SpawnPersistedCrew()` immediately
+- `CrewStationAnchorRuntimeBuilder.OnEnable()` hadn't registered anchors yet
+- Second crew member at same station couldn't find anchor, spawned in unassigned zone
+
+**Solution:**
+- Changed `Start()` to use coroutine `SpawnPersistedCrewDelayed()`
+- Waits one frame (`yield return null`) before spawning
+- Allows all `OnEnable()` methods to complete and register anchors
+- All crew members now spawn at correct stations with proper anchor assignments
+
+**Code Locations:**
+- `CrewPersistenceManager.cs` - `LoadSnapshot()` lines 350-380, `GetOrCreateState()` lines 233-242
+- `CrewRuntimeSpawner.cs` - `Start()` and new coroutine around line 54
+
+### Weapon Mount Crew Detection and Reload Scaling
+
+**Issue:** Cannons not recognizing assigned crew, showing "Target Not Acquired" even with crew assigned.
+
+**Investigation:**
+- `HasOperationalCrew()` checks `CrewManager.Instance.MeetsRequirement(crewStation)`
+- `MeetsRequirement()` checks `CrewStation.HasRequiredCrew`
+- `HasRequiredCrew` validates `AssignedCrewCount >= MinimumCrewRequired`
+- Added debug logging to trace crew assignment detection
+
+**Reload Time System (Working as Designed):**
+- 1 crew member = 1.0x scale = normal reload time
+- 2+ crew members = 0.5x scale = half reload time (double fire rate)
+- Applied via `UpdateCrewPerformanceBonuses()` in `WeaponMount.cs`
+
+**Debug Logging Added:**
+- `HasOperationalCrew()`: Shows station ID, assigned crew count, minimum required, whether requirement met
+- `UpdateCrewPerformanceBonuses()`: Shows reload scale changes with crew count
+
+### Projectile Launcher Accuracy System
+
+**Issue:** Angle spread and launch speed jitter not being applied to projectiles.
+
+**Root Cause:** Crew members had skill level 10 in game despite JSON showing level 1, causing accuracy scale near 0 (perfect accuracy, no spread/jitter).
+
+**Accuracy Scale Calculation:**
+- `CrewSkillUtility.EvaluateAccuracyScale()` returns:
+  - Skill 10 → 0.0 scale → NO spread/jitter (perfect accuracy)
+  - Skill 7 → 0.25 scale → 25% of spread/jitter
+  - Skill 5 → 0.5 scale → 50% of spread/jitter
+  - Skill 1 → 1.0 scale → FULL spread/jitter
+- Spread calculation: `spread = angleSpreadDegrees * _crewAccuracyScale`
+- Jitter calculation: `jitter = speedJitterPercent * _crewAccuracyScale * 0.01f`
+
+**Debug Logging Added:**
+- `ProjectileLauncher.FireInternal()`: Shows angle spread, crew scale, final spread, and disable flag
+- Helps diagnose whether spread is disabled or just scaled to near-zero by high crew skill
+
+**Code Location:** `ProjectileLauncher.cs` - `FireInternal()` around line 260
+
+### Key Architectural Points
+
+**Pitch Convention (Never Forget):**
+```csharp
+// Unity GameObject rotation
+pitch = -15f;  // Aims UP
+pitch = +15f;  // Aims DOWN
+
+// Physics calculations require negation
+physicsAngle = -pitch;  // Convert for ballistic formulas
+```
+
+**Crew Data Flow (Startup):**
+1. `CrewPersistence.json` loaded by `CrewPersistenceManager.LoadSnapshot()`
+2. `CrewRuntimeSpawner` waits one frame, then spawns crew prefabs
+3. `CrewMember.Awake()` calls `ApplyBootstrapStateIfPresent()` - applies JSON values to fields
+4. `CrewMember.OnEnable()` registers with `CrewManager`
+5. `CrewManager.RegisterCrew()` calls `CrewPersistenceManager.RegisterCrewMember()`
+6. `GetOrCreateState()` finds existing JSON state, does NOT overwrite with prefab values
+7. `ApplySkillState()` applies JSON values to crew member (should match bootstrap values)
+
+**Station ID Best Practices:**
+- Use GameObject.name for uniqueness, not mountId (which may be duplicated)
+- WeaponMount: `{gameObject.name}_crew_slot`
+- Engine: `{gameObject.name}_EngineCrew`
+- LiftDevice: `{gameObject.name}_LiftCrew`
+
+### Files Modified
+- `WeaponMount.cs` - LPLS multi-angle calculation, crew detection logging
+- `ProjectileLauncher.cs` - Accuracy debug logging
+- `CrewPersistenceManager.cs` - Deduplication, JSON authority fixes, skill application logging
+- `CrewRuntimeSpawner.cs` - Delayed spawn coroutine
+- `CrewSkillUtility.cs` - Accuracy scale formula (unchanged, documented here)
+
+---
+
 ## 2025-12-06 — Crew HUD Drag/Drop System — WORKING
 
 ### Final Architecture State

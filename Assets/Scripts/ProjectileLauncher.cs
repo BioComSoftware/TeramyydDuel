@@ -258,6 +258,12 @@ public class ProjectileLauncher : MonoBehaviour
 
         // Apply angular spread (cone around the base direction)
         float spread = disableAccuracyError ? 0f : Mathf.Max(0f, angleSpreadDegrees * _crewAccuracyScale);
+        
+        if (debugLog)
+        {
+            Debug.Log($"[ProjectileLauncher] Fire accuracy: angleSpread={angleSpreadDegrees:F2}°, crewScale={_crewAccuracyScale:F3}, finalSpread={spread:F2}°, disableError={disableAccuracyError}");
+        }
+        
         if (spread > 0f)
         {
             // Build an orthonormal basis around the axis

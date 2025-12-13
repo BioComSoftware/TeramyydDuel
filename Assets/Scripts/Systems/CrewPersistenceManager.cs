@@ -230,14 +230,13 @@ public class CrewPersistenceManager : MonoBehaviour
         }
         else
         {
-            // Keep definitions in sync when designer tweaks ratings.
-            state.displayName = crew.displayName;
-            state.gunnery = crew.gunnery;
-            state.navigation = crew.navigation;
-            state.repair = crew.repair;
-            state.powerEngineering = crew.powerEngineering;
-            state.liftEngineering = crew.liftEngineering;
-            state.maxHealth = crew.Health != null ? crew.Health.maxHealth : state.maxHealth;
+            // State already exists from JSON - JSON is authoritative
+            // Do NOT overwrite state with prefab values
+            // Only update displayName in case it was changed in the prefab
+            if (!string.IsNullOrEmpty(crew.displayName))
+            {
+                state.displayName = crew.displayName;
+            }
         }
 
         return state;
@@ -248,11 +247,25 @@ public class CrewPersistenceManager : MonoBehaviour
         if (crew == null || state == null)
             return;
 
+        if (debugLog)
+        {
+            string msg = $"[CrewPersistence] ApplySkillState to {crew.crewId}: Before=(G:{crew.gunnery:F1} N:{crew.navigation:F1}), JSON=(G:{state.gunnery:F1} N:{state.navigation:F1})";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewPersistence");
+        }
+
         crew.SetSkillLevel(CrewSkill.Gunnery, Mathf.Max(1f, state.gunnery));
         crew.SetSkillLevel(CrewSkill.Navigation, Mathf.Max(1f, state.navigation));
         crew.SetSkillLevel(CrewSkill.Repair, Mathf.Max(1f, state.repair));
         crew.SetSkillLevel(CrewSkill.PowerEngineering, Mathf.Max(1f, state.powerEngineering));
         crew.SetSkillLevel(CrewSkill.LiftEngineering, Mathf.Max(1f, state.liftEngineering));
+        
+        if (debugLog)
+        {
+            string msg = $"[CrewPersistence] ApplySkillState to {crew.crewId}: After=(G:{crew.gunnery:F1} N:{crew.navigation:F1})";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewPersistence");
+        }
     }
 
     void ApplyHealthState(CrewMember crew, CrewMemberState state)
@@ -347,6 +360,9 @@ public class CrewPersistenceManager : MonoBehaviour
         }
 
         _crewLookup.Clear();
+        
+        // Build lookup and detect duplicates
+        var uniqueCrewMembers = new List<CrewMemberState>();
         foreach (var entry in _snapshot.crewMembers)
         {
             if (entry == null || string.IsNullOrEmpty(entry.crewId))
@@ -355,6 +371,7 @@ public class CrewPersistenceManager : MonoBehaviour
             if (!_crewLookup.ContainsKey(entry.crewId))
             {
                 _crewLookup.Add(entry.crewId, entry);
+                uniqueCrewMembers.Add(entry);
                 
                 if (debugLog)
                 {
@@ -364,6 +381,23 @@ public class CrewPersistenceManager : MonoBehaviour
                     FileLogger.Log(msg, "CrewPersistence");
                 }
             }
+            else
+            {
+                // Duplicate detected - log warning and skip
+                string msg = $"[CrewPersistence] WARNING: Duplicate crew ID '{entry.crewId}' found in JSON and removed";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "CrewPersistence");
+            }
+        }
+        
+        // Replace the list with deduplicated version
+        if (uniqueCrewMembers.Count != _snapshot.crewMembers.Count)
+        {
+            _snapshot.crewMembers = uniqueCrewMembers;
+            MarkDirty(); // Save cleaned-up version
+            string msg = $"[CrewPersistence] Removed {_snapshot.crewMembers.Count - uniqueCrewMembers.Count} duplicate entries";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "CrewPersistence");
         }
     }
 
