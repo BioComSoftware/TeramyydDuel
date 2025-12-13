@@ -5,6 +5,7 @@ public class DebugCrewAnchors : MonoBehaviour
 {
     void Start()
     {
+#if UNITY_EDITOR
         Debug.Log("--- Starting Crew Anchor Debug ---");
         var mounts = FindObjectsByType<WeaponMount>(FindObjectsSortMode.None);
         foreach (var mount in mounts)
@@ -38,5 +39,6 @@ public class DebugCrewAnchors : MonoBehaviour
                 }
             }
         }
+#endif
     }
 }

@@ -2,7 +2,7 @@
 using System.IO;
 using UnityEngine;
 
-// TWO-LAYER KEYBINDING SYSTEM
+// TWO-LAYER KEYBINDING SYSTEM (Updated)
 // 
 // LAYER 1: Developer Defaults (Inspector Fields)
 // - Public fields prefixed with "default" (e.g., defaultBridgeView)
@@ -62,6 +62,10 @@ public class KeyBindingData
     public string engineForward = "W";
     public string engineReverse = "S";
     public float engineChadburnRotationSpeed = 45f;
+    
+    // Ship wheel controls
+    public string wheelLeft = "A";
+    public string wheelRight = "D";
 
     // Ship wheel controls (not exposed in KeyBindingConfig Inspector)
     public float autoReturnSpeedDegPerSec = 90f;
@@ -111,12 +115,18 @@ public class KeyBindingConfig : ScriptableObject
     [SerializeField] private float _engineChadburnRotationSpeed = 45f;
 
     [Header("Active Ship Wheel Controls (Runtime)")]
+    [SerializeField] private KeyCode _wheelLeft;
+    [SerializeField] private KeyCode _wheelRight;
     [Tooltip("This value is loaded from keybindings.json only - no Inspector default field.")]
     [SerializeField] private float _autoReturnSpeedDegPerSec = 90f;
 
     [Header("Active Modifier Flags (Runtime)")]
     [SerializeField] private bool _snapRequiresCtrl;
     [SerializeField] private bool _zoomRequiresCtrl;
+
+    [Header("Debug")]
+    [Tooltip("Enable debug logging to Console and log file")]
+    public bool debugLog = false;
 
     // Public properties to access runtime values (authoritative source during gameplay)
     public KeyCode bridgeView => _bridgeView;
@@ -136,6 +146,8 @@ public class KeyBindingConfig : ScriptableObject
     public KeyCode engineForward => _engineForward;
     public KeyCode engineReverse => _engineReverse;
     public float engineChadburnRotationSpeed => _engineChadburnRotationSpeed;
+    public KeyCode wheelLeft => _wheelLeft;
+    public KeyCode wheelRight => _wheelRight;
     public float autoReturnSpeedDegPerSec => _autoReturnSpeedDegPerSec;
     public bool snapRequiresCtrl => _snapRequiresCtrl;
     public bool zoomRequiresCtrl => _zoomRequiresCtrl;
@@ -222,6 +234,15 @@ public class KeyBindingConfig : ScriptableObject
             _engineForward = ParseKeyCode(data.engineForward, defaults?.defaultEngineForward ?? KeyCode.W);
             _engineReverse = ParseKeyCode(data.engineReverse, defaults?.defaultEngineReverse ?? KeyCode.S);
             _engineChadburnRotationSpeed = data.engineChadburnRotationSpeed;
+            _wheelLeft = ParseKeyCode(data.wheelLeft, defaults?.defaultWheelLeft ?? KeyCode.A);
+            _wheelRight = ParseKeyCode(data.wheelRight, defaults?.defaultWheelRight ?? KeyCode.D);
+            
+            if (debugLog)
+            {
+                string msg = $"KeyBindingConfig: Loaded wheelLeft={_wheelLeft}, wheelRight={_wheelRight}";
+                Debug.Log(msg);
+                FileLogger.Log(msg, "KeyBindings");
+            }
 
             _autoReturnSpeedDegPerSec = data.autoReturnSpeedDegPerSec;
 
@@ -265,6 +286,8 @@ public class KeyBindingConfig : ScriptableObject
             _engineForward = KeyCode.W;
             _engineReverse = KeyCode.S;
             _engineChadburnRotationSpeed = 45f;
+            _wheelLeft = KeyCode.A;
+            _wheelRight = KeyCode.D;
             _snapRequiresCtrl = true;
             _zoomRequiresCtrl = true;
         }
@@ -287,6 +310,8 @@ public class KeyBindingConfig : ScriptableObject
             _engineForward = defaults.defaultEngineForward;
             _engineReverse = defaults.defaultEngineReverse;
             _engineChadburnRotationSpeed = defaults.defaultEngineChadburnRotationSpeed;
+            _wheelLeft = defaults.defaultWheelLeft;
+            _wheelRight = defaults.defaultWheelRight;
             _snapRequiresCtrl = defaults.defaultSnapRequiresCtrl;
             _zoomRequiresCtrl = defaults.defaultZoomRequiresCtrl;
         }
@@ -322,6 +347,8 @@ public class KeyBindingConfig : ScriptableObject
             engineForward = _engineForward.ToString(),
             engineReverse = _engineReverse.ToString(),
             engineChadburnRotationSpeed = _engineChadburnRotationSpeed,
+            wheelLeft = _wheelLeft.ToString(),
+            wheelRight = _wheelRight.ToString(),
             autoReturnSpeedDegPerSec = _autoReturnSpeedDegPerSec,
             snapRequiresCtrl = _snapRequiresCtrl,
             zoomRequiresCtrl = _zoomRequiresCtrl

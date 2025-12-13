@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 
-/// <summary>
+/// <summary> 
 /// Base lift device class representing the hermeneutic tension between weight (thrownness-to-earth) 
 /// and lift (projection-upward). Lift devices oppose gravity, creating vertical mobility.
 /// 

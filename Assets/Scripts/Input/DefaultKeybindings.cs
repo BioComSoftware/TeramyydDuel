@@ -66,6 +66,12 @@ public class DefaultKeybindings : MonoBehaviour
     [Tooltip("Default rotation speed in degrees per second when holding engine control keys")]
     public float defaultEngineChadburnRotationSpeed = 45f;
 
+    [Header("Ship Wheel Control Defaults")]
+    [Tooltip("Default key to turn ship wheel left (counter-clockwise)")]
+    public KeyCode defaultWheelLeft = KeyCode.A;
+    [Tooltip("Default key to turn ship wheel right (clockwise)")]
+    public KeyCode defaultWheelRight = KeyCode.D;
+
     [Header("Modifier Flag Defaults")]
     [Tooltip("Whether snap commands require Ctrl modifier by default")]
     public bool defaultSnapRequiresCtrl = true;
@@ -138,6 +144,8 @@ public class DefaultKeybindings : MonoBehaviour
             engineForward = defaultEngineForward.ToString(),
             engineReverse = defaultEngineReverse.ToString(),
             engineChadburnRotationSpeed = defaultEngineChadburnRotationSpeed,
+            wheelLeft = defaultWheelLeft.ToString(),
+            wheelRight = defaultWheelRight.ToString(),
             snapRequiresCtrl = defaultSnapRequiresCtrl,
             zoomRequiresCtrl = defaultZoomRequiresCtrl,
             // autoReturnSpeedDegPerSec comes from ShipWheelController component, not this component

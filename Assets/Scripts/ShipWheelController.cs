@@ -117,6 +117,10 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     
     void Start()
     {
+        string msg = $"ShipWheelController.Start() called on {gameObject.name}, debugLog={debugLog}";
+        Debug.Log(msg);
+        FileLogger.Log(msg, "ShipWheel");
+        
         // Find ship if not assigned
         if (targetShip == null)
         {
@@ -148,7 +152,11 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
 
     void Update()
     {
-        HandleAutoReturn();
+        bool keyboardActive = HandleKeyboardInput();
+        if (!keyboardActive)
+        {
+            HandleAutoReturn();
+        }
     }
     
     void FixedUpdate()
@@ -277,8 +285,17 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     /// <param name="angleDegrees">Angle in degrees: 0 = center, positive = right, negative = left</param>
     public void SetWheelRotation(float angleDegrees)
     {
+        float oldRotation = _currentWheelRotation;
+        
         // Clamp to valid range
         _currentWheelRotation = Mathf.Clamp(angleDegrees, -maxWheelRotation, maxWheelRotation);
+        
+        if (debugLog && Mathf.Abs(_currentWheelRotation - oldRotation) > 0.1f)
+        {
+            string msg = $"SetWheelRotation: {oldRotation:F2}° → {_currentWheelRotation:F2}°";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "ShipWheel");
+        }
         
         // Update visual rotation
         if (wheelTransform != null)
@@ -411,6 +428,213 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     bool IsCtrlModifierHeld()
     {
         return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+    }
+
+    /// <summary>
+    /// Handle keyboard controls for ship wheel rotation.
+    /// A = turn left (counter-clockwise), D = turn right (clockwise)
+    /// CTRL+A/D = turn and lock position when released
+    /// SHIFT+A/D = snap to zero (center)
+    /// CTRL+SHIFT+A/D = snap to maximum turn
+    /// </summary>
+    /// <returns>True if keyboard input is actively controlling the wheel</returns>
+    bool HandleKeyboardInput()
+    {
+        // Don't process keyboard input while mouse dragging
+        if (isDragging)
+        {
+            if (debugLog && (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D)))
+            {
+                string msg = "ShipWheelController: Key pressed but isDragging=true, ignoring keyboard input";
+                Debug.Log(msg);
+                FileLogger.Log(msg, "ShipWheel");
+            }
+            return false;
+        }
+
+        KeyBindingConfig kb = KeyBindingConfig.Instance;
+        if (kb == null)
+        {
+            if (debugLog)
+            {
+                string msg = "ShipWheelController: KeyBindingConfig.Instance is null!";
+                Debug.LogWarning(msg);
+                FileLogger.Log(msg, "ShipWheel");
+            }
+            return false;
+        }
+        
+        // Debug: Log when HandleKeyboardInput is processing
+        if (debugLog && (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D)))
+        {
+            string msg = $"ShipWheelController: HandleKeyboardInput active, checking keys wheelLeft={kb.wheelLeft}, wheelRight={kb.wheelRight}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "ShipWheel");
+        }
+
+        bool ctrlHeld = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift);
+
+        // Determine effective speed (from config or inspector)
+        float effectiveSpeed = useConfigurableSpeed 
+            ? kb.autoReturnSpeedDegPerSec 
+            : autoReturnSpeedDegPerSec;
+
+        // Debug: Check if keys are being detected
+        if (debugLog)
+        {
+            if (Input.GetKeyDown(kb.wheelLeft))
+            {
+                string msg = $"ShipWheel: Detected wheelLeft key ({kb.wheelLeft}) press";
+                Debug.Log(msg);
+                FileLogger.Log(msg, "ShipWheel");
+            }
+            if (Input.GetKeyDown(kb.wheelRight))
+            {
+                string msg = $"ShipWheel: Detected wheelRight key ({kb.wheelRight}) press";
+                Debug.Log(msg);
+                FileLogger.Log(msg, "ShipWheel");
+            }
+        }
+
+        // Left turn controls (A key)
+        bool leftKeyPressed = Input.GetKey(kb.wheelLeft);
+        if (debugLog && Input.GetKeyDown(kb.wheelLeft))
+        {
+            string msg = $"ShipWheel: A key pressed, leftKeyPressed={leftKeyPressed}, ctrlHeld={ctrlHeld}, shiftHeld={shiftHeld}";
+            Debug.Log(msg);
+            FileLogger.Log(msg, "ShipWheel");
+        }
+        
+        if (leftKeyPressed)
+        {
+            if (ctrlHeld && shiftHeld)
+            {
+                // CTRL+SHIFT+A: Snap to full left
+                if (Input.GetKeyDown(kb.wheelLeft))
+                {
+                    SetWheelRotation(-maxWheelRotation);
+                    wheelLatched = true;
+                    if (debugLog)
+                    {
+                        FileLogger.Log($"Ship Wheel: CTRL+SHIFT+A - Snapped to FULL LEFT (-{maxWheelRotation}°)", "ShipWheel");
+                    }
+                }
+            }
+            else if (shiftHeld)
+            {
+                // SHIFT+A: Snap to center
+                if (Input.GetKeyDown(kb.wheelLeft))
+                {
+                    SetWheelRotation(0f);
+                    wheelLatched = false;
+                    if (debugLog)
+                    {
+                        FileLogger.Log("Ship Wheel: SHIFT+A - Snapped to CENTER (0°)", "ShipWheel");
+                    }
+                }
+            }
+            else if (ctrlHeld)
+            {
+                // CTRL+A: Turn left and will latch when released
+                float newAngle = Mathf.Max(_currentWheelRotation - effectiveSpeed * Time.deltaTime, -maxWheelRotation);
+                SetWheelRotation(newAngle);
+            }
+            else
+            {
+                // A alone: Turn left continuously, will auto-return when released
+                wheelLatched = false;
+                float oldAngle = _currentWheelRotation;
+                float newAngle = Mathf.Max(_currentWheelRotation - effectiveSpeed * Time.deltaTime, -maxWheelRotation);
+                SetWheelRotation(newAngle);
+                
+                if (debugLog && Input.GetKeyDown(kb.wheelLeft))
+                {
+                    string msg = $"ShipWheel: A alone - oldAngle={oldAngle:F2}, newAngle={newAngle:F2}, effectiveSpeed={effectiveSpeed}, deltaTime={Time.deltaTime:F4}";
+                    Debug.Log(msg);
+                    FileLogger.Log(msg, "ShipWheel");
+                }
+            }
+        }
+        else if (Input.GetKeyUp(kb.wheelLeft))
+        {
+            // Key released - check if we should latch or auto-return
+            if (ctrlHeld)
+            {
+                wheelLatched = true;
+                if (debugLog)
+                {
+                    FileLogger.Log($"Ship Wheel: CTRL+A released - Locked at {_currentWheelRotation:F1}°", "ShipWheel");
+                }
+            }
+            else
+            {
+                wheelLatched = false;
+            }
+        }
+
+        // Right turn controls (D key)
+        if (Input.GetKey(kb.wheelRight))
+        {
+            if (ctrlHeld && shiftHeld)
+            {
+                // CTRL+SHIFT+D: Snap to full right
+                if (Input.GetKeyDown(kb.wheelRight))
+                {
+                    SetWheelRotation(maxWheelRotation);
+                    wheelLatched = true;
+                    if (debugLog)
+                    {
+                        FileLogger.Log($"Ship Wheel: CTRL+SHIFT+D - Snapped to FULL RIGHT ({maxWheelRotation}°)", "ShipWheel");
+                    }
+                }
+            }
+            else if (shiftHeld)
+            {
+                // SHIFT+D: Snap to center
+                if (Input.GetKeyDown(kb.wheelRight))
+                {
+                    SetWheelRotation(0f);
+                    wheelLatched = false;
+                    if (debugLog)
+                    {
+                        FileLogger.Log("Ship Wheel: SHIFT+D - Snapped to CENTER (0°)", "ShipWheel");
+                    }
+                }
+            }
+            else if (ctrlHeld)
+            {
+                // CTRL+D: Turn right and will latch when released
+                float newAngle = Mathf.Min(_currentWheelRotation + effectiveSpeed * Time.deltaTime, maxWheelRotation);
+                SetWheelRotation(newAngle);
+            }
+            else
+            {
+                // D alone: Turn right continuously, will auto-return when released
+                wheelLatched = false;
+                float newAngle = Mathf.Min(_currentWheelRotation + effectiveSpeed * Time.deltaTime, maxWheelRotation);
+                SetWheelRotation(newAngle);
+            }
+        }
+        else if (Input.GetKeyUp(kb.wheelRight))
+        {
+            // Key released - check if we should latch or auto-return
+            if (ctrlHeld)
+            {
+                wheelLatched = true;
+                if (debugLog)
+                {
+                    FileLogger.Log($"Ship Wheel: CTRL+D released - Locked at {_currentWheelRotation:F1}°", "ShipWheel");
+                }
+            }
+            else
+            {
+                wheelLatched = false;
+            }
+        }
+        
+        // Return true if either key is currently being held
+        return Input.GetKey(kb.wheelLeft) || Input.GetKey(kb.wheelRight);
     }
 
     void HandleAutoReturn()

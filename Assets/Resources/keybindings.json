@@ -16,6 +16,8 @@
     "engineForward": "W",
     "engineReverse": "S",
     "engineChadburnRotationSpeed": 45.0,
+    "wheelLeft": "A",
+    "wheelRight": "D",
     "autoReturnSpeedDegPerSec": 90.0,
     "snapRequiresCtrl": true,
     "zoomRequiresCtrl": true
