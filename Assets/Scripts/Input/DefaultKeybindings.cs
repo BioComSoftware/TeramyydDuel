@@ -58,6 +58,14 @@ public class DefaultKeybindings : MonoBehaviour
     [Tooltip("Default key to zoom instrument panel")]
     public KeyCode defaultInstrumentZoom = KeyCode.Z;
 
+    [Header("Engine Chadburn Control Defaults")]
+    [Tooltip("Default key to increase engine forward speed (rotate chadburn clockwise)")]
+    public KeyCode defaultEngineForward = KeyCode.W;
+    [Tooltip("Default key to increase engine reverse speed (rotate chadburn counter-clockwise)")]
+    public KeyCode defaultEngineReverse = KeyCode.S;
+    [Tooltip("Default rotation speed in degrees per second when holding engine control keys")]
+    public float defaultEngineChadburnRotationSpeed = 45f;
+
     [Header("Modifier Flag Defaults")]
     [Tooltip("Whether snap commands require Ctrl modifier by default")]
     public bool defaultSnapRequiresCtrl = true;
@@ -127,6 +135,9 @@ public class DefaultKeybindings : MonoBehaviour
             zoomOut = defaultZoomOut.ToString(),
             fireAllWeapons = defaultFireAllWeapons.ToString(),
             instrumentZoom = defaultInstrumentZoom.ToString(),
+            engineForward = defaultEngineForward.ToString(),
+            engineReverse = defaultEngineReverse.ToString(),
+            engineChadburnRotationSpeed = defaultEngineChadburnRotationSpeed,
             snapRequiresCtrl = defaultSnapRequiresCtrl,
             zoomRequiresCtrl = defaultZoomRequiresCtrl,
             // autoReturnSpeedDegPerSec comes from ShipWheelController component, not this component

@@ -13,6 +13,9 @@
     "zoomOut": "DownArrow",
     "fireAllWeapons": "F",
     "instrumentZoom": "Z",
+    "engineForward": "W",
+    "engineReverse": "S",
+    "engineChadburnRotationSpeed": 45.0,
     "autoReturnSpeedDegPerSec": 90.0,
     "snapRequiresCtrl": true,
     "zoomRequiresCtrl": true

@@ -58,6 +58,11 @@ public class KeyBindingData
     // UI controls
     public string instrumentZoom = "Z";
 
+    // Engine chadburn controls
+    public string engineForward = "W";
+    public string engineReverse = "S";
+    public float engineChadburnRotationSpeed = 45f;
+
     // Ship wheel controls (not exposed in KeyBindingConfig Inspector)
     public float autoReturnSpeedDegPerSec = 90f;
 
@@ -100,6 +105,11 @@ public class KeyBindingConfig : ScriptableObject
     [Header("Active UI Controls (Runtime)")]
     [SerializeField] private KeyCode _instrumentZoom;
 
+    [Header("Active Engine Chadburn Controls (Runtime)")]
+    [SerializeField] private KeyCode _engineForward;
+    [SerializeField] private KeyCode _engineReverse;
+    [SerializeField] private float _engineChadburnRotationSpeed = 45f;
+
     [Header("Active Ship Wheel Controls (Runtime)")]
     [Tooltip("This value is loaded from keybindings.json only - no Inspector default field.")]
     [SerializeField] private float _autoReturnSpeedDegPerSec = 90f;
@@ -123,6 +133,9 @@ public class KeyBindingConfig : ScriptableObject
     public KeyCode zoomOut => _zoomOut;
     public KeyCode fireAllWeapons => _fireAllWeapons;
     public KeyCode instrumentZoom => _instrumentZoom;
+    public KeyCode engineForward => _engineForward;
+    public KeyCode engineReverse => _engineReverse;
+    public float engineChadburnRotationSpeed => _engineChadburnRotationSpeed;
     public float autoReturnSpeedDegPerSec => _autoReturnSpeedDegPerSec;
     public bool snapRequiresCtrl => _snapRequiresCtrl;
     public bool zoomRequiresCtrl => _zoomRequiresCtrl;
@@ -206,6 +219,10 @@ public class KeyBindingConfig : ScriptableObject
 
             _instrumentZoom = ParseKeyCode(data.instrumentZoom, defaults?.defaultInstrumentZoom ?? KeyCode.Z);
 
+            _engineForward = ParseKeyCode(data.engineForward, defaults?.defaultEngineForward ?? KeyCode.W);
+            _engineReverse = ParseKeyCode(data.engineReverse, defaults?.defaultEngineReverse ?? KeyCode.S);
+            _engineChadburnRotationSpeed = data.engineChadburnRotationSpeed;
+
             _autoReturnSpeedDegPerSec = data.autoReturnSpeedDegPerSec;
 
             _snapRequiresCtrl = data.snapRequiresCtrl;
@@ -245,6 +262,9 @@ public class KeyBindingConfig : ScriptableObject
             _zoomOut = KeyCode.DownArrow;
             _fireAllWeapons = KeyCode.F;
             _instrumentZoom = KeyCode.Z;
+            _engineForward = KeyCode.W;
+            _engineReverse = KeyCode.S;
+            _engineChadburnRotationSpeed = 45f;
             _snapRequiresCtrl = true;
             _zoomRequiresCtrl = true;
         }
@@ -264,6 +284,9 @@ public class KeyBindingConfig : ScriptableObject
             _zoomOut = defaults.defaultZoomOut;
             _fireAllWeapons = defaults.defaultFireAllWeapons;
             _instrumentZoom = defaults.defaultInstrumentZoom;
+            _engineForward = defaults.defaultEngineForward;
+            _engineReverse = defaults.defaultEngineReverse;
+            _engineChadburnRotationSpeed = defaults.defaultEngineChadburnRotationSpeed;
             _snapRequiresCtrl = defaults.defaultSnapRequiresCtrl;
             _zoomRequiresCtrl = defaults.defaultZoomRequiresCtrl;
         }
@@ -296,6 +319,9 @@ public class KeyBindingConfig : ScriptableObject
             zoomOut = _zoomOut.ToString(),
             fireAllWeapons = _fireAllWeapons.ToString(),
             instrumentZoom = _instrumentZoom.ToString(),
+            engineForward = _engineForward.ToString(),
+            engineReverse = _engineReverse.ToString(),
+            engineChadburnRotationSpeed = _engineChadburnRotationSpeed,
             autoReturnSpeedDegPerSec = _autoReturnSpeedDegPerSec,
             snapRequiresCtrl = _snapRequiresCtrl,
             zoomRequiresCtrl = _zoomRequiresCtrl
@@ -358,6 +384,8 @@ public class KeyBindingConfig : ScriptableObject
             case "zoomOut": _zoomOut = newValue; break;
             case "fireAllWeapons": _fireAllWeapons = newValue; break;
             case "instrumentZoom": _instrumentZoom = newValue; break;
+            case "engineForward": _engineForward = newValue; break;
+            case "engineReverse": _engineReverse = newValue; break;
             default:
                 Debug.LogWarning($"KeyBindingConfig: Unknown key name '{keyName}'");
                 break;
@@ -372,6 +400,7 @@ public class KeyBindingConfig : ScriptableObject
         switch (valueName)
         {
             case "autoReturnSpeedDegPerSec": _autoReturnSpeedDegPerSec = newValue; break;
+            case "engineChadburnRotationSpeed": _engineChadburnRotationSpeed = newValue; break;
             default:
                 Debug.LogWarning($"KeyBindingConfig: Unknown float value '{valueName}'");
                 break;

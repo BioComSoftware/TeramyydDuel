@@ -134,7 +134,103 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
         
         if (debugLog)
         {
-            FileLogger.Log($"Chadburn initialized - Max Rotation: Â±{maxRotationDegrees}Â°, Engine: {(targetEngine != null ? targetEngine.gameObject.name : "None")}", "Chadburn");
+            FileLogger.Log($"Chadburn initialized - Max Rotation: ±{maxRotationDegrees}°, Engine: {(targetEngine != null ? targetEngine.gameObject.name : "None")}", "Chadburn");
+        }
+    }
+
+    void Update()
+    {
+        // Don't process keyboard input while dragging with mouse
+        if (isDragging)
+            return;
+
+        HandleKeyboardInput();
+    }
+
+    /// <summary>
+    /// Handle keyboard controls for chadburn rotation.
+    /// W = forward (clockwise), S = reverse (counter-clockwise)
+    /// CTRL+W/S = snap to max, LEFT-SHIFT+W/S = snap to zero
+    /// </summary>
+    void HandleKeyboardInput()
+    {
+        KeyBindingConfig kb = KeyBindingConfig.Instance;
+        if (kb == null)
+            return;
+
+        bool ctrlHeld = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift);
+
+        // Forward controls (W key)
+        if (Input.GetKey(kb.engineForward))
+        {
+            if (ctrlHeld)
+            {
+                // CTRL+A: Snap to full ahead
+                if (Input.GetKeyDown(kb.engineForward))
+                {
+                    SetRotation(maxRotationDegrees);
+                    if (debugLog)
+                    {
+                        FileLogger.Log($"Chadburn: CTRL+W - Snapped to FULL AHEAD ({maxRotationDegrees}°)", "Chadburn");
+                    }
+                }
+            }
+            else if (shiftHeld)
+            {
+                // LEFT-SHIFT+A: Snap to stop
+                if (Input.GetKeyDown(kb.engineForward))
+                {
+                    SetRotation(0f);
+                    if (debugLog)
+                    {
+                        FileLogger.Log("Chadburn: SHIFT+W - Snapped to STOP (0°)", "Chadburn");
+                    }
+                }
+            }
+            else
+            {
+                // W alone: Rotate clockwise continuously
+                float rotationDelta = kb.engineChadburnRotationSpeed * Time.deltaTime;
+                float newRotation = Mathf.Min(_currentRotation + rotationDelta, maxRotationDegrees);
+                SetRotation(newRotation);
+            }
+        }
+
+        // Reverse controls (S key)
+        if (Input.GetKey(kb.engineReverse))
+        {
+            if (ctrlHeld)
+            {
+                // CTRL+S: Snap to full astern
+                if (Input.GetKeyDown(kb.engineReverse))
+                {
+                    SetRotation(-maxRotationDegrees);
+                    if (debugLog)
+                    {
+                        FileLogger.Log($"Chadburn: CTRL+S - Snapped to FULL ASTERN (-{maxRotationDegrees}°)", "Chadburn");
+                    }
+                }
+            }
+            else if (shiftHeld)
+            {
+                // LEFT-SHIFT+S: Snap to stop
+                if (Input.GetKeyDown(kb.engineReverse))
+                {
+                    SetRotation(0f);
+                    if (debugLog)
+                    {
+                        FileLogger.Log("Chadburn: SHIFT+S - Snapped to STOP (0°)", "Chadburn");
+                    }
+                }
+            }
+            else
+            {
+                // S alone: Rotate counter-clockwise continuously
+                float rotationDelta = kb.engineChadburnRotationSpeed * Time.deltaTime;
+                float newRotation = Mathf.Max(_currentRotation - rotationDelta, -maxRotationDegrees);
+                SetRotation(newRotation);
+            }
         }
     }
     
