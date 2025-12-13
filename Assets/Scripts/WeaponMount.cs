@@ -976,12 +976,9 @@ public class WeaponMount : MonoBehaviour
         float desiredAccuracyScale = Mathf.Lerp(1f, baseAccuracy, staffingCoverage);
         ApplyAccuracyScale(desiredAccuracyScale);
 
-        float baseReload = bestSkill > 0f
-            ? CrewSkillUtility.EvaluateReloadScale(bestSkill)
-            : 1f;
-        float reloadAfterCoverage = Mathf.Lerp(1.5f, baseReload, staffingCoverage);
-        float effectiveCrewDepth = crewRatio > 1f ? crewRatio : 1f;
-        float desiredReloadScale = reloadAfterCoverage / effectiveCrewDepth;
+        // Simple crew-based reload: 1 crew = 1.0x, 2+ crew = 0.5x (half reload time)
+        int assignedCrewCount = crewStation != null ? crewStation.AssignedCrewCount : 0;
+        float desiredReloadScale = (assignedCrewCount >= 2) ? 0.5f : 1.0f;
         ApplyReloadScale(desiredReloadScale);
     }
 
