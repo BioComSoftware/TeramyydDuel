@@ -418,33 +418,33 @@ public class KeyBindingConfig : ScriptableObject
     /// Update a specific runtime keybinding value.
     /// Use this when player rebinds a key in the settings menu.
     /// </summary>
-    public void SetRuntimeKey(string keyName, KeyCode newValue)
+    public bool SetRuntimeKey(string keyName, KeyCode newValue)
     {
         switch (keyName)
         {
-            case "bridgeView": _bridgeView = newValue; break;
-            case "followView": _followView = newValue; break;
-            case "overheadView": _overheadView = newValue; break;
-            case "bridgeSnap": _bridgeSnap = newValue; break;
-            case "followSnap": _followSnap = newValue; break;
-            case "overheadSnap": _overheadSnap = newValue; break;
-            case "lookLeft": _lookLeft = newValue; break;
-            case "lookRight": _lookRight = newValue; break;
-            case "lookUp": _lookUp = newValue; break;
-            case "lookDown": _lookDown = newValue; break;
-            case "zoomIn": _zoomIn = newValue; break;
-            case "zoomOut": _zoomOut = newValue; break;
-            case "fireAllWeapons": _fireAllWeapons = newValue; break;
-            case "instrumentZoom": _instrumentZoom = newValue; break;
-            case "engineForward": _engineForward = newValue; break;
-            case "engineReverse": _engineReverse = newValue; break;
-            case "wheelLeft": _wheelLeft = newValue; break;
-            case "wheelRight": _wheelRight = newValue; break;
-            case "liftUp": _liftUp = newValue; break;
-            case "liftDown": _liftDown = newValue; break;
+            case "bridgeView": _bridgeView = newValue; return true;
+            case "followView": _followView = newValue; return true;
+            case "overheadView": _overheadView = newValue; return true;
+            case "bridgeSnap": _bridgeSnap = newValue; return true;
+            case "followSnap": _followSnap = newValue; return true;
+            case "overheadSnap": _overheadSnap = newValue; return true;
+            case "lookLeft": _lookLeft = newValue; return true;
+            case "lookRight": _lookRight = newValue; return true;
+            case "lookUp": _lookUp = newValue; return true;
+            case "lookDown": _lookDown = newValue; return true;
+            case "zoomIn": _zoomIn = newValue; return true;
+            case "zoomOut": _zoomOut = newValue; return true;
+            case "fireAllWeapons": _fireAllWeapons = newValue; return true;
+            case "instrumentZoom": _instrumentZoom = newValue; return true;
+            case "engineForward": _engineForward = newValue; return true;
+            case "engineReverse": _engineReverse = newValue; return true;
+            case "wheelLeft": _wheelLeft = newValue; return true;
+            case "wheelRight": _wheelRight = newValue; return true;
+            case "liftUp": _liftUp = newValue; return true;
+            case "liftDown": _liftDown = newValue; return true;
             default:
                 Debug.LogWarning($"KeyBindingConfig: Unknown key name '{keyName}'");
-                break;
+                return false;
         }
     }
 
