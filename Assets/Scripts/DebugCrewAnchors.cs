@@ -8,6 +8,11 @@ public class DebugCrewAnchors : MonoBehaviour
 #if UNITY_EDITOR
         Debug.Log("--- Starting Crew Anchor Debug ---");
         var mounts = FindObjectsByType<WeaponMount>(FindObjectsSortMode.None);
+        if (mounts == null || mounts.Length == 0)
+        {
+            Debug.Log("No WeaponMounts found in scene.");
+            return;
+        }
         foreach (var mount in mounts)
         {
             if (mount.name.Contains("Bow"))

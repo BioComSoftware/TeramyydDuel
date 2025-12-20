@@ -152,9 +152,15 @@ namespace Teramyyd.UI
         /// </summary>
         void PopulateKeybindings()
         {
-            if (keybindingRowPrefab == null || rowsContainer == null)
+            if (keybindingRowPrefab == null)
             {
-                Debug.LogError("[KeybindingControlsPanel] Missing keybindingRowPrefab or rowsContainer!");
+                Debug.LogError("[KeybindingControlsPanel] Missing keybindingRowPrefab!");
+                return;
+            }
+            
+            if (rowsContainer == null)
+            {
+                Debug.LogError("[KeybindingControlsPanel] Missing rowsContainer!");
                 return;
             }
             
@@ -167,7 +173,8 @@ namespace Teramyyd.UI
             // Clear existing rows
             foreach (Transform child in rowsContainer)
             {
-                Destroy(child.gameObject);
+                if (child != null)
+                    Destroy(child.gameObject);
             }
             _rows.Clear();
 
@@ -200,7 +207,9 @@ namespace Teramyyd.UI
                     if (row != null)
                     {
                         KeyCode currentKey = GetKeyForAction(action.actionId);
-                        row.Initialize(action.actionId, action.displayName, currentKey);
+                        var binding = new KeyBindingData { key = currentKey, ctrl = false, shift = false, alt = false };
+                        // Note: This panel doesn't support modifiers, just passes simple key
+                        row.Initialize(action.actionId, action.displayName, binding, null);
                         _rows[action.actionId] = row;
                     }
                     else
@@ -304,8 +313,8 @@ namespace Teramyyd.UI
                 keyBindingConfig.SaveToJSON();
                 
                 // Update this row's display
-                _currentListeningRow.UpdateKeyDisplay(newKey);
-                _currentListeningRow.ClearConflict();
+                var binding = new KeyBindingData { key = newKey, ctrl = false, shift = false, alt = false };
+                _currentListeningRow.UpdateDisplay(binding);
 
                 Debug.Log($"[KeybindingControlsPanel] Successfully rebound {actionId} to {newKey}");
             }
@@ -327,7 +336,8 @@ namespace Teramyyd.UI
             {
                 // Restore the original key display
                 KeyCode originalKey = GetKeyForAction(_currentListeningRow.ActionId);
-                _currentListeningRow.UpdateKeyDisplay(originalKey);
+                var binding = new KeyBindingData { key = originalKey, ctrl = false, shift = false, alt = false };
+                _currentListeningRow.UpdateDisplay(binding);
 
                 _currentListeningRow.StopListening();
                 _currentListeningRow = null;

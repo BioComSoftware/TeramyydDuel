@@ -2,7 +2,7 @@
     "bridgeView": "F1",
     "followView": "F2",
     "overheadView": "F3",
-    "bridgeSnap": "F1",
+    "bridgeSnap": "F9",
     "followSnap": "F2",
     "overheadSnap": "F3",
     "lookLeft": "LeftArrow",
