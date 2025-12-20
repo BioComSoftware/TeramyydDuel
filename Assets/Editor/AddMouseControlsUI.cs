@@ -372,7 +372,7 @@ namespace Teramyyd.UI.Editor
 
         // Add background image
         Image dropdownImage = dropdownObj.AddComponent<Image>();
-        dropdownImage.color = new Color(0.2f, 0.2f, 0.2f);
+        dropdownImage.color = Color.black;
 
         // Create Label child
         GameObject ddLabel = new GameObject("Label");
@@ -380,7 +380,10 @@ namespace Teramyyd.UI.Editor
         TextMeshProUGUI ddLabelText = ddLabel.AddComponent<TextMeshProUGUI>();
         ddLabelText.text = defaultOption;
         ddLabelText.fontSize = 14;
+        ddLabelText.color = Color.white;
         ddLabelText.alignment = TextAlignmentOptions.MidlineLeft;
+        if (_rowFont != null) ddLabelText.font = _rowFont;
+        if (_fontMaterial != null) ddLabelText.fontMaterial = _fontMaterial;
         RectTransform ddLabelRT = ddLabel.GetComponent<RectTransform>();
         ddLabelRT.anchorMin = Vector2.zero;
         ddLabelRT.anchorMax = Vector2.one;
@@ -393,7 +396,10 @@ namespace Teramyyd.UI.Editor
         TextMeshProUGUI arrowText = arrow.AddComponent<TextMeshProUGUI>();
         arrowText.text = "▼";
         arrowText.fontSize = 14;
+        arrowText.color = Color.white;
         arrowText.alignment = TextAlignmentOptions.MidlineRight;
+        if (_rowFont != null) arrowText.font = _rowFont;
+        if (_fontMaterial != null) arrowText.fontMaterial = _fontMaterial;
         RectTransform arrowRT = arrow.GetComponent<RectTransform>();
         arrowRT.anchorMin = new Vector2(1, 0);
         arrowRT.anchorMax = Vector2.one;
@@ -411,7 +417,7 @@ namespace Teramyyd.UI.Editor
         templateRT.sizeDelta = new Vector2(0, 150);
 
         Image templateBG = template.AddComponent<Image>();
-        templateBG.color = new Color(0.15f, 0.15f, 0.15f);
+        templateBG.color = Color.black;
 
         ScrollRect scrollRect = template.AddComponent<ScrollRect>();
         scrollRect.horizontal = false;
@@ -457,7 +463,7 @@ namespace Teramyyd.UI.Editor
         itemBGRT.anchorMax = Vector2.one;
         itemBGRT.sizeDelta = Vector2.zero;
         Image itemBGImage = itemBG.AddComponent<Image>();
-        itemBGImage.color = new Color(0.2f, 0.2f, 0.2f);
+        itemBGImage.color = Color.black;
 
         // Item Checkmark
         GameObject checkmark = new GameObject("Item Checkmark");
@@ -470,7 +476,10 @@ namespace Teramyyd.UI.Editor
         TextMeshProUGUI checkText = checkmark.AddComponent<TextMeshProUGUI>();
         checkText.text = "✓";
         checkText.fontSize = 14;
+        checkText.color = Color.white;
         checkText.alignment = TextAlignmentOptions.Center;
+        if (_rowFont != null) checkText.font = _rowFont;
+        if (_fontMaterial != null) checkText.fontMaterial = _fontMaterial;
 
         // Item Label
         GameObject itemLabel = new GameObject("Item Label");
@@ -482,7 +491,10 @@ namespace Teramyyd.UI.Editor
         itemLabelRT.offsetMax = new Vector2(-10, -2);
         TextMeshProUGUI itemLabelText = itemLabel.AddComponent<TextMeshProUGUI>();
         itemLabelText.fontSize = 14;
+        itemLabelText.color = Color.white;
         itemLabelText.alignment = TextAlignmentOptions.MidlineLeft;
+        if (_rowFont != null) itemLabelText.font = _rowFont;
+        if (_fontMaterial != null) itemLabelText.fontMaterial = _fontMaterial;
 
         itemToggle.targetGraphic = itemBGImage;
         itemToggle.graphic = checkText;
