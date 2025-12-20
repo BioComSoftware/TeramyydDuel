@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-20T19:38:57.5958054Z",
+    "lastSavedUtc": "2025-12-20T19:41:27.2363986Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -57,7 +57,7 @@
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
-            "liftEngineering": 8.181401252746582,
+            "liftEngineering": 8.219399452209473,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
             "assignedStationId": "station_Ship_Model_LiftDevice_AntiGravityDevice_crew"
