@@ -85,14 +85,14 @@ namespace Teramyyd.UI.Editor
         // Create Mouse Wheel Sensitivity Slider
         CreateSliderRow(contentContainer, "Mouse Wheel Sensitivity", "mouseWheelSensitivity", 1f, 10f, 5f);
 
+        // Create Invert Mouse Y Checkbox
+        CreateToggleRow(contentContainer, "Invert Mouse Y", "invertMouseY", false);
+
         // Create Mouse Wheel Forward Dropdown
         CreateDropdownRow(contentContainer, "Mouse Wheel Forward", "mouseWheelForward", new string[] { "ZoomIn", "ZoomOut" }, "ZoomIn");
 
         // Create Mouse Wheel Backward Dropdown
         CreateDropdownRow(contentContainer, "Mouse Wheel Backward", "mouseWheelBackward", new string[] { "ZoomIn", "ZoomOut" }, "ZoomOut");
-
-        // Create Invert Mouse Y Checkbox
-        CreateToggleRow(contentContainer, "Invert Mouse Y", "invertMouseY", false);
 
         log.AppendLine($"\nCreated {contentContainer.childCount} total children");
         log.AppendLine("\nMouse control rows created:");

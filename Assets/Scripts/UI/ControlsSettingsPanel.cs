@@ -62,18 +62,39 @@ namespace Teramyyd.UI
         {
             if (contentContainer == null) return;
             
-            // Find all mouse control rows and move them to the end
+            // Find all mouse control rows and move them to the end in specific order
             List<Transform> mouseRows = new List<Transform>();
             for (int i = 0; i < contentContainer.childCount; i++)
             {
                 Transform child = contentContainer.GetChild(i);
-                if (child.name.StartsWith("Row_mouse") || child.name.StartsWith("---") && child.name.Contains("Mouse"))
+                if (child.name.StartsWith("Row_mouse") || child.name.StartsWith("Row_invert") || 
+                    (child.name.StartsWith("---") && child.name.Contains("Mouse")))
                 {
                     mouseRows.Add(child);
                 }
             }
             
-            // Move each to the end
+            // Sort to maintain the desired order
+            mouseRows.Sort((a, b) => {
+                string[] order = new string[] { 
+                    "---", 
+                    "Row_mouseSensitivity", 
+                    "Row_mouseWheelSensitivity", 
+                    "Row_invertMouseY",
+                    "Row_mouseWheelForward", 
+                    "Row_mouseWheelBackward" 
+                };
+                
+                int indexA = System.Array.FindIndex(order, s => a.name.StartsWith(s));
+                int indexB = System.Array.FindIndex(order, s => b.name.StartsWith(s));
+                
+                if (indexA == -1) indexA = 999;
+                if (indexB == -1) indexB = 999;
+                
+                return indexA.CompareTo(indexB);
+            });
+            
+            // Move each to the end in sorted order
             foreach (Transform row in mouseRows)
             {
                 row.SetAsLastSibling();
