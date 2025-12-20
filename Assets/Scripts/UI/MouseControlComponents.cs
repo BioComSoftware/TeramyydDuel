@@ -10,9 +10,13 @@ namespace Teramyyd.UI
     {
         private static string _logPath;
         
+        [Header("Configuration")]
         public string settingKey;
         public Slider slider;
         public TextMeshProUGUI valueText;
+        
+        [Header("Debug")]
+        public bool debugLog = false;
         
         private void Start()
         {
@@ -90,6 +94,21 @@ namespace Teramyyd.UI
         
         private static void Log(string message)
         {
+            if (string.IsNullOrEmpty(_logPath))
+            {
+                _logPath = System.IO.Path.Combine(Application.dataPath, "Logs", "MouseControlSlider_Runtime.txt");
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_logPath));
+            }
+            
+            string logEntry = $"[{System.DateTime.Now:HH:mm:ss}] {message}\n";
+            Debug.Log(message);
+            System.IO.File.AppendAllText(_logPath, logEntry);
+        }
+        
+        private void Log(string message, bool forceLog = false)
+        {
+            if (!debugLog && !forceLog) return;
+            
             if (string.IsNullOrEmpty(_logPath))
             {
                 _logPath = System.IO.Path.Combine(Application.dataPath, "Logs", "MouseControlSlider_Runtime.txt");

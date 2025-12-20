@@ -5,7 +5,7 @@ using System.IO;
 
 public static class DumpHierarchy
 {
-    [MenuItem("Tools/Dump Hierarchy to Text")]
+    [MenuItem("Tools/Component Audit/Dump Hierarchy to Text")]
     public static void Dump()
     {
         // Absolute path to the Assets folder
