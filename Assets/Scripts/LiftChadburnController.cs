@@ -158,85 +158,130 @@ public class LiftChadburnController : MonoBehaviour, IBeginDragHandler, IDragHan
             return;
 
         bool ctrlHeld = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-        bool shiftHeld = Input.GetKey(KeyCode.LeftShift);
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool altHeld = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
 
-        // Up controls (Q key - clockwise/increase lift)
-        if (Input.GetKey(kb.liftUp))
+        // Check for lift snap shortcuts (must check before gradual controls)
+        if (Input.GetKeyDown(kb.liftSnapFullUp.key))
         {
-            if (ctrlHeld && shiftHeld)
+            bool ctrlMatch = kb.liftSnapFullUp.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapFullUp.shift == shiftHeld;
+            bool altMatch = kb.liftSnapFullUp.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // CTRL+SHIFT+Q: Snap to max lift
-                if (Input.GetKeyDown(kb.liftUp))
+                SetRotation(maxRotationDegrees);
+                if (debugLog)
                 {
-                    SetRotation(maxRotationDegrees);
-                    if (debugLog)
-                    {
-                        FileLogger.Log($"Lift Chadburn: CTRL+SHIFT+Q - Snapped to MAX LIFT ({maxRotationDegrees}°)", "LiftChadburn");
-                    }
+                    FileLogger.Log($"Lift Chadburn: {kb.liftSnapFullUp} - Snapped to MAX LIFT ({maxRotationDegrees}°)", "LiftChadburn");
                 }
-            }
-            else if (shiftHeld)
-            {
-                // SHIFT+Q: Snap to zero
-                if (Input.GetKeyDown(kb.liftUp))
-                {
-                    SetRotation(0f);
-                    if (debugLog)
-                    {
-                        FileLogger.Log("Lift Chadburn: SHIFT+Q - Snapped to IDLE (0°)", "LiftChadburn");
-                    }
-                }
-            }
-            else if (ctrlHeld)
-            {
-                // CTRL+Q: Rotate clockwise continuously at speed
-                float newAngle = Mathf.Min(_currentRotation + kb.liftChadburnRotationSpeed * Time.deltaTime, maxRotationDegrees);
-                SetRotation(newAngle);
-            }
-            else
-            {
-                // Q alone: Rotate clockwise continuously
-                float newAngle = Mathf.Min(_currentRotation + kb.liftChadburnRotationSpeed * Time.deltaTime, maxRotationDegrees);
-                SetRotation(newAngle);
+                return;
             }
         }
 
-        // Down controls (E key - counter-clockwise/decrease lift)
-        if (Input.GetKey(kb.liftDown))
+        if (Input.GetKeyDown(kb.liftSnapCenter.key))
         {
-            if (ctrlHeld && shiftHeld)
+            bool ctrlMatch = kb.liftSnapCenter.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapCenter.shift == shiftHeld;
+            bool altMatch = kb.liftSnapCenter.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // CTRL+SHIFT+E: Snap to max reverse (minimum rotation)
-                if (Input.GetKeyDown(kb.liftDown))
+                SetRotation(0f);
+                if (debugLog)
                 {
-                    SetRotation(-maxRotationDegrees);
-                    if (debugLog)
-                    {
-                        FileLogger.Log($"Lift Chadburn: CTRL+SHIFT+E - Snapped to MAX REVERSE (-{maxRotationDegrees}°)", "LiftChadburn");
-                    }
+                    FileLogger.Log($"Lift Chadburn: {kb.liftSnapCenter} - Snapped to IDLE (0°)", "LiftChadburn");
                 }
+                return;
             }
-            else if (shiftHeld)
+        }
+
+        if (Input.GetKeyDown(kb.liftSnapFullDown.key))
+        {
+            bool ctrlMatch = kb.liftSnapFullDown.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapFullDown.shift == shiftHeld;
+            bool altMatch = kb.liftSnapFullDown.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // SHIFT+E: Snap to zero
-                if (Input.GetKeyDown(kb.liftDown))
+                SetRotation(-maxRotationDegrees);
+                if (debugLog)
                 {
-                    SetRotation(0f);
-                    if (debugLog)
-                    {
-                        FileLogger.Log("Lift Chadburn: SHIFT+E - Snapped to IDLE (0°)", "LiftChadburn");
-                    }
+                    FileLogger.Log($"Lift Chadburn: {kb.liftSnapFullDown} - Snapped to MAX REVERSE (-{maxRotationDegrees}°)", "LiftChadburn");
                 }
+                return;
             }
-            else if (ctrlHeld)
+        }
+
+        if (Input.GetKeyDown(kb.liftSnapCenterDown.key))
+        {
+            bool ctrlMatch = kb.liftSnapCenterDown.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapCenterDown.shift == shiftHeld;
+            bool altMatch = kb.liftSnapCenterDown.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // CTRL+E: Rotate counter-clockwise continuously at speed
-                float newAngle = Mathf.Max(_currentRotation - kb.liftChadburnRotationSpeed * Time.deltaTime, -maxRotationDegrees);
+                SetRotation(0f);
+                if (debugLog)
+                {
+                    FileLogger.Log($"Lift Chadburn: {kb.liftSnapCenterDown} - Snapped to IDLE (0°)", "LiftChadburn");
+                }
+                return;
+            }
+        }
+
+        // Check if any snap combination is currently held - if so, skip gradual controls
+        bool snapComboHeld = false;
+        
+        // Check if liftSnapFullUp combo is held
+        if (Input.GetKey(kb.liftSnapFullUp.key))
+        {
+            bool ctrlMatch = kb.liftSnapFullUp.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapFullUp.shift == shiftHeld;
+            bool altMatch = kb.liftSnapFullUp.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+        
+        // Check if liftSnapCenter combo is held
+        if (Input.GetKey(kb.liftSnapCenter.key))
+        {
+            bool ctrlMatch = kb.liftSnapCenter.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapCenter.shift == shiftHeld;
+            bool altMatch = kb.liftSnapCenter.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+        
+        // Check if liftSnapFullDown combo is held
+        if (Input.GetKey(kb.liftSnapFullDown.key))
+        {
+            bool ctrlMatch = kb.liftSnapFullDown.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapFullDown.shift == shiftHeld;
+            bool altMatch = kb.liftSnapFullDown.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+        
+        // Check if liftSnapCenterDown combo is held
+        if (Input.GetKey(kb.liftSnapCenterDown.key))
+        {
+            bool ctrlMatch = kb.liftSnapCenterDown.ctrl == ctrlHeld;
+            bool shiftMatch = kb.liftSnapCenterDown.shift == shiftHeld;
+            bool altMatch = kb.liftSnapCenterDown.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+
+        // Only process gradual controls if no snap combo is held
+        if (!snapComboHeld)
+        {
+            // Up controls - gradual rotation
+            if (Input.GetKey(kb.liftUp))
+            {
+                float newAngle = Mathf.Min(_currentRotation + kb.liftChadburnRotationSpeed * Time.deltaTime, maxRotationDegrees);
                 SetRotation(newAngle);
             }
-            else
+
+            // Down controls - gradual rotation
+            if (Input.GetKey(kb.liftDown))
             {
-                // E alone: Rotate counter-clockwise continuously
                 float newAngle = Mathf.Max(_currentRotation - kb.liftChadburnRotationSpeed * Time.deltaTime, -maxRotationDegrees);
                 SetRotation(newAngle);
             }

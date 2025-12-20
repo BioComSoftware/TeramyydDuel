@@ -31,11 +31,8 @@ namespace Teramyyd.UI
         [SerializeField] float actionLabelFontSize = 18f;
         [SerializeField] Color keyButtonTextColor = Color.white;
         [SerializeField] float keyButtonFontSize = 16f;
-        [SerializeField] Color dropdownTextColor = Color.white;
-        [SerializeField] float dropdownFontSize = 16f;
         [SerializeField] Color rowBackgroundColor = new Color(0.1f, 0.1f, 0.1f, 0.5f);
         [SerializeField] Color keyButtonBackgroundColor = new Color(0.2f, 0.2f, 0.2f, 1f);
-        [SerializeField] Color dropdownBackgroundColor = new Color(0.16f, 0.16f, 0.16f, 1f);
 
         private Dictionary<string, KeyBindingData> _keybindings = new Dictionary<string, KeyBindingData>();
         private List<KeybindingRow> _rows = new List<KeybindingRow>();
@@ -211,7 +208,6 @@ namespace Teramyyd.UI
 
             // Get references to child components
             TextMeshProUGUI actionLabel = rowObj.transform.Find("ActionLabel")?.GetComponent<TextMeshProUGUI>();
-            TMP_Dropdown modifierDropdown = rowObj.transform.Find("ModifierDropdown")?.GetComponent<TMP_Dropdown>();
             Transform keyButton = rowObj.transform.Find("KeyButton");
             TextMeshProUGUI keyButtonText = keyButton?.Find("KeyButtonText")?.GetComponent<TextMeshProUGUI>();
 
@@ -248,48 +244,6 @@ namespace Teramyyd.UI
                     keyButtonText.fontSharedMaterial = fontMaterial;
                 else
                     keyButtonText.fontSharedMaterial = null;
-            }
-
-            // Style Modifier Dropdown
-            if (modifierDropdown != null)
-            {
-                Image dropdownBg = modifierDropdown.GetComponent<Image>();
-                if (dropdownBg != null)
-                {
-                    dropdownBg.color = dropdownBackgroundColor;
-                }
-
-                // Style dropdown label
-                TextMeshProUGUI dropdownLabel = modifierDropdown.transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
-                if (dropdownLabel != null)
-                {
-                    if (rowFont != null) dropdownLabel.font = rowFont;
-                    dropdownLabel.color = dropdownTextColor;
-                    dropdownLabel.fontSize = dropdownFontSize;
-                    // Apply font material if specified, otherwise clear to use default
-                    if (fontMaterial != null)
-                        dropdownLabel.fontSharedMaterial = fontMaterial;
-                    else
-                        dropdownLabel.fontSharedMaterial = null;
-                }
-
-                // Style dropdown item text
-                Transform template = modifierDropdown.transform.Find("Template");
-                if (template != null)
-                {
-                    TextMeshProUGUI itemLabel = template.Find("Viewport/Content/Item/Item Label")?.GetComponent<TextMeshProUGUI>();
-                    if (itemLabel != null)
-                    {
-                        if (rowFont != null) itemLabel.font = rowFont;
-                        itemLabel.color = dropdownTextColor;
-                        itemLabel.fontSize = dropdownFontSize - 2; // Slightly smaller for dropdown items
-                        // Apply font material if specified, otherwise clear to use default
-                        if (fontMaterial != null)
-                            itemLabel.fontSharedMaterial = fontMaterial;
-                        else
-                            itemLabel.fontSharedMaterial = null;
-                    }
-                }
             }
         }
 
@@ -332,7 +286,12 @@ namespace Teramyyd.UI
             {
                 if (Input.GetKeyDown(keyCode))
                 {
-                    // Ignore mouse buttons and some system keys
+                    // Ignore modifier keys themselves and mouse buttons
+                    if (keyCode == KeyCode.LeftControl || keyCode == KeyCode.RightControl ||
+                        keyCode == KeyCode.LeftShift || keyCode == KeyCode.RightShift ||
+                        keyCode == KeyCode.LeftAlt || keyCode == KeyCode.RightAlt)
+                        continue;
+                    
                     if (keyCode >= KeyCode.Mouse0 && keyCode <= KeyCode.Mouse6)
                         continue;
                     if (keyCode == KeyCode.None)
@@ -351,13 +310,13 @@ namespace Teramyyd.UI
 
             string actionId = _currentListeningRow.ActionId;
 
-            // Get current modifiers from the row's dropdown
+            // Detect modifier keys that are currently being held
             var data = new KeyBindingData
             {
                 key = newKey,
-                ctrl = _currentListeningRow.IsCtrlSelected(),
-                shift = _currentListeningRow.IsShiftSelected(),
-                alt = _currentListeningRow.IsAltSelected()
+                ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl),
+                shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift),
+                alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)
             };
 
             // Check for conflicts
@@ -368,7 +327,7 @@ namespace Teramyyd.UI
 
                 if (kvp.Value.Equals(data))
                 {
-                    Debug.LogWarning($"[ControlsSettingsPanel] Key conflict: {newKey} already assigned to {kvp.Key}");
+                    Debug.LogWarning($"[ControlsSettingsPanel] Key conflict: {data.ToString()} already assigned to {kvp.Key}");
                     _currentListeningRow.ShowConflict(FormatDisplayName(kvp.Key));
                     return;
                 }
@@ -425,6 +384,18 @@ namespace Teramyyd.UI
                 File.WriteAllText(_keybindingsPath, newJson);
 
                 Debug.Log("[ControlsSettingsPanel] Keybindings saved successfully");
+
+                // Immediately reload keybindings in the active game systems
+                KeyBindingConfig keyBindingConfig = KeyBindingConfig.Instance;
+                if (keyBindingConfig != null)
+                {
+                    keyBindingConfig.ReloadKeybindings();
+                    Debug.Log("[ControlsSettingsPanel] Keybindings reloaded - changes active immediately");
+                }
+                else
+                {
+                    Debug.LogWarning("[ControlsSettingsPanel] KeyBindingConfig not found - changes will apply on next game restart");
+                }
             }
             catch (Exception ex)
             {

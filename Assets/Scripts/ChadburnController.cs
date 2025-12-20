@@ -177,74 +177,131 @@ public class ChadburnController : MonoBehaviour, IBeginDragHandler, IDragHandler
             return;
 
         bool ctrlHeld = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-        bool shiftHeld = Input.GetKey(KeyCode.LeftShift);
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool altHeld = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
 
-        // Forward controls (W key)
-        if (Input.GetKey(kb.engineForward))
+        // Check for engine snap shortcuts (must check before gradual controls to avoid conflicts)
+        if (Input.GetKeyDown(kb.engineSnapFullAhead.key))
         {
-            if (ctrlHeld)
+            bool ctrlMatch = kb.engineSnapFullAhead.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapFullAhead.shift == shiftHeld;
+            bool altMatch = kb.engineSnapFullAhead.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // CTRL+A: Snap to full ahead
-                if (Input.GetKeyDown(kb.engineForward))
+                SetRotation(maxRotationDegrees);
+                if (debugLog)
                 {
-                    SetRotation(maxRotationDegrees);
-                    if (debugLog)
-                    {
-                        FileLogger.Log($"Chadburn: CTRL+W - Snapped to FULL AHEAD ({maxRotationDegrees}°)", "Chadburn");
-                    }
+                    FileLogger.Log($"Chadburn: {kb.engineSnapFullAhead} - Snapped to FULL AHEAD ({maxRotationDegrees}°)", "Chadburn");
                 }
+                return;
             }
-            else if (shiftHeld)
+        }
+
+        if (Input.GetKeyDown(kb.engineSnapStop.key))
+        {
+            bool ctrlMatch = kb.engineSnapStop.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapStop.shift == shiftHeld;
+            bool altMatch = kb.engineSnapStop.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // LEFT-SHIFT+A: Snap to stop
-                if (Input.GetKeyDown(kb.engineForward))
+                SetRotation(0f);
+                if (debugLog)
                 {
-                    SetRotation(0f);
-                    if (debugLog)
-                    {
-                        FileLogger.Log("Chadburn: SHIFT+W - Snapped to STOP (0°)", "Chadburn");
-                    }
+                    FileLogger.Log($"Chadburn: {kb.engineSnapStop} - Snapped to STOP (0°)", "Chadburn");
                 }
+                return;
             }
-            else
+        }
+
+        if (Input.GetKeyDown(kb.engineSnapFullAstern.key))
+        {
+            bool ctrlMatch = kb.engineSnapFullAstern.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapFullAstern.shift == shiftHeld;
+            bool altMatch = kb.engineSnapFullAstern.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
             {
-                // W alone: Rotate clockwise continuously
+                SetRotation(-maxRotationDegrees);
+                if (debugLog)
+                {
+                    FileLogger.Log($"Chadburn: {kb.engineSnapFullAstern} - Snapped to FULL ASTERN (-{maxRotationDegrees}°)", "Chadburn");
+                }
+                return;
+            }
+        }
+
+        if (Input.GetKeyDown(kb.engineSnapStopReverse.key))
+        {
+            bool ctrlMatch = kb.engineSnapStopReverse.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapStopReverse.shift == shiftHeld;
+            bool altMatch = kb.engineSnapStopReverse.alt == altHeld;
+            
+            if (ctrlMatch && shiftMatch && altMatch)
+            {
+                SetRotation(0f);
+                if (debugLog)
+                {
+                    FileLogger.Log($"Chadburn: {kb.engineSnapStopReverse} - Snapped to STOP (0°)", "Chadburn");
+                }
+                return;
+            }
+        }
+
+        // Check if any snap combination is currently held - if so, skip gradual controls
+        bool snapComboHeld = false;
+        
+        // Check if engineSnapFullAhead combo is held
+        if (Input.GetKey(kb.engineSnapFullAhead.key))
+        {
+            bool ctrlMatch = kb.engineSnapFullAhead.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapFullAhead.shift == shiftHeld;
+            bool altMatch = kb.engineSnapFullAhead.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+        
+        // Check if engineSnapStop combo is held
+        if (Input.GetKey(kb.engineSnapStop.key))
+        {
+            bool ctrlMatch = kb.engineSnapStop.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapStop.shift == shiftHeld;
+            bool altMatch = kb.engineSnapStop.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+        
+        // Check if engineSnapFullAstern combo is held
+        if (Input.GetKey(kb.engineSnapFullAstern.key))
+        {
+            bool ctrlMatch = kb.engineSnapFullAstern.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapFullAstern.shift == shiftHeld;
+            bool altMatch = kb.engineSnapFullAstern.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+        
+        // Check if engineSnapStopReverse combo is held
+        if (Input.GetKey(kb.engineSnapStopReverse.key))
+        {
+            bool ctrlMatch = kb.engineSnapStopReverse.ctrl == ctrlHeld;
+            bool shiftMatch = kb.engineSnapStopReverse.shift == shiftHeld;
+            bool altMatch = kb.engineSnapStopReverse.alt == altHeld;
+            if (ctrlMatch && shiftMatch && altMatch) snapComboHeld = true;
+        }
+
+        // Only process gradual controls if no snap combo is held
+        if (!snapComboHeld)
+        {
+            // Forward controls - gradual rotation
+            if (Input.GetKey(kb.engineForward))
+            {
                 float rotationDelta = kb.engineChadburnRotationSpeed * Time.deltaTime;
                 float newRotation = Mathf.Min(_currentRotation + rotationDelta, maxRotationDegrees);
                 SetRotation(newRotation);
             }
-        }
 
-        // Reverse controls (S key)
-        if (Input.GetKey(kb.engineReverse))
-        {
-            if (ctrlHeld)
+            // Reverse controls - gradual rotation
+            if (Input.GetKey(kb.engineReverse))
             {
-                // CTRL+S: Snap to full astern
-                if (Input.GetKeyDown(kb.engineReverse))
-                {
-                    SetRotation(-maxRotationDegrees);
-                    if (debugLog)
-                    {
-                        FileLogger.Log($"Chadburn: CTRL+S - Snapped to FULL ASTERN (-{maxRotationDegrees}°)", "Chadburn");
-                    }
-                }
-            }
-            else if (shiftHeld)
-            {
-                // LEFT-SHIFT+S: Snap to stop
-                if (Input.GetKeyDown(kb.engineReverse))
-                {
-                    SetRotation(0f);
-                    if (debugLog)
-                    {
-                        FileLogger.Log("Chadburn: SHIFT+S - Snapped to STOP (0°)", "Chadburn");
-                    }
-                }
-            }
-            else
-            {
-                // S alone: Rotate counter-clockwise continuously
                 float rotationDelta = kb.engineChadburnRotationSpeed * Time.deltaTime;
                 float newRotation = Mathf.Max(_currentRotation - rotationDelta, -maxRotationDegrees);
                 SetRotation(newRotation);

@@ -61,6 +61,10 @@ public class KeyBindingData
     // Engine chadburn controls
     public string engineForward = "W";
     public string engineReverse = "S";
+    public string engineSnapFullAhead = "Ctrl+W";
+    public string engineSnapStop = "Shift+W";
+    public string engineSnapFullAstern = "Ctrl+S";
+    public string engineSnapStopReverse = "Shift+S";
     public float engineChadburnRotationSpeed = 45f;
     
     // Ship wheel controls
@@ -70,6 +74,10 @@ public class KeyBindingData
     // Lift chadburn controls
     public string liftUp = "Q";
     public string liftDown = "E";
+    public string liftSnapFullUp = "Ctrl+Q";
+    public string liftSnapCenter = "Shift+Q";
+    public string liftSnapFullDown = "Ctrl+E";
+    public string liftSnapCenterDown = "Shift+E";
     public float liftChadburnRotationSpeed = 45f;
 
     // Ship wheel controls (not exposed in KeyBindingConfig Inspector)
@@ -117,6 +125,10 @@ public class KeyBindingConfig : ScriptableObject
     [Header("Active Engine Chadburn Controls (Runtime)")]
     [SerializeField] private KeyCode _engineForward;
     [SerializeField] private KeyCode _engineReverse;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _engineSnapFullAhead;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _engineSnapStop;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _engineSnapFullAstern;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _engineSnapStopReverse;
     [SerializeField] private float _engineChadburnRotationSpeed = 45f;
 
     [Header("Active Ship Wheel Controls (Runtime)")]
@@ -128,6 +140,10 @@ public class KeyBindingConfig : ScriptableObject
     [Header("Active Lift Chadburn Controls (Runtime)")]
     [SerializeField] private KeyCode _liftUp;
     [SerializeField] private KeyCode _liftDown;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _liftSnapFullUp;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _liftSnapCenter;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _liftSnapFullDown;
+    [SerializeField] private Teramyyd.UI.KeyBindingData _liftSnapCenterDown;
     [SerializeField] private float _liftChadburnRotationSpeed = 45f;
 
     [Header("Active Modifier Flags (Runtime)")]
@@ -155,11 +171,19 @@ public class KeyBindingConfig : ScriptableObject
     public KeyCode instrumentZoom => _instrumentZoom;
     public KeyCode engineForward => _engineForward;
     public KeyCode engineReverse => _engineReverse;
+    public Teramyyd.UI.KeyBindingData engineSnapFullAhead => _engineSnapFullAhead;
+    public Teramyyd.UI.KeyBindingData engineSnapStop => _engineSnapStop;
+    public Teramyyd.UI.KeyBindingData engineSnapFullAstern => _engineSnapFullAstern;
+    public Teramyyd.UI.KeyBindingData engineSnapStopReverse => _engineSnapStopReverse;
     public float engineChadburnRotationSpeed => _engineChadburnRotationSpeed;
     public KeyCode wheelLeft => _wheelLeft;
     public KeyCode wheelRight => _wheelRight;
     public KeyCode liftUp => _liftUp;
     public KeyCode liftDown => _liftDown;
+    public Teramyyd.UI.KeyBindingData liftSnapFullUp => _liftSnapFullUp;
+    public Teramyyd.UI.KeyBindingData liftSnapCenter => _liftSnapCenter;
+    public Teramyyd.UI.KeyBindingData liftSnapFullDown => _liftSnapFullDown;
+    public Teramyyd.UI.KeyBindingData liftSnapCenterDown => _liftSnapCenterDown;
     public float liftChadburnRotationSpeed => _liftChadburnRotationSpeed;
     public float autoReturnSpeedDegPerSec => _autoReturnSpeedDegPerSec;
     public bool snapRequiresCtrl => _snapRequiresCtrl;
@@ -210,17 +234,20 @@ public class KeyBindingConfig : ScriptableObject
     /// </summary>
     public void LoadFromJSON()
     {
-        TextAsset jsonFile = Resources.Load<TextAsset>("keybindings");
-        if (jsonFile == null)
+        // Read directly from file system so we can detect runtime changes
+        string keybindingsPath = Path.Combine(Application.dataPath, "Resources", "keybindings.json");
+        
+        if (!File.Exists(keybindingsPath))
         {
-            Debug.LogWarning("KeyBindingConfig: keybindings.json not found in Resources. Initializing from developer defaults.");
+            Debug.LogWarning($"KeyBindingConfig: keybindings.json not found at {keybindingsPath}. Initializing from developer defaults.");
             InitializeFromDefaults();
             return;
         }
 
         try
         {
-            KeyBindingData data = JsonUtility.FromJson<KeyBindingData>(jsonFile.text);
+            string jsonText = File.ReadAllText(keybindingsPath);
+            KeyBindingData data = JsonUtility.FromJson<KeyBindingData>(jsonText);
             DefaultKeybindings defaults = DefaultKeybindings.Instance;
             
             // Load into RUNTIME variables (_fields) - developer defaults remain unchanged
@@ -246,11 +273,19 @@ public class KeyBindingConfig : ScriptableObject
 
             _engineForward = ParseKeyCode(data.engineForward, defaults?.defaultEngineForward ?? KeyCode.W);
             _engineReverse = ParseKeyCode(data.engineReverse, defaults?.defaultEngineReverse ?? KeyCode.S);
+            _engineSnapFullAhead = ParseKeyBinding(data.engineSnapFullAhead);
+            _engineSnapStop = ParseKeyBinding(data.engineSnapStop);
+            _engineSnapFullAstern = ParseKeyBinding(data.engineSnapFullAstern);
+            _engineSnapStopReverse = ParseKeyBinding(data.engineSnapStopReverse);
             _engineChadburnRotationSpeed = data.engineChadburnRotationSpeed;
             _wheelLeft = ParseKeyCode(data.wheelLeft, defaults?.defaultWheelLeft ?? KeyCode.A);
             _wheelRight = ParseKeyCode(data.wheelRight, defaults?.defaultWheelRight ?? KeyCode.D);
             _liftUp = ParseKeyCode(data.liftUp, defaults?.defaultLiftUp ?? KeyCode.Q);
             _liftDown = ParseKeyCode(data.liftDown, defaults?.defaultLiftDown ?? KeyCode.E);
+            _liftSnapFullUp = ParseKeyBinding(data.liftSnapFullUp);
+            _liftSnapCenter = ParseKeyBinding(data.liftSnapCenter);
+            _liftSnapFullDown = ParseKeyBinding(data.liftSnapFullDown);
+            _liftSnapCenterDown = ParseKeyBinding(data.liftSnapCenterDown);
             _liftChadburnRotationSpeed = data.liftChadburnRotationSpeed;
             
             if (debugLog)
@@ -480,6 +515,16 @@ public class KeyBindingConfig : ScriptableObject
     }
 
     /// <summary>
+    /// Reload keybindings from JSON file immediately.
+    /// Call this after player changes keybindings in settings menu.
+    /// </summary>
+    public void ReloadKeybindings()
+    {
+        Debug.Log("KeyBindingConfig: Reloading keybindings from JSON...");
+        LoadFromJSON();
+    }
+
+    /// <summary>
     /// Parse string key name to KeyCode enum.
     /// Returns fallback value if parsing fails.
     /// </summary>
@@ -497,5 +542,60 @@ public class KeyBindingConfig : ScriptableObject
             Debug.LogWarning($"KeyBindingConfig: Invalid key name '{keyName}', using fallback {fallback}");
             return fallback;
         }
+    }
+
+    /// <summary>
+    /// Parse keybinding string with modifiers (e.g., "Ctrl+W", "Shift+Q") into KeyBindingData.
+    /// </summary>
+    private Teramyyd.UI.KeyBindingData ParseKeyBinding(string value)
+    {
+        var bindingData = new Teramyyd.UI.KeyBindingData();
+
+        if (string.IsNullOrEmpty(value))
+            return bindingData;
+
+        // Check for modifiers
+        if (value.Contains("+"))
+        {
+            string[] parts = value.Split('+');
+            foreach (string part in parts)
+            {
+                string trimmed = part.Trim().ToLower();
+                if (trimmed == "ctrl" || trimmed == "control")
+                    bindingData.ctrl = true;
+                else if (trimmed == "shift")
+                    bindingData.shift = true;
+                else if (trimmed == "alt")
+                    bindingData.alt = true;
+                else
+                {
+                    // Parse the actual key
+                    try
+                    {
+                        bindingData.key = (KeyCode)Enum.Parse(typeof(KeyCode), part.Trim(), true);
+                    }
+                    catch
+                    {
+                        Debug.LogWarning($"KeyBindingConfig: Invalid key in binding '{value}'");
+                        bindingData.key = KeyCode.None;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // No modifiers, just a key
+            try
+            {
+                bindingData.key = (KeyCode)Enum.Parse(typeof(KeyCode), value, true);
+            }
+            catch
+            {
+                Debug.LogWarning($"KeyBindingConfig: Invalid key '{value}'");
+                bindingData.key = KeyCode.None;
+            }
+        }
+
+        return bindingData;
     }
 }
