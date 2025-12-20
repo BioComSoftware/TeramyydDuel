@@ -64,6 +64,15 @@ namespace Teramyyd.UI
             }
         }
 
+        public void UpdateDisplayText(string text)
+        {
+            if (keyButtonText != null)
+            {
+                keyButtonText.text = text;
+                keyButtonText.color = normalColor;
+            }
+        }
+
         private void OnKeyButtonClicked()
         {
             if (_panel != null)

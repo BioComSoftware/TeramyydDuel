@@ -29,5 +29,11 @@
     "liftSnapFullDown": "Ctrl+E",
     "liftSnapCenterDown": "Shift+E",
     "liftChadburnRotationSpeed": 45.0,
+    "mouseCameraButton": "Mouse1",
+    "mouseSensitivity": 1.0,
+    "mouseWheelSensitivity": 10.0,
+    "mouseWheelForward": "ZoomIn",
+    "mouseWheelBackward": "ZoomOut",
+    "invertMouseY": false,
     "autoReturnSpeedDegPerSec": 90.0
 }

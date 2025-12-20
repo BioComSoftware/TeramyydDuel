@@ -15,14 +15,19 @@ public class DebugCrewAnchors : MonoBehaviour
         }
         foreach (var mount in mounts)
         {
+            if (mount == null) continue;
+            
             if (mount.name.Contains("Bow"))
             {
                 Debug.Log($"Mount: {mount.name}");
                 
                 // Check WeaponMount settings
                 var so = new UnityEditor.SerializedObject(mount);
-                var defMax = so.FindProperty("defaultCrewMax").intValue;
-                Debug.Log($"  WeaponMount.defaultCrewMax: {defMax}");
+                var defMax = so.FindProperty("defaultCrewMax");
+                if (defMax != null)
+                {
+                    Debug.Log($"  WeaponMount.defaultCrewMax: {defMax.intValue}");
+                }
 
                 // Check CrewStation
                 var station = mount.GetComponent<CrewStation>();
@@ -36,11 +41,13 @@ public class DebugCrewAnchors : MonoBehaviour
                 if (builder != null)
                 {
                     var builderSO = new UnityEditor.SerializedObject(builder);
-                    var useOverride = builderSO.FindProperty("useOverrideAnchorCount").boolValue;
-                    var overrideCount = builderSO.FindProperty("overrideAnchorCount").intValue;
+                    var useOverride = builderSO.FindProperty("useOverrideAnchorCount");
+                    var overrideCount = builderSO.FindProperty("overrideAnchorCount");
                     
-                    Debug.Log($"  Builder.useOverrideAnchorCount: {useOverride}");
-                    Debug.Log($"  Builder.overrideAnchorCount: {overrideCount}");
+                    if (useOverride != null)
+                        Debug.Log($"  Builder.useOverrideAnchorCount: {useOverride.boolValue}");
+                    if (overrideCount != null)
+                        Debug.Log($"  Builder.overrideAnchorCount: {overrideCount.intValue}");
                 }
             }
         }

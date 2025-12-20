@@ -83,6 +83,14 @@ public class KeyBindingData
     // Ship wheel controls (not exposed in KeyBindingConfig Inspector)
     public float autoReturnSpeedDegPerSec = 90f;
 
+    // Mouse camera controls
+    public string mouseCameraButton = "Mouse1";  // Right mouse button (Mouse0=left, Mouse1=right, Mouse2=middle)
+    public float mouseSensitivity = 5.0f;
+    public float mouseWheelSensitivity = 5.0f;
+    public string mouseWheelForward = "ZoomIn";   // What happens when wheel scrolls forward
+    public string mouseWheelBackward = "ZoomOut"; // What happens when wheel scrolls backward
+    public bool invertMouseY = false;
+
     // Modifiers
     public bool snapRequiresCtrl = true;
     public bool zoomRequiresCtrl = true;
@@ -146,6 +154,14 @@ public class KeyBindingConfig : ScriptableObject
     [SerializeField] private Teramyyd.UI.KeyBindingData _liftSnapCenterDown;
     [SerializeField] private float _liftChadburnRotationSpeed = 45f;
 
+    [Header("Active Mouse Camera Controls (Runtime)")]
+    [SerializeField] private int _mouseCameraButton = 1;  // 0=left, 1=right, 2=middle
+    [SerializeField] private float _mouseSensitivity = 5.0f;
+    [SerializeField] private float _mouseWheelSensitivity = 5.0f;
+    [SerializeField] private string _mouseWheelForward = "ZoomIn";
+    [SerializeField] private string _mouseWheelBackward = "ZoomOut";
+    [SerializeField] private bool _invertMouseY = false;
+
     [Header("Active Modifier Flags (Runtime)")]
     [SerializeField] private bool _snapRequiresCtrl;
     [SerializeField] private bool _zoomRequiresCtrl;
@@ -185,6 +201,12 @@ public class KeyBindingConfig : ScriptableObject
     public Teramyyd.UI.KeyBindingData liftSnapFullDown => _liftSnapFullDown;
     public Teramyyd.UI.KeyBindingData liftSnapCenterDown => _liftSnapCenterDown;
     public float liftChadburnRotationSpeed => _liftChadburnRotationSpeed;
+    public int mouseCameraButton => _mouseCameraButton;
+    public float mouseSensitivity => _mouseSensitivity;
+    public float mouseWheelSensitivity => _mouseWheelSensitivity;
+    public string mouseWheelForward => _mouseWheelForward;
+    public string mouseWheelBackward => _mouseWheelBackward;
+    public bool invertMouseY => _invertMouseY;
     public float autoReturnSpeedDegPerSec => _autoReturnSpeedDegPerSec;
     public bool snapRequiresCtrl => _snapRequiresCtrl;
     public bool zoomRequiresCtrl => _zoomRequiresCtrl;
@@ -287,6 +309,14 @@ public class KeyBindingConfig : ScriptableObject
             _liftSnapFullDown = ParseKeyBinding(data.liftSnapFullDown);
             _liftSnapCenterDown = ParseKeyBinding(data.liftSnapCenterDown);
             _liftChadburnRotationSpeed = data.liftChadburnRotationSpeed;
+            
+            // Parse mouse controls
+            _mouseCameraButton = ParseMouseButton(data.mouseCameraButton, 1); // Default: right mouse button
+            _mouseSensitivity = data.mouseSensitivity;
+            _mouseWheelSensitivity = data.mouseWheelSensitivity;
+            _mouseWheelForward = data.mouseWheelForward;
+            _mouseWheelBackward = data.mouseWheelBackward;
+            _invertMouseY = data.invertMouseY;
             
             if (debugLog)
             {
@@ -598,4 +628,26 @@ public class KeyBindingConfig : ScriptableObject
 
         return bindingData;
     }
+
+    /// <summary>
+    /// Parse mouse button string (Mouse0, Mouse1, Mouse2) to integer (0, 1, 2).
+    /// </summary>
+    private int ParseMouseButton(string value, int defaultButton)
+    {
+        if (string.IsNullOrEmpty(value))
+            return defaultButton;
+
+        if (value.StartsWith("Mouse", System.StringComparison.OrdinalIgnoreCase))
+        {
+            string numberPart = value.Substring(5);
+            if (int.TryParse(numberPart, out int buttonNumber))
+            {
+                return buttonNumber;
+            }
+        }
+
+        Debug.LogWarning($"KeyBindingConfig: Invalid mouse button '{value}', using default {defaultButton}");
+        return defaultButton;
+    }
 }
+

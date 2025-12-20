@@ -48,26 +48,87 @@ public class CameraOrbitMove : MonoBehaviour
     {
         if (target == null) return;
 
+        KeyBindingConfig kb = KeyBindingConfig.Instance;
         bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+
+        // Check if mouse camera control is enabled
+        bool mouseControlActive = false;
+        if (kb != null && Input.GetMouseButton(kb.mouseCameraButton))
+        {
+            mouseControlActive = true;
+        }
 
         float h = 0f;
         float v = 0f;
-        if (Input.GetKey(KeyCode.LeftArrow)) h = -1f;
-        if (Input.GetKey(KeyCode.RightArrow)) h = 1f;
-        if (Input.GetKey(KeyCode.UpArrow)) v = 1f;
-        if (Input.GetKey(KeyCode.DownArrow)) v = -1f;
 
-        if (ctrl && (v != 0f))
+        // Mouse input when mouse button is held
+        if (mouseControlActive)
+        {
+            float sensitivity = kb != null ? kb.mouseSensitivity : 5.0f;
+            h = Input.GetAxis("Mouse X") * sensitivity;
+            v = Input.GetAxis("Mouse Y") * sensitivity;
+            
+            // Apply mouse Y inversion if enabled
+            if (kb != null && kb.invertMouseY)
+            {
+                v = -v;
+            }
+        }
+        // Keyboard arrow input (always available)
+        else
+        {
+            if (Input.GetKey(KeyCode.LeftArrow)) h = -1f;
+            if (Input.GetKey(KeyCode.RightArrow)) h = 1f;
+            if (Input.GetKey(KeyCode.UpArrow)) v = 1f;
+            if (Input.GetKey(KeyCode.DownArrow)) v = -1f;
+        }
+
+        // Handle zoom - keyboard or mouse wheel
+        bool zoomInput = false;
+        float zoomDelta = 0f;
+
+        if (ctrl && (v != 0f) && !mouseControlActive)
+        {
+            // Keyboard Ctrl+Arrow zoom
+            zoomDelta = -v;
+            zoomInput = true;
+        }
+        else if (kb != null)
+        {
+            // Mouse wheel zoom
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0f)
+            {
+                float wheelSensitivity = kb.mouseWheelSensitivity;
+                bool scrollForward = scroll > 0f;
+                
+                // Determine zoom direction based on wheel direction and settings
+                string action = scrollForward ? kb.mouseWheelForward : kb.mouseWheelBackward;
+                
+                if (action == "ZoomIn")
+                {
+                    zoomDelta = wheelSensitivity; // Zoom in
+                    zoomInput = true;
+                }
+                else if (action == "ZoomOut")
+                {
+                    zoomDelta = -wheelSensitivity; // Zoom out
+                    zoomInput = true;
+                }
+            }
+        }
+
+        if (zoomInput)
         {
             if (useFOVZoom && cam != null)
             {
                 float fov = cam.fieldOfView;
-                fov += -v * zoomSpeed * Time.deltaTime; // Up narrows FOV
+                fov += -zoomDelta * zoomSpeed * Time.deltaTime; // Positive delta narrows FOV
                 cam.fieldOfView = Mathf.Clamp(fov, minFOV, maxFOV);
             }
             else
             {
-                distance += -v * zoomSpeed * Time.deltaTime; // Up -> closer
+                distance += -zoomDelta * zoomSpeed * Time.deltaTime; // Positive delta -> closer
                 distance = Mathf.Clamp(distance, minDistance, maxDistance);
             }
             // Defer actual reposition to LateUpdate so we always follow a moving target
@@ -76,8 +137,22 @@ public class CameraOrbitMove : MonoBehaviour
 
         if (h != 0f || v != 0f)
         {
-            yaw += h * orbitSpeed * Time.deltaTime;
-            pitch += v * orbitSpeed * Time.deltaTime;
+            // Apply rotation speed scaling for keyboard input
+            float speedMultiplier = mouseControlActive ? 1f : (orbitSpeed * Time.deltaTime);
+            
+            if (mouseControlActive)
+            {
+                // Mouse delta is already in screen space units, scale it appropriately
+                yaw += h;
+                pitch += v;
+            }
+            else
+            {
+                // Keyboard uses speed * deltaTime
+                yaw += h * speedMultiplier;
+                pitch += v * speedMultiplier;
+            }
+            
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
         }
     }

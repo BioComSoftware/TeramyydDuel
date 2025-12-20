@@ -83,77 +83,149 @@ public class CameraMove : MonoBehaviour
     
     void Update()
     {
+        KeyBindingConfig kb = KeyBindingConfig.Instance;
+        
         // Check if Shift or Ctrl is held
         bool shiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool ctrlHeld = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
         
-        // Get input from arrow keys
+        // Check if mouse camera control is enabled
+        bool mouseControlActive = false;
+        if (kb != null && Input.GetMouseButton(kb.mouseCameraButton))
+        {
+            mouseControlActive = true;
+        }
+        
+        // Get input from arrow keys or mouse
         float horizontal = 0f;
         float vertical = 0f;
         
-        if (Input.GetKey(KeyCode.LeftArrow))
-            horizontal = -1f;
-        if (Input.GetKey(KeyCode.RightArrow))
-            horizontal = 1f;
-        if (Input.GetKey(KeyCode.UpArrow))
-            vertical = 1f;
-        if (Input.GetKey(KeyCode.DownArrow))
-            vertical = -1f;
-        
-        if (horizontal != 0f || vertical != 0f)
+        // Mouse input when mouse button is held
+        if (mouseControlActive)
         {
-            if (ctrlHeld)
+            float sensitivity = kb != null ? kb.mouseSensitivity : 5.0f;
+            horizontal = Input.GetAxis("Mouse X") * sensitivity;
+            vertical = Input.GetAxis("Mouse Y") * sensitivity;
+            
+            // Apply mouse Y inversion if enabled
+            if (kb != null && kb.invertMouseY)
             {
-                // Ctrl + Arrow Keys: Zoom in/out
-                if (useFOVZoom && cam != null)
+                vertical = -vertical;
+            }
+        }
+        // Keyboard arrow input (always available)
+        else
+        {
+            if (Input.GetKey(KeyCode.LeftArrow))
+                horizontal = -1f;
+            if (Input.GetKey(KeyCode.RightArrow))
+                horizontal = 1f;
+            if (Input.GetKey(KeyCode.UpArrow))
+                vertical = 1f;
+            if (Input.GetKey(KeyCode.DownArrow))
+                vertical = -1f;
+        }
+        
+        // Handle zoom - keyboard or mouse wheel
+        bool zoomInput = false;
+        float zoomDelta = 0f;
+
+        if (ctrlHeld && (vertical != 0f) && !mouseControlActive)
+        {
+            // Keyboard Ctrl+Arrow zoom
+            zoomDelta = vertical;
+            zoomInput = true;
+        }
+        else if (kb != null)
+        {
+            // Mouse wheel zoom
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll != 0f)
+            {
+                float wheelSensitivity = kb.mouseWheelSensitivity;
+                bool scrollForward = scroll > 0f;
+                
+                // Determine zoom direction based on wheel direction and settings
+                string action = scrollForward ? kb.mouseWheelForward : kb.mouseWheelBackward;
+                
+                if (action == "ZoomIn")
                 {
-                    // Adjust field of view to simulate zoom without moving camera (HUD unaffected)
-                    float fov = cam.fieldOfView;
-                    fov += -vertical * zoomSpeed * Time.deltaTime; // Up narrows FOV (zoom in)
-                    cam.fieldOfView = Mathf.Clamp(fov, minFOV, maxFOV);
+                    zoomDelta = wheelSensitivity;
+                    zoomInput = true;
                 }
-                else if (orbitTarget != null)
+                else if (action == "ZoomOut")
                 {
-                    // Adjust orbit distance around target
-                    orbitDistance += -vertical * zoomSpeed * Time.deltaTime;
-                    orbitDistance = Mathf.Clamp(orbitDistance, minOrbitDistance, maxOrbitDistance);
-                    Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
-                    Vector3 offset = rotation * Vector3.back * orbitDistance;
-                    transform.position = orbitTarget.position + offset;
-                    transform.LookAt(orbitTarget);
-                }
-                else
-                {
-                    // Fallback: physically move camera along its forward
-                    Vector3 zoomDirection = transform.forward * vertical;  // Up = forward, Down = backward
-                    transform.position += zoomDirection * moveSpeed * Time.deltaTime;
+                    zoomDelta = -wheelSensitivity;
+                    zoomInput = true;
                 }
             }
-            else // Rotate camera only; Shift is intentionally ignored to prevent panning
-            {
-                // Arrow Keys alone: Rotate camera
-                currentYaw += horizontal * rotationSpeed * Time.deltaTime;
+        }
 
-                // Adjust relative 'up' pitch: UpArrow increases upward angle up to maxPitchRange,
-                // DownArrow returns toward baseline. We never go below the starting pitch.
-                relativePitch += (vertical) * rotationSpeed * Time.deltaTime;   // Up increases relative upward pitch
-                relativePitch = Mathf.Clamp(relativePitch, 0f, maxPitchRange);  // 0 = baseline, max = 90Â° up (default)
-                currentPitch = startPitch - relativePitch;                      // subtract to look up when relative increases
-                
-                if (orbitTarget != null)
-                {
-                    // Orbit around target
-                    Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
-                    Vector3 offset = rotation * Vector3.back * orbitDistance;
-                    transform.position = orbitTarget.position + offset;
-                    transform.LookAt(orbitTarget);
-                }
-                else
-                {
-                    // Rotate camera in place
-                    transform.rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
-                }
+        if (zoomInput)
+        {
+            // Ctrl + Arrow Keys or Mouse Wheel: Zoom in/out
+            if (useFOVZoom && cam != null)
+            {
+                // Adjust field of view to simulate zoom without moving camera (HUD unaffected)
+                float fov = cam.fieldOfView;
+                fov += -zoomDelta * zoomSpeed * Time.deltaTime; // Up narrows FOV (zoom in)
+                cam.fieldOfView = Mathf.Clamp(fov, minFOV, maxFOV);
+            }
+            else if (orbitTarget != null)
+            {
+                // Adjust orbit distance around target
+                orbitDistance += -zoomDelta * zoomSpeed * Time.deltaTime;
+                orbitDistance = Mathf.Clamp(orbitDistance, minOrbitDistance, maxOrbitDistance);
+                Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
+                Vector3 offset = rotation * Vector3.back * orbitDistance;
+                transform.position = orbitTarget.position + offset;
+                transform.LookAt(orbitTarget);
+            }
+            else
+            {
+                // Fallback: physically move camera along its forward
+                Vector3 zoomDirection = transform.forward * zoomDelta;  // Up = forward, Down = backward
+                transform.position += zoomDirection * moveSpeed * Time.deltaTime;
+            }
+        }
+        else if (horizontal != 0f || vertical != 0f)
+        {
+            // Rotate camera only; Shift is intentionally ignored to prevent panning
+            // Apply rotation speed scaling
+            float speedMultiplier = mouseControlActive ? 1f : (rotationSpeed * Time.deltaTime);
+            
+            if (mouseControlActive)
+            {
+                // Mouse delta is already in screen space units
+                currentYaw += horizontal;
+                relativePitch += vertical;
+            }
+            else
+            {
+                // Keyboard uses speed * deltaTime
+                currentYaw += horizontal * speedMultiplier;
+                relativePitch += vertical * speedMultiplier;
+            }
+
+            // Adjust relative 'up' pitch: UpArrow increases upward angle up to maxPitchRange,
+            // DownArrow returns toward baseline. We never go below the starting pitch.
+            relativePitch = Mathf.Clamp(relativePitch, 0f, maxPitchRange);  // 0 = baseline, max = 90° up (default)
+            currentPitch = startPitch - relativePitch;                      // subtract to look up when relative increases
+            
+            if (orbitTarget != null)
+            {
+                // Orbit around target
+                Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
+                Vector3 offset = rotation * Vector3.back * orbitDistance;
+                transform.position = orbitTarget.position + offset;
+                transform.LookAt(orbitTarget);
+            }
+            else
+            {
+                // Rotate camera in place
+                transform.rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
             }
         }
     }
 }
+

@@ -48,11 +48,36 @@ namespace Teramyyd.UI
         {
             LoadKeybindings();
             GenerateControlsUI();
+            
+            // Move mouse control rows to the end if they exist
+            MoveMouseControlsToEnd();
 
             if (resetButton != null)
                 resetButton.onClick.AddListener(OnResetToDefaults);
             if (backButton != null)
                 backButton.onClick.AddListener(OnBack);
+        }
+
+        private void MoveMouseControlsToEnd()
+        {
+            if (contentContainer == null) return;
+            
+            // Find all mouse control rows and move them to the end
+            List<Transform> mouseRows = new List<Transform>();
+            for (int i = 0; i < contentContainer.childCount; i++)
+            {
+                Transform child = contentContainer.GetChild(i);
+                if (child.name.StartsWith("Row_mouse") || child.name.StartsWith("---") && child.name.Contains("Mouse"))
+                {
+                    mouseRows.Add(child);
+                }
+            }
+            
+            // Move each to the end
+            foreach (Transform row in mouseRows)
+            {
+                row.SetAsLastSibling();
+            }
         }
 
         private void OnDisable()
@@ -157,7 +182,7 @@ namespace Teramyyd.UI
 
         private void GenerateControlsUI()
         {
-            // Clear existing rows
+            // Clear existing keybinding rows (but preserve mouse control rows)
             foreach (var row in _rows)
             {
                 if (row != null && row.gameObject != null)
@@ -281,17 +306,41 @@ namespace Teramyyd.UI
                 return;
             }
 
+            // Check for mouse scroll wheel
+            float scrollDelta = Input.GetAxis("Mouse ScrollWheel");
+            if (scrollDelta > 0f)
+            {
+                ApplyNewMouseScrollBinding("MouseScrollUp");
+                return;
+            }
+            else if (scrollDelta < 0f)
+            {
+                ApplyNewMouseScrollBinding("MouseScrollDown");
+                return;
+            }
+
+            // Check for mouse button clicks
+            for (int i = 0; i <= 6; i++)
+            {
+                if (Input.GetMouseButtonDown(i))
+                {
+                    ApplyNewMouseButtonBinding(i);
+                    return;
+                }
+            }
+
             // Check for any key press
             foreach (KeyCode keyCode in Enum.GetValues(typeof(KeyCode)))
             {
                 if (Input.GetKeyDown(keyCode))
                 {
-                    // Ignore modifier keys themselves and mouse buttons
+                    // Ignore modifier keys themselves
                     if (keyCode == KeyCode.LeftControl || keyCode == KeyCode.RightControl ||
                         keyCode == KeyCode.LeftShift || keyCode == KeyCode.RightShift ||
                         keyCode == KeyCode.LeftAlt || keyCode == KeyCode.RightAlt)
                         continue;
                     
+                    // Ignore mouse buttons (handled above)
                     if (keyCode >= KeyCode.Mouse0 && keyCode <= KeyCode.Mouse6)
                         continue;
                     if (keyCode == KeyCode.None)
@@ -340,6 +389,117 @@ namespace Teramyyd.UI
             _currentListeningRow = null;
 
             SaveKeybindings();
+        }
+
+        private void ApplyNewMouseButtonBinding(int mouseButton)
+        {
+            if (_currentListeningRow == null)
+                return;
+
+            string actionId = _currentListeningRow.ActionId;
+            string mouseButtonName = $"Mouse{mouseButton}";
+
+            // Update keybinding (stored as string in JSON)
+            var data = new KeyBindingData
+            {
+                key = KeyCode.None, // Mouse buttons aren't KeyCodes
+                ctrl = false,
+                shift = false,
+                alt = false
+            };
+
+            // Store the mouse button as a simple string in the JSON
+            _keybindings[actionId] = data;
+            _currentListeningRow.UpdateDisplayText(mouseButtonName);
+            _currentListeningRow.StopListening();
+            _currentListeningRow = null;
+
+            SaveMouseButtonBinding(actionId, mouseButtonName);
+        }
+
+        private void ApplyNewMouseScrollBinding(string scrollDirection)
+        {
+            if (_currentListeningRow == null)
+                return;
+
+            string actionId = _currentListeningRow.ActionId;
+
+            // Update display
+            _currentListeningRow.UpdateDisplayText(scrollDirection);
+            _currentListeningRow.StopListening();
+            _currentListeningRow = null;
+
+            SaveMouseScrollBinding(actionId, scrollDirection);
+        }
+
+        private void SaveMouseButtonBinding(string actionId, string mouseButtonName)
+        {
+            try
+            {
+                string json = File.ReadAllText(_keybindingsPath);
+                string[] lines = json.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                List<string> newLines = new List<string>();
+
+                foreach (string line in lines)
+                {
+                    if (line.Contains($"\"{actionId}\":"))
+                    {
+                        newLines.Add($"    \"{actionId}\": \"{mouseButtonName}\",");
+                    }
+                    else
+                    {
+                        newLines.Add(line);
+                    }
+                }
+
+                File.WriteAllText(_keybindingsPath, string.Join("\n", newLines));
+                
+                KeyBindingConfig keyBindingConfig = KeyBindingConfig.Instance;
+                if (keyBindingConfig != null)
+                {
+                    keyBindingConfig.ReloadKeybindings();
+                    Debug.Log("Keybindings reloaded - changes active immediately");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ControlsSettingsPanel] Failed to save mouse button binding: {ex.Message}");
+            }
+        }
+
+        private void SaveMouseScrollBinding(string actionId, string scrollDirection)
+        {
+            try
+            {
+                string json = File.ReadAllText(_keybindingsPath);
+                string[] lines = json.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                List<string> newLines = new List<string>();
+
+                foreach (string line in lines)
+                {
+                    if (line.Contains($"\"{actionId}\":"))
+                    {
+                        newLines.Add($"    \"{actionId}\": \"{scrollDirection}\",");
+                    }
+                    else
+                    {
+                        newLines.Add(line);
+                    }
+                }
+
+                File.WriteAllText(_keybindingsPath, string.Join("\n", newLines));
+                
+                KeyBindingConfig keyBindingConfig = KeyBindingConfig.Instance;
+                if (keyBindingConfig != null)
+                {
+                    keyBindingConfig.ReloadKeybindings();
+                    Debug.Log("Keybindings reloaded - changes active immediately");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ControlsSettingsPanel] Failed to save mouse scroll binding: {ex.Message}");
+            }
         }
 
         private void SaveKeybindings()
