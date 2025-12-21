@@ -192,5 +192,7 @@ MonoBehaviour:
   shrapnelPrefab: {fileID: 1271734624251625404, guid: 3866164d46c3cdd4aa70eafdf2254249, type: 3}
   shrapnelCount: 5
   shrapnelSpeed: 10
+  shrapnelDamage: 2
+  shrapnelLifetime: 1.5
   shrapnelSpawnOffset: 0.5
   shrapnelNormalBias: 0.5

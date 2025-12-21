@@ -12,6 +12,8 @@ public class CannonBall : Projectile
     public GameObject shrapnelPrefab;           // Prefab with Rigidbody + Collider + (optional) Projectile
     public int shrapnelCount = 16;              // Number of shrapnel pieces
     public float shrapnelSpeed = 30f;           // Initial speed for shrapnel
+    public float shrapnelDamage = 5f;           // Damage per shrapnel piece (used if prefab has no Projectile component)
+    public float shrapnelLifetime = 1.5f;       // Lifetime in seconds (used if prefab has no Projectile component)
     [Tooltip("Small offset along the surface normal to spawn shrapnel outside colliding surface")]
     public float shrapnelSpawnOffset = 0.05f;
     [Range(0f, 1f)] [Tooltip("0 = random directions, 1 = fully biased outward along impact normal")]
@@ -129,10 +131,10 @@ public class CannonBall : Projectile
                 }
                 else
                 {
-                    // No Projectile component - add SimpleShrapnel with default values
+                    // No Projectile component - add SimpleShrapnel with configured values
                     var shrapnel = piece.AddComponent<SimpleShrapnel>();
-                    shrapnel.damage = 5f;  // Default damage if no Projectile
-                    shrapnel.lifeTime = 1.5f;  // Default lifetime if no Projectile
+                    shrapnel.damage = shrapnelDamage;
+                    shrapnel.lifeTime = shrapnelLifetime;
                     FileLogger.Log($"Added SimpleShrapnel to shrapnel {i}: damage={shrapnel.damage:F2}, lifetime={shrapnel.lifeTime}", "Shrapnel");
                 }
             }
