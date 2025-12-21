@@ -15,6 +15,9 @@ public class Health : MonoBehaviour
 
     [Header("Debug")]
     public bool debugLog = false;
+    
+    [Tooltip("Enable detailed collision debugging (shows what hit this object and damage calculations).")]
+    public bool debugCollisions = false;
 
     void Awake()
     {
@@ -32,8 +35,12 @@ public class Health : MonoBehaviour
         currentHealth -= amount;
         if (currentHealth < 0) currentHealth = 0;
         
-        if (debugLog)
-            FileLogger.Log($"{gameObject.name} took {amount:F2} damage - Health: {oldHealth:F2} -> {currentHealth:F2}/{maxHealth:F2} ({(currentHealth/maxHealth) * 100f:F1}%)", "Health");
+        if (debugLog || debugCollisions)
+        {
+            string path = GetGameObjectPath(gameObject);
+            Debug.Log($"[HEALTH DEBUG] {gameObject.name} took {amount:F2} damage | Health: {oldHealth:F2} -> {currentHealth:F2}/{maxHealth:F2} ({(currentHealth/maxHealth) * 100f:F1}%) | Path: {path}");
+            FileLogger.Log($"{gameObject.name} took {amount:F2} damage - Health: {oldHealth:F2} -> {currentHealth:F2}/{maxHealth:F2} ({(currentHealth/maxHealth) * 100f:F1}%) | Path: {path}", "Health");
+        }
         
         onHealthChanged?.Invoke(currentHealth);
         if (currentHealth == 0) Die();
@@ -74,5 +81,17 @@ public class Health : MonoBehaviour
             // No launcher parent, just destroy this GameObject
             Destroy(gameObject);
         }
+    }
+    
+    string GetGameObjectPath(GameObject obj)
+    {
+        string path = obj.name;
+        Transform current = obj.transform.parent;
+        while (current != null)
+        {
+            path = current.name + "/" + path;
+            current = current.parent;
+        }
+        return path;
     }
 }

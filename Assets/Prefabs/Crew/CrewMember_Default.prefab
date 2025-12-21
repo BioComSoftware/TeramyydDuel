@@ -129,6 +129,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   debugLog: 0
+  debugCollisions: 1
 --- !u!114 &26106213296891462
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -150,7 +151,12 @@ MonoBehaviour:
   liftEngineering: 1
   fighting: 1
   maxSkillLevel: 10
-  secondsPerSkillPoint: 180
+  gunneryActionsFor1to10: 200
+  navigationSecondsFor1to10: 2000
+  repairSecondsFor1to10: 2000
+  powerEngineeringSecondsFor1to10: 2000
+  liftEngineeringSecondsFor1to10: 2000
+  fightingSecondsFor1to10: 200
   initialStationId: 
   healthIndicatorRenderer: {fileID: 3831951605107851706}
   healthColorProperty: _Color

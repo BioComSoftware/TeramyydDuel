@@ -98,6 +98,7 @@ MonoBehaviour:
   damage: 3
   lifeTime: 0.5
   hitEffectPrefab: {fileID: 0}
+  debugCollisions: 1
 --- !u!1 &7794552310037104485
 GameObject:
   m_ObjectHideFlags: 0

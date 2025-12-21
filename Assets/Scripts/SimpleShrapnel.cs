@@ -13,6 +13,9 @@ public class SimpleShrapnel : MonoBehaviour
     [HideInInspector]
     public float lifeTime = 1.5f;
     
+    [HideInInspector]
+    public bool debugCollisions = false;
+    
     private bool hasHit = false;
 
     void Start()
@@ -31,15 +34,60 @@ public class SimpleShrapnel : MonoBehaviour
             return;
         
         hasHit = true;
+        // Use collision.collider.gameObject to get the actual collider object, not the Rigidbody parent
+        GameObject other = collision.collider.gameObject;
 
-        // Apply damage if target has Health component
-        Health targetHealth = collision.gameObject.GetComponent<Health>();
+        if (debugCollisions)
+        {
+            Debug.Log($"[SHRAPNEL DEBUG] {gameObject.name} collided with {other.name}");
+            Debug.Log($"[SHRAPNEL DEBUG] Hit GameObject path: {GetGameObjectPath(other)}");
+            FileLogger.Log($"SHRAPNEL COLLISION: {gameObject.name} hit {other.name} | Path: {GetGameObjectPath(other)}", "ShrapnelDebug");
+        }
+
+        // Apply damage if target has Health component (ONLY the hit object)
+        Health targetHealth = other.GetComponent<Health>();
+        
+        if (debugCollisions)
+        {
+            if (targetHealth != null)
+            {
+                Debug.Log($"[SHRAPNEL DEBUG] Health component FOUND on {other.name} | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SHRAPNEL DEBUG] NO Health component found on {other.name}!");
+            }
+        }
+        
         if (targetHealth != null)
         {
+            float oldHealth = targetHealth.currentHealth;
             targetHealth.TakeDamage(damage);
+            
+            if (debugCollisions)
+            {
+                Debug.Log($"[SHRAPNEL DEBUG] Damage applied: {damage:F2} | Health: {oldHealth:F2} -> {targetHealth.currentHealth:F2}");
+                FileLogger.Log($"SHRAPNEL DAMAGE to {other.name}: {damage:F2} | Health: {oldHealth:F2} -> {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}", "ShrapnelDebug");
+            }
+        }
+        else if (debugCollisions)
+        {
+            Debug.LogWarning($"[SHRAPNEL DEBUG] NO HEALTH COMPONENT FOUND on {other.name}!");
         }
 
         // Destroy immediately on impact
         Destroy(gameObject);
+    }
+
+    string GetGameObjectPath(GameObject obj)
+    {
+        string path = obj.name;
+        Transform current = obj.transform.parent;
+        while (current != null)
+        {
+            path = current.name + "/" + path;
+            current = current.parent;
+        }
+        return path;
     }
 }

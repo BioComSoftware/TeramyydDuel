@@ -32,13 +32,46 @@ public class CannonBall : Projectile
     // Handle impact: apply damage, spawn explosion VFX, emit shrapnel (physics-driven), then destroy self.
     void OnCollisionEnter(Collision collision)
     {
-        GameObject other = collision.gameObject;
+        // Use collision.collider.gameObject to get the actual collider object, not the Rigidbody parent
+        GameObject other = collision.collider.gameObject;
 
-        // 1) Apply direct-hit damage if the target has Health
+        if (debugCollisions)
+        {
+            Debug.Log($"[CANNONBALL DEBUG] {gameObject.name} collided with {other.name}");
+            Debug.Log($"[CANNONBALL DEBUG] Impact point: {collision.contacts[0].point}");
+            Debug.Log($"[CANNONBALL DEBUG] Hit GameObject path: {GetGameObjectPath(other)}");
+            FileLogger.Log($"CANNONBALL COLLISION: {gameObject.name} hit {other.name} | Path: {GetGameObjectPath(other)}", "CannonBallDebug");
+        }
+
+        // 1) Apply direct-hit damage if the target has Health (ONLY the hit object)
         Health targetHealth = other.GetComponent<Health>();
+        
+        if (debugCollisions)
+        {
+            if (targetHealth != null)
+            {
+                Debug.Log($"[CANNONBALL DEBUG] Health component FOUND on {other.name} | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
+            }
+            else
+            {
+                Debug.LogWarning($"[CANNONBALL DEBUG] NO Health component found on {other.name}!");
+            }
+        }
+        
         if (targetHealth != null)
         {
+            float oldHealth = targetHealth.currentHealth;
             targetHealth.TakeDamage(damage);
+            
+            if (debugCollisions)
+            {
+                Debug.Log($"[CANNONBALL DEBUG] Damage applied: {damage:F2} | Health: {oldHealth:F2} -> {targetHealth.currentHealth:F2}");
+                FileLogger.Log($"CANNONBALL DAMAGE to {other.name}: {damage:F2} | Health: {oldHealth:F2} -> {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}", "CannonBallDebug");
+            }
+        }
+        else if (debugCollisions)
+        {
+            Debug.LogWarning($"[CANNONBALL DEBUG] NO HEALTH COMPONENT FOUND on {other.name}!");
         }
 
         // Collision contact point and normal (fallback to transform if not available)
@@ -165,5 +198,17 @@ public class CannonBall : Projectile
 
         // 4) Destroy the cannonball after impact processing
         Destroy(gameObject);
+    }
+
+    string GetGameObjectPath(GameObject obj)
+    {
+        string path = obj.name;
+        Transform current = obj.transform.parent;
+        while (current != null)
+        {
+            path = current.name + "/" + path;
+            current = current.parent;
+        }
+        return path;
     }
 }
