@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-20T19:41:27.2363986Z",
+    "lastSavedUtc": "2025-12-21T11:13:31.0697868Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -57,7 +57,7 @@
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
-            "liftEngineering": 8.219399452209473,
+            "liftEngineering": 8.448787689208985,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
             "assignedStationId": "station_Ship_Model_LiftDevice_AntiGravityDevice_crew"
@@ -96,7 +96,7 @@
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
+            "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_susie_anna_bammshee",
@@ -120,7 +120,7 @@
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "station_Ship_Model_Engine_SteamJetEngine_crew"
+            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
         }
     ]
 }

@@ -4,7 +4,7 @@
 /// Extremely simple placeholder AI that keeps an enemy aircraft pointed at a target and
 /// drifts forward at a constant speed. This replaces the missing legacy script so the
 /// project can compile again. Feel free to expand the behaviour as needed for gameplay.
-/// </summary>
+/// </summary> 
 [AddComponentMenu("Teramyyd/AI/Enemy Aircraft (Placeholder)")]
 [RequireComponent(typeof(Rigidbody))]
 public class EnemyAircraft : MonoBehaviour

@@ -431,13 +431,11 @@ public sealed class CrewStationAnchorRuntimeBuilder : MonoBehaviour
     {
         if (logVerbose)
         {
-            Debug.Log($"[CrewStationAnchorRuntimeBuilder] {message}", this);
         }
     }
 
     void LogWarning(string message)
     {
-        Debug.LogWarning($"[CrewStationAnchorRuntimeBuilder] {message}", this);
     }
 
     string GetSuggestedWorldPrefix(Transform anchorParent)

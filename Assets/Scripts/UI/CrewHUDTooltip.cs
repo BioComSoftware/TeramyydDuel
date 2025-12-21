@@ -48,24 +48,14 @@ namespace Teramyyd.UI
 
         public void Show(CrewMember crew, CrewStation station, RectTransform anchor, Sprite portraitSprite)
         {
-            string msg1 = $"[CrewHUDTooltip] Show called: crew={crew?.displayName ?? "null"}, anchor={anchor != null}, portrait={portraitSprite != null}";
-            Debug.Log(msg1);
-            FileLogger.Log(msg1, "CrewHUD");
-            
             if (crew == null || anchor == null)
             {
-                string msg2 = $"[CrewHUDTooltip] Show: crew or anchor is null, hiding";
-                Debug.LogWarning(msg2);
-                FileLogger.Log(msg2, "CrewHUD");
                 Hide(null);
                 return;
             }
 
             if (root != null && !root.activeSelf)
             {
-                string msg3 = $"[CrewHUDTooltip] Activating root GameObject";
-                Debug.Log(msg3);
-                FileLogger.Log(msg3, "CrewHUD");
                 root.SetActive(true);
             }
             

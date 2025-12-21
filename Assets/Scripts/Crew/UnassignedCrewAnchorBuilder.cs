@@ -100,7 +100,6 @@ public class UnassignedCrewAnchorBuilder : MonoBehaviour
         var persistence = CrewPersistenceManager.Instance;
         if (persistence == null)
         {
-            Debug.LogWarning("[UnassignedCrewAnchorBuilder] CrewPersistenceManager not found.");
             return 0;
         }
 
@@ -186,12 +185,10 @@ public class UnassignedCrewAnchorBuilder : MonoBehaviour
 
         if (_spawner == null)
         {
-            Debug.LogWarning("[UnassignedCrewAnchorBuilder] CrewRuntimeSpawner not found in scene.");
             return;
         }
 
         _spawner.RegisterStationAnchors(UNASSIGNED_STATION_ID, _worldAnchors);
-        LogMessage($"Registered {_worldAnchors.Count} unassigned crew anchors with CrewRuntimeSpawner.");
     }
 
     void UnregisterAnchors()
@@ -216,14 +213,9 @@ public class UnassignedCrewAnchorBuilder : MonoBehaviour
 
     void LogMessage(string message)
     {
-        Debug.Log($"[UnassignedCrewAnchorBuilder] {message}");
     }
 
     void LogVerbose(string message)
     {
-        if (logVerbose)
-        {
-            Debug.Log($"[UnassignedCrewAnchorBuilder] {message}");
-        }
     }
 }

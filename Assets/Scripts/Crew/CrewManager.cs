@@ -58,9 +58,6 @@ public class CrewManager : MonoBehaviour
     {
         // Find and register all CrewStation components in the scene
         var stations = GetAllStationsIncludingInactive();
-        string msg = $"[CrewManager] Start: Found {stations.Length} CrewStation components in scene";
-        Debug.Log(msg);
-        FileLogger.Log(msg, "CrewManager");
         
         foreach (var station in stations)
         {
@@ -69,10 +66,6 @@ public class CrewManager : MonoBehaviour
                 RegisterStation(station);
             }
         }
-        
-        string msg2 = $"[CrewManager] Start: Registered {_stationsById.Count} stations";
-        Debug.Log(msg2);
-        FileLogger.Log(msg2, "CrewManager");
     }
 
     public void RegisterCrew(CrewMember crew)
@@ -117,32 +110,20 @@ public class CrewManager : MonoBehaviour
     {
         if (station == null)
         {
-            Debug.LogWarning("[CrewManager] RegisterStation: station is null");
             return;
         }
 
         station.EnsureStationId();
         
-        string msg = $"[CrewManager] RegisterStation: {station.stationId} ({station.displayName}) on GameObject '{station.gameObject.name}'";
-        Debug.Log(msg);
-        FileLogger.Log(msg, "CrewManager");
-        
         // Warn if we're overwriting an existing station with the same ID
         if (_stationsById.ContainsKey(station.stationId) && _stationsById[station.stationId] != station)
         {
-            string warnMsg = $"[CrewManager] WARNING: Station ID '{station.stationId}' is already registered to '{_stationsById[station.stationId].gameObject.name}'. Overwriting with '{station.gameObject.name}'. Ensure all stations have unique IDs!";
-            Debug.LogWarning(warnMsg);
-            FileLogger.Log(warnMsg, "CrewManager");
         }
         
         _stationsById[station.stationId] = station;
 
         if (_pendingByStation.TryGetValue(station.stationId, out var pendingList))
         {
-            string pendingMsg = $"[CrewManager] RegisterStation: Processing {pendingList.Count} pending assignments for {station.stationId}";
-            Debug.Log(pendingMsg);
-            FileLogger.Log(pendingMsg, "CrewManager");
-            
             var copy = pendingList.ToArray();
             foreach (var crew in copy)
             {

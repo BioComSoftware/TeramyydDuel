@@ -1,3 +1,145 @@
+## 2025-12-21 — Target Cannon Aim Implementation and Debug Logging Cleanup
+
+### TargetCannonAim Script - Rotating Target to Aim at Ship
+
+**Problem:** Need a Target GameObject in the scene that automatically aims its cannon at the Ship.
+
+**Scene Structure:**
+```
+- Target (parent GameObject)
+  - Sphere (visual marker)
+  - Cannon (weapon to aim at Ship)
+    - Barrel
+      - Cylinder
+        - MuzzleSpawnPoint
+- Ship (target to aim at)
+```
+
+**Initial Implementation Issues:**
+
+1. **Script Not Attached**
+   - Created `TargetCannonAim.cs` but forgot to attach it to Target GameObject
+   - Solution: Created `AttachTargetCannonAimScript.cs` editor tool at `Tools > Target Setup > Attach TargetCannonAim Script`
+
+2. **Ship Reference Not Auto-Finding**
+   - `GameObject.Find("Ship")` in Awake() was failing silently
+   - Solution: Created `DiagnoseTarget.cs` editor tool to check script attachment and Ship reference
+   - Created `FixShipReference.cs` editor tool to manually assign Ship Transform
+
+3. **Cannon Child Had 90° Local Rotation Offset**
+   - Cannon child Transform had `rot=(0.00, 90.00, 0.00)` causing misalignment
+   - When Target parent rotated, Cannon was pointing 90° off from Ship
+   - **Root Cause:** The Cannon's local rotation was offsetting the parent's rotation
+   - Solution: Created `FixTargetCannonRotation.cs` editor tool at `Tools > Target Setup > Fix Cannon Local Rotation`
+   - Reset Cannon's local rotation to (0, 0, 0) so it inherits parent rotation correctly
+
+**Final Working Implementation:**
+```csharp
+// TargetCannonAim.cs - Attach to Target parent GameObject
+public class TargetCannonAim : MonoBehaviour
+{
+    public Transform ship;              // Auto-finds "Ship" if null
+    public bool instantRotation = true; // Instant vs smooth rotation
+    public float rotationSpeed = 90f;   // Degrees per second when smooth
+    public bool debugLog = false;       // Enable FileLogger logging
+    
+    void Update()
+    {
+        // Calculate direction from Target to Ship
+        Vector3 directionToShip = ship.position - transform.position;
+        directionToShip.y = 0f; // Keep rotation level (no tilting)
+        
+        // Calculate and apply rotation
+        Quaternion targetRotation = Quaternion.LookRotation(directionToShip);
+        if (instantRotation)
+            transform.rotation = targetRotation;
+        else
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation, targetRotation, 
+                rotationSpeed * Time.deltaTime);
+    }
+}
+```
+
+**Key Design Points:**
+- Script rotates the **parent Target GameObject**, not the Cannon child
+- Cannon inherits parent rotation and points correctly (once local rotation is zeroed)
+- Zeroes Y component of direction vector to prevent tilting up/down
+- Supports both instant and smooth rotation modes
+- Uses `debugLog` flag with FileLogger for consistent logging pattern
+
+### Debug Logging Cleanup
+
+**Problem:** Console flooded with debug messages from multiple systems, making it hard to debug specific issues.
+
+**Solutions Implemented:**
+
+1. **Removed All Crew System Console Logging**
+   - Removed `Debug.Log` and `FileLogger.Log` calls from:
+     - `CrewManager.cs` - Start(), RegisterStation()
+     - `CrewStation.cs` - OnEnable()
+     - `CrewMember.cs` - Material warnings
+     - `UnassignedCrewAnchorBuilder.cs` - All logging methods
+     - `CrewStationAnchorRuntimeBuilder.cs` - LogMessage(), LogWarning()
+     - `CrewRuntimeSpawner.cs` - Warnings
+     - `CrewPersistenceManager.cs` - UpdateCrewAssignment(), ApplySkillState(), SaveSnapshot(), LoadSnapshot()
+     - `CrewHUDStationSlot.cs` - OnDrop()
+     - `CrewHUDTooltip.cs` - Show()
+     - `CrewHUDUnassignedZone.cs` - OnDrop()
+   - **Important:** Did NOT remove the code functionality, only the logging statements
+   - Empty if-blocks and empty logging methods left in place to preserve code structure
+
+2. **Created DisableAllDebugFlags.cs Editor Tool**
+   - Menu: `Tools > Debug > Disable All Debug Flags`
+   - Uses reflection to find all boolean fields with debug-related names
+   - Searches for fields named: "debugLog", "debug", "Debug", "logVerbose", "verbose", etc.
+   - Sets any that are `true` to `false` across all MonoBehaviours in scene
+   - Marks objects and scenes as dirty to ensure changes are saved
+   - Reports how many flags were disabled
+
+3. **Fixed TargetCannonAim Logging Pattern**
+   - **Initial Problem:** All Debug.Log calls were unconditional, always logging
+   - **Pattern from Other Scripts:** `if (debugLog) Debug.Log(...)`
+   - **Updated Pattern:**
+   ```csharp
+   if (debugLog)
+   {
+       Debug.Log("[TargetCannonAim] Message");
+       FileLogger.Log("Message", "TargetCannonAim");
+   }
+   ```
+   - Wrapped all Debug.Log calls in `if (debugLog)` checks
+   - Added FileLogger.Log calls alongside Debug.Log (both controlled by same flag)
+   - Category: "TargetCannonAim" for FileLogger
+   - Log file location: `Logs/game_debug.log`
+
+**FileLogger Usage Pattern (Standard Across Codebase):**
+```csharp
+if (debugLog)
+{
+    Debug.Log($"[ComponentName] {message}");
+    FileLogger.Log(message, "ComponentName");
+}
+```
+- FileLogger automatically adds timestamps: `[12:34:56.789] [Category] Message`
+- Creates `Logs/` directory if it doesn't exist
+- Appends to `game_debug.log` file
+- Thread-safe file writing with lock
+
+**Code Locations:**
+- `TargetCannonAim.cs` - Full implementation in `Assets/Scripts/`
+- `DisableAllDebugFlags.cs` - Editor tool in `Assets/Editor/`
+- `FixTargetCannonRotation.cs` - Editor tool in `Assets/Editor/`
+- `DiagnoseTarget.cs` - Editor tool in `Assets/Editor/`
+- `AttachTargetCannonAimScript.cs` - Editor tool in `Assets/Editor/`
+
+**Lessons Learned:**
+- Always verify script attachment to GameObjects (Unity doesn't warn if script exists but isn't attached)
+- Check child GameObject local rotations - they offset parent rotation
+- Use editor tools for common setup tasks to avoid manual Inspector work
+- Consistent logging pattern: both Debug.Log and FileLogger, controlled by same debugLog flag
+- Use reflection-based tools to bulk-modify inspector values across scene
+
 ## 2025-12-14 — Cannon Targeting, Crew Systems, and Persistence Fixes
 
 ### Cannon LPLS Targeting System - Multi-Angle Optimization

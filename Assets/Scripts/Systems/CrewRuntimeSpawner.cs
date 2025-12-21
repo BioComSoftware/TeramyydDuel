@@ -112,14 +112,12 @@ public class CrewRuntimeSpawner : MonoBehaviour
     {
         if (defaultCrewPrefab == null)
         {
-            Debug.LogWarning("CrewRuntimeSpawner is missing a defaultCrewPrefab reference.", this);
             return;
         }
 
         var persistence = CrewPersistenceManager.Instance;
         if (persistence == null)
         {
-            Debug.LogWarning("CrewRuntimeSpawner requires a CrewPersistenceManager in the scene.", this);
             return;
         }
 

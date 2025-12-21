@@ -71,10 +71,6 @@ public class CrewMember : MonoBehaviour
             // Create a unique material instance for this crew member
             _healthMaterialInstance = new Material(healthIndicatorRenderer.material);
             healthIndicatorRenderer.material = _healthMaterialInstance;
-            
-            string msg = $"[CrewMember] {displayName}: Created health material instance";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "Crew");
         }
     }
 
@@ -314,9 +310,6 @@ public class CrewMember : MonoBehaviour
             // Log once when material doesn't have the property
             if (Time.frameCount % 300 == 0) // Log every ~5 seconds
             {
-                string msg = $"[CrewMember] {displayName}: Material doesn't have _BaseColor or {healthColorProperty} property";
-                Debug.LogWarning(msg);
-                FileLogger.Log(msg, "Crew");
             }
         }
     }

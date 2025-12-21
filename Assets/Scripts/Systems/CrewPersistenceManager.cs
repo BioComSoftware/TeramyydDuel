@@ -185,25 +185,12 @@ public class CrewPersistenceManager : MonoBehaviour
                 state.assignedStationId = newValue;
                 MarkDirty();
                 
-                if (debugLog)
-                {
-                    string msg = $"[CrewPersistence] UpdateCrewAssignment: {crewId} moved from {oldStation} to {newStation} (forceSave={forceSave})";
-                    Debug.Log(msg);
-                    FileLogger.Log(msg, "CrewPersistence");
-                }
-                
                 // Immediately save when force flag is set to prevent race conditions
                 if (forceSave)
                 {
                     SaveSnapshot();
                 }
             }
-        }
-        else if (debugLog)
-        {
-            string msg = $"[CrewPersistence] UpdateCrewAssignment: WARNING - crew {crewId} not found in lookup!";
-            Debug.LogWarning(msg);
-            FileLogger.Log(msg, "CrewPersistence");
         }
     }
 
@@ -259,13 +246,6 @@ public class CrewPersistenceManager : MonoBehaviour
         crew.SetSkillLevel(CrewSkill.Repair, Mathf.Max(1f, state.repair));
         crew.SetSkillLevel(CrewSkill.PowerEngineering, Mathf.Max(1f, state.powerEngineering));
         crew.SetSkillLevel(CrewSkill.LiftEngineering, Mathf.Max(1f, state.liftEngineering));
-        
-        if (debugLog)
-        {
-            string msg = $"[CrewPersistence] ApplySkillState to {crew.crewId}: After=(G:{crew.gunnery:F1} N:{crew.navigation:F1})";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewPersistence");
-        }
     }
 
     void ApplyHealthState(CrewMember crew, CrewMemberState state)
@@ -348,9 +328,8 @@ public class CrewPersistenceManager : MonoBehaviour
                     FileLogger.Log(msg, "CrewPersistence");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.LogWarning($"CrewPersistenceManager: Failed to parse {resourceFileName}.json ({ex.Message}). Creating new snapshot.");
                 _snapshot = new CrewPersistenceSnapshot();
             }
         }
@@ -383,10 +362,7 @@ public class CrewPersistenceManager : MonoBehaviour
             }
             else
             {
-                // Duplicate detected - log warning and skip
-                string msg = $"[CrewPersistence] WARNING: Duplicate crew ID '{entry.crewId}' found in JSON and removed";
-                Debug.LogWarning(msg);
-                FileLogger.Log(msg, "CrewPersistence");
+                // Duplicate detected - skip
             }
         }
         
@@ -395,9 +371,6 @@ public class CrewPersistenceManager : MonoBehaviour
         {
             _snapshot.crewMembers = uniqueCrewMembers;
             MarkDirty(); // Save cleaned-up version
-            string msg = $"[CrewPersistence] Removed {_snapshot.crewMembers.Count - uniqueCrewMembers.Count} duplicate entries";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewPersistence");
         }
     }
 
@@ -410,20 +383,6 @@ public class CrewPersistenceManager : MonoBehaviour
         string json = JsonUtility.ToJson(_snapshot, true);
         string path = GetResourceDiskPath();
         
-        if (debugLog)
-        {
-            string msg = $"[CrewPersistence] SaveSnapshot: Saving {_snapshot.crewMembers.Count} crew members to {path}";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewPersistence");
-            
-            foreach (var entry in _snapshot.crewMembers)
-            {
-                string station = string.IsNullOrEmpty(entry.assignedStationId) ? "UNASSIGNED" : entry.assignedStationId;
-                string msg2 = $"[CrewPersistence]   - {entry.crewId} ({entry.displayName}) -> Station: {station}";
-                Debug.Log(msg2);
-                FileLogger.Log(msg2, "CrewPersistence");
-            }
-        }
         string directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
         {

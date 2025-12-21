@@ -111,29 +111,14 @@ namespace Teramyyd.UI
 
         public void OnDrop(PointerEventData eventData)
         {
-            string msg1 = $"[CrewHUDStationSlot] OnDrop called for station {StationId}";
-            Debug.Log(msg1);
-            FileLogger.Log(msg1, "CrewHUD");
-            
             var icon = eventData.pointerDrag != null ? eventData.pointerDrag.GetComponent<CrewHUDCrewIcon>() : null;
             if (icon == null || _controller == null)
             {
-                string msg2 = $"[CrewHUDStationSlot] OnDrop failed: icon={icon != null}, controller={_controller != null}";
-                Debug.LogWarning(msg2);
-                FileLogger.Log(msg2, "CrewHUD");
                 return;
             }
 
-            string msg3 = $"[CrewHUDStationSlot] OnDrop: Crew {icon.Crew?.displayName ?? "null"} dropped on station {StationId}";
-            Debug.Log(msg3);
-            FileLogger.Log(msg3, "CrewHUD");
-
             bool success = _controller.HandleStationDrop(this, icon);
             icon.NotifyDropHandled();
-
-            string msg4 = $"[CrewHUDStationSlot] OnDrop: HandleStationDrop returned {success}";
-            Debug.Log(msg4);
-            FileLogger.Log(msg4, "CrewHUD");
 
             if (!success)
             {
