@@ -29,6 +29,12 @@ public class TargetCannonAim : MonoBehaviour
     [Tooltip("If true, uses high-angle trajectory when low-angle is impossible. If false, clamps to maximum possible range.")]
     public bool useHighAngleWhenNeeded = false;
 
+    [Tooltip("If true, calculates lead targeting based on ship and Target velocities for more accurate hits.")]
+    public bool useLeadTargeting = true;
+
+    [Tooltip("Maximum number of iterations for lead targeting calculation convergence.")]
+    public int maxLeadIterations = 5;
+
     [Header("Auto-Fire Settings")]
     [Tooltip("If true, automatically fires the cannon at the ship once this Target has been targeted by the player.")]
     public bool autoFireWhenTargeted = true;
@@ -234,14 +240,38 @@ public class TargetCannonAim : MonoBehaviour
         // Update launch speed in case it changed at runtime
         _launchSpeed = _projectileLauncher.launchSpeed;
 
-        // Calculate the firing solution
-        bool hasValidSolution = CalculateFiringSolution(
+        // Get velocities for lead targeting
+        Vector3 targetVelocity = Vector3.zero;
+        Vector3 firingVelocity = Vector3.zero;
+
+        if (useLeadTargeting)
+        {
+            // Get ship velocity
+            Rigidbody shipRb = ship.GetComponent<Rigidbody>();
+            if (shipRb != null)
+            {
+                targetVelocity = shipRb.linearVelocity;
+            }
+
+            // Get Target's own velocity
+            Rigidbody targetRb = GetComponent<Rigidbody>();
+            if (targetRb != null)
+            {
+                firingVelocity = targetRb.linearVelocity;
+            }
+        }
+
+        // Calculate the firing solution with lead targeting
+        bool hasValidSolution = CalculateFiringSolutionWithLead(
             transform.position,
             ship.position,
+            firingVelocity,
+            targetVelocity,
             _launchSpeed,
             gravity,
             out float yawAngle,
-            out float pitchAngle
+            out float pitchAngle,
+            out Vector3 interceptPoint
         );
 
         if (!hasValidSolution)
@@ -265,8 +295,9 @@ public class TargetCannonAim : MonoBehaviour
             
             if (debugLog)
             {
-                Debug.Log($"[TargetCannonAim] Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°)");
-                FileLogger.Log($"Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°)", "TargetCannonAim");
+                float lead = Vector3.Distance(ship.position, interceptPoint);
+                Debug.Log($"[TargetCannonAim] Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°) Lead={lead:F1}m");
+                FileLogger.Log($"Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°) Lead={lead:F1}m", "TargetCannonAim");
             }
         }
         else
@@ -321,6 +352,119 @@ public class TargetCannonAim : MonoBehaviour
                 FileLogger.Log("Could not find FireProjectile method on ProjectileLauncher!", "TargetCannonAim");
             }
         }
+    }
+
+    /// <summary>
+    /// Calculates the firing solution with lead targeting, accounting for both ship and Target movement.
+    /// Uses iterative approach to find the intercept point where projectile meets the moving target.
+    /// </summary>
+    /// <param name="firingPos">Current position of the cannon</param>
+    /// <param name="targetPos">Current position of the target (ship center)</param>
+    /// <param name="firingVelocity">Velocity of the firing platform (Target)</param>
+    /// <param name="targetVelocity">Velocity of the target (ship)</param>
+    /// <param name="projectileSpeed">Launch speed of the projectile</param>
+    /// <param name="gravityMagnitude">Gravity magnitude (positive)</param>
+    /// <param name="yawAngle">Output: Horizontal angle in degrees</param>
+    /// <param name="pitchAngle">Output: Vertical angle in degrees (positive = up)</param>
+    /// <param name="interceptPoint">Output: Calculated intercept point in world space</param>
+    /// <returns>True if a valid solution exists, false otherwise</returns>
+    private bool CalculateFiringSolutionWithLead(
+        Vector3 firingPos,
+        Vector3 targetPos,
+        Vector3 firingVelocity,
+        Vector3 targetVelocity,
+        float projectileSpeed,
+        float gravityMagnitude,
+        out float yawAngle,
+        out float pitchAngle,
+        out Vector3 interceptPoint)
+    {
+        yawAngle = 0f;
+        pitchAngle = 0f;
+        interceptPoint = targetPos;
+
+        // If lead targeting is disabled, use static target position
+        if (!useLeadTargeting)
+        {
+            return CalculateFiringSolution(firingPos, targetPos, projectileSpeed, gravityMagnitude, out yawAngle, out pitchAngle);
+        }
+
+        // Calculate relative velocity (target velocity relative to firing platform)
+        Vector3 relativeVelocity = targetVelocity - firingVelocity;
+
+        // If relative velocity is negligible, no lead needed
+        if (relativeVelocity.sqrMagnitude < 0.01f)
+        {
+            return CalculateFiringSolution(firingPos, targetPos, projectileSpeed, gravityMagnitude, out yawAngle, out pitchAngle);
+        }
+
+        // Iteratively calculate intercept point
+        Vector3 estimatedInterceptPoint = targetPos;
+        float timeToTarget = 0f;
+
+        for (int iteration = 0; iteration < maxLeadIterations; iteration++)
+        {
+            // Calculate distance to estimated intercept point
+            Vector3 toIntercept = estimatedInterceptPoint - firingPos;
+            float distance = toIntercept.magnitude;
+
+            if (distance < 0.001f)
+            {
+                break; // Too close
+            }
+
+            // Estimate time for projectile to reach intercept point
+            // Using simple distance/speed for initial estimate, then refine with gravity
+            float horizontalDistance = new Vector3(toIntercept.x, 0f, toIntercept.z).magnitude;
+            float verticalDistance = toIntercept.y;
+
+            // Estimate flight time accounting for gravity (simplified ballistic time)
+            // t ≈ distance / (projectile speed * cos(estimated angle))
+            float estimatedAngle = Mathf.Atan2(verticalDistance, horizontalDistance);
+            float horizontalSpeed = projectileSpeed * Mathf.Cos(estimatedAngle);
+            
+            if (horizontalSpeed < 0.1f)
+            {
+                // Projectile speed too low for this trajectory
+                break;
+            }
+
+            timeToTarget = horizontalDistance / horizontalSpeed;
+
+            // Calculate where the target will be at that time
+            Vector3 predictedTargetPos = targetPos + (relativeVelocity * timeToTarget);
+
+            // Check convergence
+            if (Vector3.Distance(estimatedInterceptPoint, predictedTargetPos) < 0.1f)
+            {
+                // Converged
+                interceptPoint = predictedTargetPos;
+                break;
+            }
+
+            // Update estimate
+            estimatedInterceptPoint = predictedTargetPos;
+            interceptPoint = estimatedInterceptPoint;
+        }
+
+        // Calculate firing solution to the intercept point
+        bool hasSolution = CalculateFiringSolution(
+            firingPos, 
+            interceptPoint, 
+            projectileSpeed, 
+            gravityMagnitude, 
+            out yawAngle, 
+            out pitchAngle
+        );
+
+        if (hasSolution && debugLog)
+        {
+            float leadDistance = Vector3.Distance(targetPos, interceptPoint);
+            Debug.Log($"[TargetCannonAim] Lead calculation: Time={timeToTarget:F2}s Lead={leadDistance:F1}m RelVel={relativeVelocity.magnitude:F1}m/s");
+            FileLogger.Log($"Lead calculation: Time={timeToTarget:F2}s Lead={leadDistance:F1}m RelVel={relativeVelocity.magnitude:F1}m/s", "TargetCannonAim");
+        }
+
+        return hasSolution;
     }
 
     /// <summary>
