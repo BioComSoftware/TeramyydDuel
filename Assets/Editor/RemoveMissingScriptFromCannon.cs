@@ -10,58 +10,61 @@ public class RemoveMissingScriptFromCannon
     static void RemoveMissingScript()
     {
         string prefabPath = "Assets/Prefabs/Weapons/ProjectileLaunchers/Cannon.prefab";
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         
-        if (prefab == null)
+        // Load prefab contents for editing
+        GameObject prefabContents = PrefabUtility.LoadPrefabContents(prefabPath);
+        
+        if (prefabContents == null)
         {
-            Debug.LogError($"Could not find prefab at {prefabPath}");
+            Debug.LogError($"Could not load prefab contents from {prefabPath}");
             return;
         }
         
         int removedCount = 0;
         
-        // Check all GameObjects in the prefab hierarchy
-        foreach (Transform child in prefab.GetComponentsInChildren<Transform>(true))
+        try
         {
-            GameObject go = child.gameObject;
-            
-            // Use SerializedObject to find and remove missing scripts
-            SerializedObject so = new SerializedObject(go);
-            SerializedProperty components = so.FindProperty("m_Component");
-            
-            for (int i = components.arraySize - 1; i >= 0; i--)
+            // Check all GameObjects in the prefab hierarchy including inactive ones
+            Transform[] allTransforms = prefabContents.GetComponentsInChildren<Transform>(true);
+            foreach (Transform t in allTransforms)
             {
-                SerializedProperty component = components.GetArrayElementAtIndex(i);
-                SerializedProperty componentRef = component.FindPropertyRelative("component");
+                GameObject go = t.gameObject;
                 
-                // Check if the component reference is null (missing script)
-                if (componentRef.objectReferenceValue == null)
+                // Use GameObjectUtility to remove missing scripts
+                int count = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(go);
+                if (count > 0)
                 {
-                    Debug.Log($"Removing missing script from '{go.name}'");
-                    components.DeleteArrayElementAtIndex(i);
-                    removedCount++;
+                    Debug.Log($"Removing {count} missing script(s) from '{go.name}'");
+                    GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+                    removedCount += count;
                 }
             }
             
-            so.ApplyModifiedProperties();
+            if (removedCount > 0)
+            {
+                // Save the modified prefab
+                PrefabUtility.SaveAsPrefabAsset(prefabContents, prefabPath);
+                
+                EditorUtility.DisplayDialog("Success", 
+                    $"Removed {removedCount} missing script reference(s) from Cannon.prefab", 
+                    "OK");
+                Debug.Log($"[RemoveMissingScript] Successfully removed {removedCount} missing script(s) from Cannon.prefab");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("No Changes", 
+                    "No missing scripts found in Cannon.prefab", 
+                    "OK");
+                Debug.Log("[RemoveMissingScript] No missing scripts found in Cannon.prefab");
+            }
+        }
+        finally
+        {
+            // Always unload the prefab contents
+            PrefabUtility.UnloadPrefabContents(prefabContents);
         }
         
-        if (removedCount > 0)
-        {
-            EditorUtility.SetDirty(prefab);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            
-            EditorUtility.DisplayDialog("Success", 
-                $"Removed {removedCount} missing script reference(s) from Cannon.prefab", 
-                "OK");
-            Debug.Log($"[RemoveMissingScript] Successfully removed {removedCount} missing script(s) from Cannon.prefab");
-        }
-        else
-        {
-            EditorUtility.DisplayDialog("No Changes", 
-                "No missing scripts found in Cannon.prefab", 
-                "OK");
-        }
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
     }
 }

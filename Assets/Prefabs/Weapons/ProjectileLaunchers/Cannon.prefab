@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 5958951295281014311}
   - component: {fileID: 2075901593360831288}
   - component: {fileID: 7320260883924909558}
-  - component: {fileID: 3855223477016051080}
   - component: {fileID: 5070851412122494222}
   m_Layer: 0
   m_Name: Cylinder
@@ -136,19 +135,7 @@ MonoBehaviour:
   onDeath:
     m_PersistentCalls:
       m_Calls: []
-  debugLog: 1
---- !u!114 &3855223477016051080
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 376876738279168397}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e08813d3eb03a94f85754cc15ef87d7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CannonSelfDamage
+  debugLog: 0
 --- !u!65 &5070851412122494222
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10087,7 +10074,7 @@ MonoBehaviour:
   projectileLinearDampingOverride: -1
   reloadTime: 10
   startReady: 1
-  debugLog: 1
+  debugLog: 0
   requireValidMountTargetLock: 1
   fireAudioSource: {fileID: 0}
   messageBox: {fileID: 0}
