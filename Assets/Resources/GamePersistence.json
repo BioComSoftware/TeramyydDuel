@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-21T19:14:43.3939612Z",
+    "lastSavedUtc": "2025-12-21T20:03:23.3727224Z",
     "mountedCannons": [
         {
             "persistenceKey": "Mount_01|Ship/Aft_weapon_mount/Weapon_mount",
@@ -161,8 +161,8 @@
             "hierarchyPath": "Ship/Starboard_rear_hull_weapon_mount/Starboard_rear_hull_weapon_mount_actual",
             "weaponName": "Cannon(Clone)",
             "maxHealth": 100.0,
-            "currentHealth": 100.0,
-            "damageTaken": 0.0
+            "currentHealth": 97.0,
+            "damageTaken": 3.0
         }
     ]
 }

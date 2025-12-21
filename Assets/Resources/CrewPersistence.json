@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-21T19:16:09.2776380Z",
+    "lastSavedUtc": "2025-12-21T20:04:20.9701794Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -11,7 +11,7 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.1133694648742676,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 1.0,
             "assignedStationId": "station_Ship_Model_Engine_SteamJetEngine_crew"
         },
         {
@@ -24,7 +24,7 @@
             "liftEngineering": 6.140933990478516,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
-            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_morgan_lee",
@@ -35,7 +35,7 @@
             "powerEngineering": 1.0,
             "liftEngineering": 1.4914811849594117,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 1.0,
             "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
@@ -59,7 +59,7 @@
             "powerEngineering": 1.0,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 4.0,
             "assignedStationId": "station_Ship_Model_LiftDevice_AntiGravityDevice_crew"
         },
         {
@@ -80,11 +80,11 @@
             "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 1.0,
+            "powerEngineering": 1.4536311626434327,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
-            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
+            "currentHealth": 7.0,
+            "assignedStationId": "station_Ship_Model_Engine_SteamJetEngine_crew"
         },
         {
             "crewId": "crew_philomena_crummings",
@@ -92,10 +92,10 @@
             "gunnery": 2.140000104904175,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 4.480847358703613,
+            "powerEngineering": 5.511619567871094,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 7.0,
             "assignedStationId": "station_Ship_Model_Engine_SteamJetEngine_crew"
         },
         {
@@ -119,8 +119,8 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
-            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
+            "currentHealth": 0.0,
+            "assignedStationId": "station_Ship_Model_Engine_SteamJetEngine_crew"
         }
     ]
 }
