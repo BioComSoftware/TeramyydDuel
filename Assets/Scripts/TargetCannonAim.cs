@@ -1,7 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Rotates the Target GameObject to aim its Cannon child at the Ship.
+/// Rotates the Target GameObject to aim its Cannon child at the Ship using ballistic trajectory calculation.
+/// Calculates the required pitch angle to hit the ship's center accounting for gravity and projectile speed.
 /// Attach this script to the Target GameObject (parent).
 /// </summary>
 public class TargetCannonAim : MonoBehaviour
@@ -10,6 +11,10 @@ public class TargetCannonAim : MonoBehaviour
     [Tooltip("The ship to aim at. Will auto-find 'Ship' GameObject if not assigned.")]
     public Transform ship;
 
+    [Header("Cannon Reference")]
+    [Tooltip("The cannon child object containing the ProjectileLauncher. Will auto-find if not assigned.")]
+    public Transform cannon;
+
     [Header("Rotation Settings")]
     [Tooltip("If true, rotation will be instant. If false, uses smooth rotation.")]
     public bool instantRotation = true;
@@ -17,9 +22,29 @@ public class TargetCannonAim : MonoBehaviour
     [Tooltip("Rotation speed in degrees per second when using smooth rotation.")]
     public float rotationSpeed = 90f;
 
+    [Header("Ballistics")]
+    [Tooltip("Gravity magnitude used for ballistic calculations. Should match Physics.gravity.magnitude.")]
+    public float gravity = 9.81f;
+
+    [Tooltip("If true, uses high-angle trajectory when low-angle is impossible. If false, clamps to maximum possible range.")]
+    public bool useHighAngleWhenNeeded = false;
+
+    [Header("Auto-Fire Settings")]
+    [Tooltip("If true, automatically fires the cannon at the ship once this Target has been targeted by the player.")]
+    public bool autoFireWhenTargeted = true;
+
+    [Tooltip("Minimum time between auto-fire attempts (in seconds). Prevents excessive firing checks.")]
+    public float autoFireCheckInterval = 0.1f;
+
     [Header("Debug")]
     [Tooltip("Enable debug logging for this script.")]
     public bool debugLog = false;
+
+    private ProjectileLauncher _projectileLauncher;
+    private float _launchSpeed;
+    private bool _isTargeted = false;
+    private float _nextAutoFireCheckTime = 0f;
+    private TargetingController _targetingController;
 
     void Awake()
     {
@@ -75,6 +100,94 @@ public class TargetCannonAim : MonoBehaviour
                 FileLogger.Log($"Ship already assigned: {ship.name}", "TargetCannonAim");
             }
         }
+
+        // Auto-find the Cannon child if not assigned
+        if (cannon == null)
+        {
+            cannon = transform.Find("Cannon");
+            if (cannon == null)
+            {
+                Debug.LogError("[TargetCannonAim] Could not find 'Cannon' child object! Please assign manually.");
+                FileLogger.Log("Could not find 'Cannon' child object! Please assign manually.", "TargetCannonAim");
+            }
+            else if (debugLog)
+            {
+                Debug.Log($"[TargetCannonAim] ✓ Auto-found Cannon child");
+                FileLogger.Log("✓ Auto-found Cannon child", "TargetCannonAim");
+            }
+        }
+
+        // Find the ProjectileLauncher component
+        if (cannon != null)
+        {
+            _projectileLauncher = cannon.GetComponentInChildren<ProjectileLauncher>();
+            if (_projectileLauncher == null)
+            {
+                Debug.LogError("[TargetCannonAim] Could not find ProjectileLauncher component on Cannon or its children!");
+                FileLogger.Log("Could not find ProjectileLauncher component on Cannon or its children!", "TargetCannonAim");
+            }
+            else
+            {
+                _launchSpeed = _projectileLauncher.launchSpeed;
+                if (debugLog)
+                {
+                    Debug.Log($"[TargetCannonAim] ✓ Found ProjectileLauncher with launchSpeed = {_launchSpeed}");
+                    FileLogger.Log($"✓ Found ProjectileLauncher with launchSpeed = {_launchSpeed}", "TargetCannonAim");
+                }
+            }
+        }
+
+        // Set gravity from Physics settings
+        gravity = Mathf.Abs(Physics.gravity.y);
+
+        // Find TargetingController to subscribe to targeting events
+        _targetingController = FindObjectOfType<TargetingController>();
+        if (_targetingController != null)
+        {
+            _targetingController.onTargetAcquired.AddListener(OnTargetAcquired);
+            if (debugLog)
+            {
+                Debug.Log("[TargetCannonAim] ✓ Subscribed to TargetingController.onTargetAcquired");
+                FileLogger.Log("✓ Subscribed to TargetingController.onTargetAcquired", "TargetCannonAim");
+            }
+        }
+        else if (debugLog)
+        {
+            Debug.LogWarning("[TargetCannonAim] Could not find TargetingController in scene. Auto-fire won't activate until targeted.");
+            FileLogger.Log("Could not find TargetingController in scene. Auto-fire won't activate until targeted.", "TargetCannonAim");
+        }
+    }
+
+    void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (_targetingController != null)
+        {
+            _targetingController.onTargetAcquired.RemoveListener(OnTargetAcquired);
+        }
+    }
+
+    /// <summary>
+    /// Called when the player targets something. Checks if this Target was targeted.
+    /// </summary>
+    private void OnTargetAcquired(Health targetedHealth)
+    {
+        if (targetedHealth == null)
+        {
+            return;
+        }
+
+        // Check if the targeted object is this Target or one of its children
+        Health ourHealth = GetComponentInChildren<Health>();
+        if (ourHealth != null && targetedHealth == ourHealth)
+        {
+            _isTargeted = true;
+            if (debugLog)
+            {
+                Debug.Log("[TargetCannonAim] ✓ This Target has been targeted by the player! Auto-fire ENABLED.");
+                FileLogger.Log("✓ This Target has been targeted by the player! Auto-fire ENABLED.", "TargetCannonAim");
+            }
+        }
     }
 
     void Start()
@@ -98,44 +211,63 @@ public class TargetCannonAim : MonoBehaviour
             Debug.LogError("[TargetCannonAim] Start() - Ship is still null! Cannot aim.");
             FileLogger.Log("Start() - Ship is still null! Cannot aim.", "TargetCannonAim");
         }
+
+        if (_projectileLauncher == null)
+        {
+            Debug.LogError("[TargetCannonAim] Start() - ProjectileLauncher is null! Cannot calculate firing solution.");
+            FileLogger.Log("Start() - ProjectileLauncher is null! Cannot calculate firing solution.", "TargetCannonAim");
+        }
     }
 
     void Update()
     {
-        if (ship == null)
+        if (ship == null || _projectileLauncher == null)
         {
             if (debugLog)
             {
-                Debug.LogError("[TargetCannonAim] Update() - Ship is NULL! Cannot aim!");
-                FileLogger.Log("Update() - Ship is NULL! Cannot aim!", "TargetCannonAim");
+                Debug.LogError("[TargetCannonAim] Update() - Missing ship or ProjectileLauncher! Cannot aim!");
+                FileLogger.Log("Update() - Missing ship or ProjectileLauncher! Cannot aim!", "TargetCannonAim");
             }
             return;
         }
 
-        // Calculate direction from Target to Ship
-        Vector3 directionToShip = ship.position - transform.position;
+        // Update launch speed in case it changed at runtime
+        _launchSpeed = _projectileLauncher.launchSpeed;
 
-        // Zero out the Y component to keep rotation level (prevents tilting up/down)
-        directionToShip.y = 0f;
+        // Calculate the firing solution
+        bool hasValidSolution = CalculateFiringSolution(
+            transform.position,
+            ship.position,
+            _launchSpeed,
+            gravity,
+            out float yawAngle,
+            out float pitchAngle
+        );
 
-        // Skip if direction is too small (avoid flickering when directly above/below)
-        if (directionToShip.sqrMagnitude < 0.001f)
+        if (!hasValidSolution)
         {
             if (debugLog)
             {
-                Debug.LogWarning("[TargetCannonAim] Direction too small, skipping rotation");
-                FileLogger.Log("Direction too small, skipping rotation", "TargetCannonAim");
+                Debug.LogWarning($"[TargetCannonAim] No valid firing solution! Target may be out of range. Distance: {Vector3.Distance(transform.position, ship.position):F1}m");
+                FileLogger.Log($"No valid firing solution! Target may be out of range. Distance: {Vector3.Distance(transform.position, ship.position):F1}m", "TargetCannonAim");
             }
             return;
         }
 
-        // Calculate the target rotation
-        Quaternion targetRotation = Quaternion.LookRotation(directionToShip);
+        // Create target rotation from calculated angles
+        // NOTE: Negate pitch because this coordinate system uses NEGATIVE pitch to aim UP
+        Quaternion targetRotation = Quaternion.Euler(-pitchAngle, yawAngle, 0f);
 
         // Apply rotation (instant or smooth)
         if (instantRotation)
         {
             transform.rotation = targetRotation;
+            
+            if (debugLog)
+            {
+                Debug.Log($"[TargetCannonAim] Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°)");
+                FileLogger.Log($"Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°)", "TargetCannonAim");
+            }
         }
         else
         {
@@ -145,5 +277,142 @@ public class TargetCannonAim : MonoBehaviour
                 rotationSpeed * Time.deltaTime
             );
         }
+
+        // Auto-fire if targeted and enabled
+        if (autoFireWhenTargeted && _isTargeted && hasValidSolution)
+        {
+            AttemptAutoFire();
+        }
+    }
+
+    /// <summary>
+    /// Attempts to fire the cannon automatically if conditions are met.
+    /// </summary>
+    private void AttemptAutoFire()
+    {
+        // Rate-limit fire attempts
+        if (Time.time < _nextAutoFireCheckTime)
+        {
+            return;
+        }
+
+        _nextAutoFireCheckTime = Time.time + autoFireCheckInterval;
+
+        // Check if the cannon is ready to fire
+        if (_projectileLauncher != null && _projectileLauncher.IsReadyToFire())
+        {
+            // Fire the cannon using reflection to call the protected FireProjectile method
+            var fireMethod = typeof(ProjectileLauncher).GetMethod("FireProjectile", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (fireMethod != null)
+            {
+                fireMethod.Invoke(_projectileLauncher, null);
+                
+                if (debugLog)
+                {
+                    Debug.Log("[TargetCannonAim] 🔥 AUTO-FIRED cannon at ship!");
+                    FileLogger.Log("🔥 AUTO-FIRED cannon at ship!", "TargetCannonAim");
+                }
+            }
+            else
+            {
+                Debug.LogError("[TargetCannonAim] Could not find FireProjectile method on ProjectileLauncher!");
+                FileLogger.Log("Could not find FireProjectile method on ProjectileLauncher!", "TargetCannonAim");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calculates the firing solution to hit a target using projectile motion physics.
+    /// </summary>
+    /// <param name="firingPos">Position of the cannon</param>
+    /// <param name="targetPos">Position of the target (ship center)</param>
+    /// <param name="projectileSpeed">Launch speed of the projectile</param>
+    /// <param name="gravityMagnitude">Gravity magnitude (positive)</param>
+    /// <param name="yawAngle">Output: Horizontal angle in degrees</param>
+    /// <param name="pitchAngle">Output: Vertical angle in degrees (positive = up)</param>
+    /// <returns>True if a valid solution exists, false otherwise</returns>
+    private bool CalculateFiringSolution(
+        Vector3 firingPos,
+        Vector3 targetPos,
+        float projectileSpeed,
+        float gravityMagnitude,
+        out float yawAngle,
+        out float pitchAngle)
+    {
+        yawAngle = 0f;
+        pitchAngle = 0f;
+
+        // Calculate displacement vector
+        Vector3 displacement = targetPos - firingPos;
+        
+        // Calculate horizontal direction (yaw)
+        Vector3 horizontalDisplacement = new Vector3(displacement.x, 0f, displacement.z);
+        float horizontalDistance = horizontalDisplacement.magnitude;
+        
+        if (horizontalDistance < 0.001f)
+        {
+            // Target is directly above or below - can't calculate horizontal angle
+            yawAngle = transform.eulerAngles.y; // Keep current yaw
+            pitchAngle = displacement.y > 0 ? 90f : -90f;
+            return false;
+        }
+
+        // Calculate yaw angle
+        yawAngle = Mathf.Atan2(horizontalDisplacement.x, horizontalDisplacement.z) * Mathf.Rad2Deg;
+
+        // Calculate pitch angle using ballistic trajectory formula
+        float verticalDisplacement = displacement.y;
+        
+        // Ballistic equation: tan(θ) = [v² ± sqrt(v⁴ - g(gx² + 2yv²))] / (gx)
+        // Where: v = projectileSpeed, g = gravity, x = horizontalDistance, y = verticalDisplacement
+        
+        float v2 = projectileSpeed * projectileSpeed;
+        float v4 = v2 * v2;
+        float gx = gravityMagnitude * horizontalDistance;
+        float gx2 = gravityMagnitude * horizontalDistance * horizontalDistance;
+        
+        float discriminant = v4 - gravityMagnitude * (gx2 + 2f * verticalDisplacement * v2);
+        
+        if (discriminant < 0f)
+        {
+            // Target is out of range - no solution exists
+            if (debugLog)
+            {
+                float maxRange = (v2 / gravityMagnitude) * Mathf.Sqrt(1f + (2f * gravityMagnitude * verticalDisplacement / v2));
+                Debug.LogWarning($"[TargetCannonAim] Target out of range! Distance: {horizontalDistance:F1}m, Max Range: {maxRange:F1}m");
+                FileLogger.Log($"Target out of range! Distance: {horizontalDistance:F1}m, Max Range: {maxRange:F1}m", "TargetCannonAim");
+            }
+            return false;
+        }
+        
+        // Two solutions: low angle (direct fire) and high angle (lob)
+        float sqrtDiscriminant = Mathf.Sqrt(discriminant);
+        float angle1 = Mathf.Atan((v2 - sqrtDiscriminant) / gx) * Mathf.Rad2Deg; // Low angle
+        float angle2 = Mathf.Atan((v2 + sqrtDiscriminant) / gx) * Mathf.Rad2Deg; // High angle
+        
+        // Prefer low angle (direct fire) unless specified otherwise
+        if (useHighAngleWhenNeeded && angle1 < -45f)
+        {
+            pitchAngle = angle2;
+            if (debugLog)
+            {
+                Debug.Log($"[TargetCannonAim] Using high-angle trajectory: {pitchAngle:F1}° (low-angle was {angle1:F1}°)");
+                FileLogger.Log($"Using high-angle trajectory: {pitchAngle:F1}° (low-angle was {angle1:F1}°)", "TargetCannonAim");
+            }
+        }
+        else
+        {
+            pitchAngle = angle1;
+        }
+        
+        if (debugLog)
+        {
+            Debug.Log($"[TargetCannonAim] Firing solution: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° Distance={horizontalDistance:F1}m Height={verticalDisplacement:F1}m");
+            FileLogger.Log($"Firing solution: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° Distance={horizontalDistance:F1}m Height={verticalDisplacement:F1}m", "TargetCannonAim");
+        }
+        
+        return true;
     }
 }
