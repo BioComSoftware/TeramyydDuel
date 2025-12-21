@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-21T15:22:25.3497916Z",
+    "lastSavedUtc": "2025-12-21T15:50:56.5248040Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -17,7 +17,7 @@
         {
             "crewId": "crew_jens_nordstrom",
             "displayName": "Jens Nordstrom",
-            "gunnery": 2.43999981880188,
+            "gunnery": 10.0,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 8.4495267868042,
@@ -29,7 +29,7 @@
         {
             "crewId": "crew_morgan_lee",
             "displayName": "Morgan Lee",
-            "gunnery": 2.419999837875366,
+            "gunnery": 10.0,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
@@ -41,14 +41,14 @@
         {
             "crewId": "crew_hack_jarkness",
             "displayName": "Hack Jarkness",
-            "gunnery": 2.6999995708465578,
+            "gunnery": 2.7599995136260988,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 10.0,
             "liftEngineering": 1.4614014625549317,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Aft_weapon_mount_01_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_jeruka_thudd",
@@ -65,26 +65,26 @@
         {
             "crewId": "crew_jim_pin",
             "displayName": "Jim Pin",
-            "gunnery": 1.5599994659423829,
+            "gunnery": 10.0,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0602672100067139,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Bow_weapon_mount_01_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_pappy",
             "displayName": "Pappy",
-            "gunnery": 1.359999656677246,
+            "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 10.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Starboard_rear_hull_weapon_mount_01_crew_slot"
+            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_philomena_crummings",
@@ -92,7 +92,7 @@
             "gunnery": 2.140000104904175,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 2.43410325050354,
+            "powerEngineering": 3.339350938796997,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
@@ -105,7 +105,7 @@
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
-            "liftEngineering": 9.555225372314454,
+            "liftEngineering": 10.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
             "assignedStationId": "station_Ship_Model_LiftDevice_AntiGravityDevice_crew"
@@ -113,14 +113,14 @@
         {
             "crewId": "crew_ryn_calder",
             "displayName": "Ryn Calder",
-            "gunnery": 1.5199995040893555,
+            "gunnery": 10.0,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 10.0,
             "liftEngineering": 1.0,
             "maxHealth": 100.0,
             "currentHealth": 100.0,
-            "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
+            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
         }
     ]
 }

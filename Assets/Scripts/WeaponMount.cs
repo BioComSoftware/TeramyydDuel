@@ -42,6 +42,14 @@ public class WeaponMount : MonoBehaviour
     [Tooltip("Degrees away from the yaw limit that still counts as 'at the edge'. Staying inside this margin means the target is reachable.")]
     [Min(0f)] public float yawEdgeBufferDeg = 0.5f;
 
+    [Header("Lead Targeting")]
+    [Tooltip("If true, calculates movement lead based on ship and target velocities just before firing.")]
+    public bool useLeadTargeting = true;
+    [Tooltip("Maximum number of iterations for lead targeting calculation convergence.")]
+    public int maxLeadIterations = 5;
+    [Tooltip("If lead calculation pushes yaw beyond limits, clamp to max yaw and fire anyway.")]
+    public bool fireAtMaxYawIfLeadExceedsLimit = true;
+
     [Header("Crew Requirements")]
     [Tooltip("Crew station that operates this mount. Auto-located on the same GameObject if left empty.")]
     public CrewStation crewStation;
@@ -113,11 +121,19 @@ public class WeaponMount : MonoBehaviour
         if (!ignoreTargetLock && !IsTargetFullyAcquired)
             return false;
 
-        // Snap to ballistic pitch immediately before firing
-        if (_hasAimSolution)
+        // Apply lead targeting adjustments just before firing
+        if (useLeadTargeting && targetingController != null && targetingController.CurrentTarget != null)
         {
-            _pitch = _aimPitchTarget;
-            ApplyRotations();
+            ApplyLeadTargetingAdjustment(targetingController.CurrentTarget.transform);
+        }
+        else
+        {
+            // Snap to ballistic pitch immediately before firing (no lead adjustment)
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
         }
 
         currentLauncher.TriggerFireCommand(ignoreTargetLock);
@@ -633,6 +649,200 @@ public class WeaponMount : MonoBehaviour
             return rend.bounds.center;
 
         return targetTransform.position;
+    }
+
+    /// <summary>
+    /// Applies lead targeting adjustment by calculating intercept point based on velocities.
+    /// Adjusts yaw and pitch just before firing to account for target and ship movement.
+    /// This is separate from normal target acquisition and happens only at the moment of firing.
+    /// </summary>
+    void ApplyLeadTargetingAdjustment(Transform targetTransform)
+    {
+        if (targetTransform == null || currentLauncher == null)
+        {
+            // Fallback to standard ballistic pitch
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
+            return;
+        }
+
+        Transform muzzle = currentLauncher.spawnPoint != null ? currentLauncher.spawnPoint : pitchBarrel;
+        if (muzzle == null)
+        {
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
+            return;
+        }
+
+        // Get velocities
+        Vector3 targetVelocity = Vector3.zero;
+        Vector3 shipVelocity = Vector3.zero;
+
+        Rigidbody targetRb = targetTransform.GetComponent<Rigidbody>();
+        if (targetRb != null)
+        {
+            targetVelocity = targetRb.linearVelocity;
+        }
+
+        // Get ship's velocity (our firing platform)
+        Transform shipRoot = transform.root;
+        Rigidbody shipRb = shipRoot.GetComponent<Rigidbody>();
+        if (shipRb != null)
+        {
+            shipVelocity = shipRb.linearVelocity;
+        }
+
+        // Calculate relative velocity
+        Vector3 relativeVelocity = targetVelocity - shipVelocity;
+
+        // If relative velocity is negligible, use standard ballistic solution
+        if (relativeVelocity.sqrMagnitude < 0.01f)
+        {
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
+            return;
+        }
+
+        // Calculate intercept point using iterative method
+        Vector3 firingPos = muzzle.position;
+        Vector3 targetPos = GetTargetAimPoint(targetTransform);
+        Vector3 interceptPoint = targetPos;
+        float timeToTarget = 0f;
+        float projectileSpeed = _aimLaunchSpeed > 0 ? _aimLaunchSpeed : currentLauncher.launchSpeed;
+
+        for (int iteration = 0; iteration < maxLeadIterations; iteration++)
+        {
+            Vector3 toIntercept = interceptPoint - firingPos;
+            float distance = toIntercept.magnitude;
+
+            if (distance < 0.001f)
+                break;
+
+            // Estimate flight time accounting for ballistic arc
+            float horizontalDistance = new Vector3(toIntercept.x, 0f, toIntercept.z).magnitude;
+            float verticalDistance = toIntercept.y;
+            
+            float estimatedAngle = Mathf.Atan2(verticalDistance, horizontalDistance);
+            float horizontalSpeed = projectileSpeed * Mathf.Cos(estimatedAngle);
+            
+            if (horizontalSpeed < 0.1f)
+                break;
+
+            timeToTarget = horizontalDistance / horizontalSpeed;
+
+            // Predict where target will be
+            Vector3 predictedTargetPos = targetPos + (relativeVelocity * timeToTarget);
+
+            // Check convergence
+            if (Vector3.Distance(interceptPoint, predictedTargetPos) < 0.1f)
+            {
+                interceptPoint = predictedTargetPos;
+                break;
+            }
+
+            interceptPoint = predictedTargetPos;
+        }
+
+        // Calculate firing solution to intercept point
+        bool solved = TrySolveBallisticArc(
+            CreateTransformProxy(interceptPoint),
+            out float leadYaw,
+            out float leadPitch,
+            out float leadSpeed
+        );
+
+        if (!solved)
+        {
+            // Lead solution failed, use standard ballistic solution
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
+            
+            if (enableDebugLogging)
+            {
+                LogDebug($"Lead targeting failed to find solution. Using standard ballistic pitch.");
+            }
+            return;
+        }
+
+        // Apply lead-adjusted angles
+        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
+        
+        // Check if lead yaw exceeds limits
+        if (Mathf.Abs(leadYaw) > halfYaw)
+        {
+            if (fireAtMaxYawIfLeadExceedsLimit)
+            {
+                // Clamp to max yaw and fire anyway
+                _yaw = Mathf.Clamp(leadYaw, -halfYaw, halfYaw);
+                _pitch = leadPitch;
+                
+                if (enableDebugLogging)
+                {
+                    float leadDistance = Vector3.Distance(targetPos, interceptPoint);
+                    LogDebug($"Lead yaw {leadYaw:F1}° exceeds limit ±{halfYaw:F1}°. Clamping to {_yaw:F1}° and firing. Lead={leadDistance:F1}m Time={timeToTarget:F2}s");
+                }
+            }
+            else
+            {
+                // Use standard solution
+                if (_hasAimSolution)
+                {
+                    _pitch = _aimPitchTarget;
+                }
+                
+                if (enableDebugLogging)
+                {
+                    LogDebug($"Lead yaw {leadYaw:F1}° exceeds limit ±{halfYaw:F1}°. Using standard ballistic solution.");
+                }
+            }
+        }
+        else
+        {
+            // Lead solution is within limits - apply it
+            _yaw = leadYaw;
+            _pitch = leadPitch;
+            
+            if (enableDebugLogging)
+            {
+                float leadDistance = Vector3.Distance(targetPos, interceptPoint);
+                LogDebug($"Lead targeting applied: Yaw={_yaw:F1}° Pitch={_pitch:F1}° Lead={leadDistance:F1}m Time={timeToTarget:F2}s RelVel={relativeVelocity.magnitude:F1}m/s");
+            }
+        }
+
+        // Update launch speed if needed
+        if (currentLauncher != null)
+        {
+            currentLauncher.SetRuntimeLaunchSpeed(leadSpeed);
+        }
+
+        ApplyRotations();
+    }
+
+    /// <summary>
+    /// Creates a temporary transform proxy for a position (used for lead targeting calculations).
+    /// </summary>
+    Transform CreateTransformProxy(Vector3 position)
+    {
+        GameObject proxy = new GameObject("_TempLeadTargetProxy");
+        proxy.transform.position = position;
+        proxy.hideFlags = HideFlags.HideAndDontSave;
+        
+        // Destroy after a short delay to allow the ballistic calculation to complete
+        Destroy(proxy, 0.1f);
+        
+        return proxy.transform;
     }
 
     void EnsureCrewStation()

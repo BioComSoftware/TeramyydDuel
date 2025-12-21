@@ -39,6 +39,9 @@ public class TargetCannonAim : MonoBehaviour
     [Tooltip("If true, automatically fires the cannon at the ship once this Target has been targeted by the player.")]
     public bool autoFireWhenTargeted = true;
 
+    [Tooltip("If true, disables automatic firing. Target will aim but not fire (useful for testing aim calculations).")]
+    public bool disableFiring = false;
+
     [Tooltip("Minimum time between auto-fire attempts (in seconds). Prevents excessive firing checks.")]
     public float autoFireCheckInterval = 0.1f;
 
@@ -310,7 +313,7 @@ public class TargetCannonAim : MonoBehaviour
         }
 
         // Auto-fire if targeted and enabled
-        if (autoFireWhenTargeted && _isTargeted && hasValidSolution)
+        if (autoFireWhenTargeted && _isTargeted && hasValidSolution && !disableFiring)
         {
             AttemptAutoFire();
         }
