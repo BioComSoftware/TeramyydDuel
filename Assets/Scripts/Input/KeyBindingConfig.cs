@@ -330,7 +330,10 @@ public class KeyBindingConfig : ScriptableObject
             _snapRequiresCtrl = data.snapRequiresCtrl;
             _zoomRequiresCtrl = data.zoomRequiresCtrl;
 
-            Debug.Log("KeyBindingConfig: Successfully loaded player keybindings from JSON.");
+            if (debugLog)
+            {
+                Debug.Log("KeyBindingConfig: Successfully loaded player keybindings from JSON.");
+            }
         }
         catch (Exception ex)
         {

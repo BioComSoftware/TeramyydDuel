@@ -35,6 +35,10 @@ namespace Teramyyd.UI
 
         [Header("Refresh")] public float refreshInterval = 0.4f;
 
+        [Header("Debug")]
+        [Tooltip("Enables debug logging to console and Logs/game_debug.log.")]
+        public bool debugLog = false;
+
         public event Action<CrewMember, CrewStation, Transform> OnVisualAnchorChanged;
 
         readonly Dictionary<string, CrewHUDCrewIcon> _iconsByCrewId = new Dictionary<string, CrewHUDCrewIcon>();
@@ -47,9 +51,11 @@ namespace Teramyyd.UI
 
         void Awake()
         {
-            string msg = "[CrewHUD] Awake called";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log("[CrewHUD] Awake called");
+                FileLogger.Log("Awake called", "CrewHUD");
+            }
             
             if (dragCanvas == null)
             {
@@ -63,9 +69,11 @@ namespace Teramyyd.UI
 
         void OnEnable()
         {
-            string msg = "[CrewHUD] OnEnable called, forcing refresh";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log("[CrewHUD] OnEnable called, forcing refresh");
+                FileLogger.Log("OnEnable called, forcing refresh", "CrewHUD");
+            }
             ForceRefresh();
         }
 
@@ -87,59 +95,76 @@ namespace Teramyyd.UI
 
         public bool HandleStationDrop(CrewHUDStationSlot slot, CrewHUDCrewIcon icon)
         {
-            string crewName = icon?.Crew?.displayName ?? "Unknown";
-            string slotId = slot?.StationId ?? "null";
-            
-            string msg1 = $"[CrewHUD] HandleStationDrop: {crewName} -> {slotId}";
-            Debug.Log(msg1);
-            FileLogger.Log(msg1, "CrewHUD");
+            if (debugLog)
+            {
+                string crewName = icon?.Crew?.displayName ?? "Unknown";
+                string slotId = slot?.StationId ?? "null";
+                Debug.Log($"[CrewHUD] HandleStationDrop: {crewName} -> {slotId}");
+                FileLogger.Log($"HandleStationDrop: {crewName} -> {slotId}", "CrewHUD");
+            }
             
             if (slot == null || icon == null)
             {
-                string msg2 = "[CrewHUD] HandleStationDrop: slot or icon is null, returning false";
-                Debug.LogWarning(msg2);
-                FileLogger.Log(msg2, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUD] HandleStationDrop: slot or icon is null, returning false");
+                    FileLogger.Log("HandleStationDrop: slot or icon is null, returning false", "CrewHUD");
+                }
                 return false;
             }
 
             string stationId = slot.StationId;
             if (string.IsNullOrEmpty(stationId))
             {
-                string msg3 = "[CrewHUD] HandleStationDrop: stationId is empty, returning false";
-                Debug.LogWarning(msg3);
-                FileLogger.Log(msg3, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUD] HandleStationDrop: stationId is empty, returning false");
+                    FileLogger.Log("HandleStationDrop: stationId is empty, returning false", "CrewHUD");
+                }
                 return false;
             }
 
             var manager = CrewManager.HasInstance ? CrewManager.Instance : null;
             if (manager == null)
             {
-                string msg4 = "[CrewHUD] HandleStationDrop: CrewManager not available, returning false";
-                Debug.LogWarning(msg4);
-                FileLogger.Log(msg4, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUD] HandleStationDrop: CrewManager not available, returning false");
+                    FileLogger.Log("HandleStationDrop: CrewManager not available, returning false", "CrewHUD");
+                }
                 return false;
             }
 
-            string beforeAssignment = icon.Crew?.AssignedStation?.stationId ?? "null";
-            string msg5 = $"[CrewHUD] HandleStationDrop: Before assignment, {crewName}.AssignedStation = {beforeAssignment}";
-            Debug.Log(msg5);
-            FileLogger.Log(msg5, "CrewHUD");
+            if (debugLog)
+            {
+                string crewName = icon?.Crew?.displayName ?? "Unknown";
+                string beforeAssignment = icon.Crew?.AssignedStation?.stationId ?? "null";
+                Debug.Log($"[CrewHUD] HandleStationDrop: Before assignment, {crewName}.AssignedStation = {beforeAssignment}");
+                FileLogger.Log($"HandleStationDrop: Before assignment, {crewName}.AssignedStation = {beforeAssignment}", "CrewHUD");
+            }
 
             // Pre-emptively attach icon to prevent race with refresh
             AttachIconToSlot(icon, slot);
 
             bool assignSuccess = manager.TryAssignCrewToStationId(icon.Crew, stationId);
-            string afterAssignment = icon.Crew?.AssignedStation?.stationId ?? "null";
-            string msg6 = $"[CrewHUD] HandleStationDrop: Assignment {(assignSuccess ? "SUCCESS" : "FAILED")}, {crewName}.AssignedStation now = {afterAssignment}";
-            Debug.Log(msg6);
-            FileLogger.Log(msg6, "CrewHUD");
+            
+            if (debugLog)
+            {
+                string crewName = icon?.Crew?.displayName ?? "Unknown";
+                string afterAssignment = icon.Crew?.AssignedStation?.stationId ?? "null";
+                Debug.Log($"[CrewHUD] HandleStationDrop: Assignment {(assignSuccess ? "SUCCESS" : "FAILED")}, {crewName}.AssignedStation now = {afterAssignment}");
+                FileLogger.Log($"HandleStationDrop: Assignment {(assignSuccess ? "SUCCESS" : "FAILED")}, {crewName}.AssignedStation now = {afterAssignment}", "CrewHUD");
+            }
             
             if (!assignSuccess)
             {
                 // Assignment failed, return to pool
-                string msg7 = $"[CrewHUD] HandleStationDrop: Assignment failed for {crewName}, returning to pool";
-                Debug.LogWarning(msg7);
-                FileLogger.Log(msg7, "CrewHUD");
+                if (debugLog)
+                {
+                    string crewName = icon?.Crew?.displayName ?? "Unknown";
+                    Debug.LogWarning($"[CrewHUD] HandleStationDrop: Assignment failed for {crewName}, returning to pool");
+                    FileLogger.Log($"HandleStationDrop: Assignment failed for {crewName}, returning to pool", "CrewHUD");
+                }
                 AttachIconToPool(icon);
                 return false;
             }
@@ -156,9 +181,12 @@ namespace Teramyyd.UI
             // Don't suppress refresh - let the normal flow handle it with the processed icons set
             // _suppressRefreshUntil = Time.unscaledTime + 0.5f;
             
-            string msg8 = $"[CrewHUD] HandleStationDrop: Complete for {crewName} at {stationId}";
-            Debug.Log(msg8);
-            FileLogger.Log(msg8, "CrewHUD");
+            if (debugLog)
+            {
+                string crewName = icon?.Crew?.displayName ?? "Unknown";
+                Debug.Log($"[CrewHUD] HandleStationDrop: Complete for {crewName} at {stationId}");
+                FileLogger.Log($"HandleStationDrop: Complete for {crewName} at {stationId}", "CrewHUD");
+            }
             
             return true;
         }
@@ -168,11 +196,13 @@ namespace Teramyyd.UI
             if (icon == null)
                 return false;
 
-            string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
-            string beforeState = icon.Crew?.AssignedStation?.stationId ?? "null";
-            string msg = $"[CrewHUD] HandleReturnToPool: {crewName}, AssignedStation before unassign: {beforeState}";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewHUD");
+            if (debugLog)
+            {
+                string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
+                string beforeState = icon.Crew?.AssignedStation?.stationId ?? "null";
+                Debug.Log($"[CrewHUD] HandleReturnToPool: {crewName}, AssignedStation before unassign: {beforeState}");
+                FileLogger.Log($"HandleReturnToPool: {crewName}, AssignedStation before unassign: {beforeState}", "CrewHUD");
+            }
 
             // Immediately move icon to pool visually to prevent race with refresh
             AttachIconToPool(icon);
@@ -183,10 +213,13 @@ namespace Teramyyd.UI
                 manager.UnassignCrew(icon.Crew);
             }
 
-            string afterState = icon.Crew?.AssignedStation?.stationId ?? "null";
-            string msg2 = $"[CrewHUD] HandleReturnToPool: {crewName}, AssignedStation after unassign: {afterState}";
-            Debug.Log(msg2);
-            FileLogger.Log(msg2, "CrewHUD");
+            if (debugLog)
+            {
+                string crewName = icon.Crew != null ? icon.Crew.displayName : "Unknown";
+                string afterState = icon.Crew?.AssignedStation?.stationId ?? "null";
+                Debug.Log($"[CrewHUD] HandleReturnToPool: {crewName}, AssignedStation after unassign: {afterState}");
+                FileLogger.Log($"HandleReturnToPool: {crewName}, AssignedStation after unassign: {afterState}", "CrewHUD");
+            }
 
             // Don't suppress refresh - let the normal flow handle it
             // _suppressRefreshUntil = Time.unscaledTime + 0.5f;
@@ -205,21 +238,24 @@ namespace Teramyyd.UI
 
         internal void ShowTooltip(CrewHUDCrewIcon icon)
         {
-            string crewName = icon?.Crew?.displayName ?? "Unknown";
-            
             if (tooltip == null)
             {
-                string msg = $"[CrewHUD] ShowTooltip: tooltip is null for {crewName}";
-                Debug.LogWarning(msg);
-                FileLogger.Log(msg, "CrewHUD");
+                if (debugLog)
+                {
+                    string crewName = icon?.Crew?.displayName ?? "Unknown";
+                    Debug.LogWarning($"[CrewHUD] ShowTooltip: tooltip is null for {crewName}");
+                    FileLogger.Log($"ShowTooltip: tooltip is null for {crewName}", "CrewHUD");
+                }
                 return;
             }
             
             if (icon == null)
             {
-                string msg = "[CrewHUD] ShowTooltip: icon is null";
-                Debug.LogWarning(msg);
-                FileLogger.Log(msg, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUD] ShowTooltip: icon is null");
+                    FileLogger.Log("ShowTooltip: icon is null", "CrewHUD");
+                }
                 return;
             }
 
@@ -227,15 +263,20 @@ namespace Teramyyd.UI
             Sprite portrait = icon.portraitImage != null ? icon.portraitImage.sprite : null;
             RectTransform anchor = icon.tooltipAnchor != null ? icon.tooltipAnchor : sharedTooltipAnchor;
             
-            string msg1 = $"[CrewHUD] ShowTooltip: {crewName}, anchor={anchor != null}, station={station != null}, portrait={portrait != null}";
-            Debug.Log(msg1);
-            FileLogger.Log(msg1, "CrewHUD");
+            if (debugLog)
+            {
+                string crewName = icon?.Crew?.displayName ?? "Unknown";
+                Debug.Log($"[CrewHUD] ShowTooltip: {crewName}, anchor={anchor != null}, station={station != null}, portrait={portrait != null}");
+                FileLogger.Log($"ShowTooltip: {crewName}, anchor={anchor != null}, station={station != null}, portrait={portrait != null}", "CrewHUD");
+            }
             
             if (anchor == null)
             {
-                string msg2 = $"[CrewHUD] ShowTooltip: Missing tooltip anchor for {icon.Crew?.crewId ?? "unknown crew"}. icon.tooltipAnchor={icon.tooltipAnchor != null}, sharedTooltipAnchor={sharedTooltipAnchor != null}";
-                Debug.LogWarning(msg2, icon);
-                FileLogger.Log(msg2, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning($"[CrewHUD] ShowTooltip: Missing tooltip anchor for {icon.Crew?.crewId ?? "unknown crew"}. icon.tooltipAnchor={icon.tooltipAnchor != null}, sharedTooltipAnchor={sharedTooltipAnchor != null}", icon);
+                    FileLogger.Log($"ShowTooltip: Missing tooltip anchor for {icon.Crew?.crewId ?? "unknown crew"}. icon.tooltipAnchor={icon.tooltipAnchor != null}, sharedTooltipAnchor={sharedTooltipAnchor != null}", "CrewHUD");
+                }
                 tooltip.Hide(icon);
                 return;
             }

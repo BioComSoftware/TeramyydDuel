@@ -117,9 +117,11 @@ public class ShipWheelController : MonoBehaviour, IBeginDragHandler, IDragHandle
     
     void Start()
     {
-        string msg = $"ShipWheelController.Start() called on {gameObject.name}, debugLog={debugLog}";
-        Debug.Log(msg);
-        FileLogger.Log(msg, "ShipWheel");
+        if (debugLog)
+        {
+            Debug.Log($"ShipWheelController.Start() called on {gameObject.name}, debugLog={debugLog}");
+            FileLogger.Log($"ShipWheelController.Start() called on {gameObject.name}, debugLog={debugLog}", "ShipWheel");
+        }
         
         // Find ship if not assigned
         if (targetShip == null)

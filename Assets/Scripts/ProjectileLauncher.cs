@@ -201,6 +201,7 @@ public class ProjectileLauncher : MonoBehaviour
             {
                 string reason = _owningMount == null ? "fire blocked (no mount)" : "fire blocked (target lock invalid)";
                 Debug.Log($"[ProjectileLauncher] {reason}.");
+                FileLogger.Log($"{reason}.", "ProjectileLauncher");
             }
             return;
         }
@@ -225,7 +226,10 @@ public class ProjectileLauncher : MonoBehaviour
         if (!IsReadyToFire())
         {
             if (debugLog)
+            {
                 Debug.Log($"[ProjectileLauncher] Weapon not ready. Reloading... ({GetRemainingReloadTime():F1}s remaining)");
+                FileLogger.Log($"Weapon not ready. Reloading... ({GetRemainingReloadTime():F1}s remaining)", "ProjectileLauncher");
+            }
             return;
         }
         
@@ -262,6 +266,7 @@ public class ProjectileLauncher : MonoBehaviour
         if (debugLog)
         {
             Debug.Log($"[ProjectileLauncher] Fire accuracy: angleSpread={angleSpreadDegrees:F2}°, crewScale={_crewAccuracyScale:F3}, finalSpread={spread:F2}°, disableError={disableAccuracyError}");
+            FileLogger.Log($"Fire accuracy: angleSpread={angleSpreadDegrees:F2}°, crewScale={_crewAccuracyScale:F3}, finalSpread={spread:F2}°, disableError={disableAccuracyError}", "ProjectileLauncher");
         }
         
         if (spread > 0f)
@@ -327,7 +332,11 @@ public class ProjectileLauncher : MonoBehaviour
 
         ProjectileFired?.Invoke(this);
 
-        Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={finalSpeed:F1}, spread={angleSpreadDegrees:F1}");
+        if (debugLog)
+        {
+            Debug.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={finalSpeed:F1}, spread={angleSpreadDegrees:F1}");
+            FileLogger.Log($"Projectile fired! pos={spawnPos}, dir={launchDirection}, speed={finalSpeed:F1}, spread={angleSpreadDegrees:F1}", "ProjectileLauncher");
+        }
     }
 
     /// <summary>

@@ -61,7 +61,7 @@ MonoBehaviour:
   projectileLinearDampingOverride: -1
   reloadTime: 10
   startReady: 1
-  debugLog: 1
+  debugLog: 0
   requireValidMountTargetLock: 1
 --- !u!1 &7202491767298042434
 GameObject:

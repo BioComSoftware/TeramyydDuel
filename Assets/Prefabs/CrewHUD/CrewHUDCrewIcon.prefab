@@ -105,4 +105,4 @@ MonoBehaviour:
   pendingBackground: {fileID: 0}
   pendingText: {fileID: 0}
   tooltipAnchor: {fileID: 0}
-  debugLog: 1
+  debugLog: 0

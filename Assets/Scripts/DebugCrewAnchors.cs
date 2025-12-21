@@ -3,8 +3,13 @@ using Teramyyd.UI;
 
 public class DebugCrewAnchors : MonoBehaviour
 {
+    [Tooltip("Enables debug logging to console.")]
+    public bool debugLog = false;
+
     void Start()
     {
+        if (!debugLog) return;
+
 #if UNITY_EDITOR
         Debug.Log("--- Starting Crew Anchor Debug ---");
         var mounts = FindObjectsByType<WeaponMount>(FindObjectsSortMode.None);

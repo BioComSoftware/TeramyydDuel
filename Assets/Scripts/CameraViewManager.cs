@@ -62,6 +62,10 @@ public class CameraViewManager : MonoBehaviour
     [Tooltip("Remember camera position/orientation for each view mode and restore it when returning to that view.")]
     public bool rememberPosePerView = true;
 
+    [Header("Debug")]
+    [Tooltip("Enables debug logging to console.")]
+    public bool debugLog = false;
+
     private float bridgeStoredFOV = -1f;
     private float followStoredFOV = -1f;
     private float followStoredOrbitDistance = -1f;
@@ -178,7 +182,10 @@ public class CameraViewManager : MonoBehaviour
         if (cameraOrbit != null) cameraOrbit.enabled = false;
         if (overheadController != null) overheadController.enabled = false;
         
-        Debug.Log("Switched to Bridge view (reset to default)");
+        if (debugLog)
+        {
+            Debug.Log("Switched to Bridge view (reset to default)");
+        }
     }
 
     void EnterFollow()
@@ -231,7 +238,10 @@ public class CameraViewManager : MonoBehaviour
         if (cameraMove != null) cameraMove.enabled = false;
         if (overheadController != null) overheadController.enabled = false;
         
-        Debug.Log("Switched to Follow view (reset to default)");
+        if (debugLog)
+        {
+            Debug.Log("Switched to Follow view (reset to default)");
+        }
     }
 
     // Attempts to find a Transform named followFocalPointName under the same top-level root as the
@@ -282,7 +292,10 @@ public class CameraViewManager : MonoBehaviour
         overheadController.heightAboveShip = 1000f; // per spec
         overheadController.SnapToShipCenter(); // This resets position and zoom to default
         
-        Debug.Log("Switched to Overhead view (reset to default)");
+        if (debugLog)
+        {
+            Debug.Log("Switched to Overhead view (reset to default)");
+        }
     }
 
     void CaptureZoomState(ViewMode mode)

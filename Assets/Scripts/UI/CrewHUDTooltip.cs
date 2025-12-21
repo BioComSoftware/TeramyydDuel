@@ -25,6 +25,8 @@ namespace Teramyyd.UI
         public Vector2 anchorOffset = Vector2.zero;
         [Tooltip("When enabled the tooltip canvas group ignores raycasts so it never blocks the underlying icons.")]
         public bool ignoreRaycasts = true;
+        [Tooltip("Enables debug logging to console and Logs/game_debug.log.")]
+        public bool debugLog = false;
 
         Canvas _canvas;
         CanvasGroup _canvasGroup;
@@ -63,23 +65,29 @@ namespace Teramyyd.UI
             if (root != null)
             {
                 root.transform.SetAsLastSibling();
-                string msg3b = $"[CrewHUDTooltip] Set tooltip as last sibling, new index={root.transform.GetSiblingIndex()}";
-                Debug.Log(msg3b);
-                FileLogger.Log(msg3b, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.Log($"[CrewHUDTooltip] Set tooltip as last sibling, new index={root.transform.GetSiblingIndex()}");
+                    FileLogger.Log($"Set tooltip as last sibling, new index={root.transform.GetSiblingIndex()}", "CrewHUD");
+                }
             }
 
             if (!PositionTooltipAtAnchor(anchor))
             {
-                string msg4 = $"[CrewHUDTooltip] PositionTooltipAtAnchor failed, hiding";
-                Debug.LogWarning(msg4);
-                FileLogger.Log(msg4, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUDTooltip] PositionTooltipAtAnchor failed, hiding");
+                    FileLogger.Log("PositionTooltipAtAnchor failed, hiding", "CrewHUD");
+                }
                 Hide(null);
                 return;
             }
             
-            string msg5 = $"[CrewHUDTooltip] Tooltip positioned successfully, populating data";
-            Debug.Log(msg5);
-            FileLogger.Log(msg5, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log("[CrewHUDTooltip] Tooltip positioned successfully, populating data");
+                FileLogger.Log("Tooltip positioned successfully, populating data", "CrewHUD");
+            }
 
             ApplyPortrait(portraitSprite);
 
@@ -124,9 +132,11 @@ namespace Teramyyd.UI
 
         public void Hide(object source)
         {
-            string msg = $"[CrewHUDTooltip] Hide called from {source?.GetType().Name ?? "null"}";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log($"[CrewHUDTooltip] Hide called from {source?.GetType().Name ?? "null"}");
+                FileLogger.Log($"Hide called from {source?.GetType().Name ?? "null"}", "CrewHUD");
+            }
             
             if (root != null)
             {
@@ -167,9 +177,11 @@ namespace Teramyyd.UI
             float max = health != null ? health.maxHealth : 0f;
             float healthPercent = (health != null && max > 0f) ? Mathf.Clamp01(current / max) : 0f;
 
-            string msg = $"[CrewHUDTooltip] ApplyHealthDetails: current={current}, max={max}, percent={healthPercent}, healthFill={(healthFill != null ? "assigned" : "NULL")}";
-            Debug.Log(msg);
-            FileLogger.Log(msg, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log($"[CrewHUDTooltip] ApplyHealthDetails: current={current}, max={max}, percent={healthPercent}, healthFill={(healthFill != null ? "assigned" : "NULL")}");
+                FileLogger.Log($"ApplyHealthDetails: current={current}, max={max}, percent={healthPercent}, healthFill={(healthFill != null ? "assigned" : "NULL")}", "CrewHUD");
+            }
 
             // Update health bar with green-to-red gradient
             if (healthFill != null)
@@ -179,9 +191,11 @@ namespace Teramyyd.UI
                 // Interpolate from green (100% health) to red (0% health)
                 healthFill.color = Color.Lerp(Color.red, Color.green, healthPercent);
                 
-                string msg2 = $"[CrewHUDTooltip] HealthFill updated: fillAmount={healthPercent}, color={healthFill.color}, type={healthFill.type}";
-                Debug.Log(msg2);
-                FileLogger.Log(msg2, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.Log($"[CrewHUDTooltip] HealthFill updated: fillAmount={healthPercent}, color={healthFill.color}, type={healthFill.type}");
+                    FileLogger.Log($"HealthFill updated: fillAmount={healthPercent}, color={healthFill.color}, type={healthFill.type}", "CrewHUD");
+                }
             }
         }
 
@@ -203,31 +217,39 @@ namespace Teramyyd.UI
 
         bool PositionTooltipAtAnchor(RectTransform anchor)
         {
-            string msg1 = $"[CrewHUDTooltip] PositionTooltipAtAnchor: _rect={_rect != null}, anchor={anchor != null}, canvas refs check...";
-            Debug.Log(msg1);
-            FileLogger.Log(msg1, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log($"[CrewHUDTooltip] PositionTooltipAtAnchor: _rect={_rect != null}, anchor={anchor != null}, canvas refs check...");
+                FileLogger.Log($"PositionTooltipAtAnchor: _rect={_rect != null}, anchor={anchor != null}, canvas refs check...", "CrewHUD");
+            }
             
             if (_rect == null)
             {
-                string msg2 = "[CrewHUDTooltip] PositionTooltipAtAnchor: _rect is null";
-                Debug.LogWarning(msg2);
-                FileLogger.Log(msg2, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUDTooltip] PositionTooltipAtAnchor: _rect is null");
+                    FileLogger.Log("PositionTooltipAtAnchor: _rect is null", "CrewHUD");
+                }
                 return false;
             }
             
             if (anchor == null)
             {
-                string msg3 = "[CrewHUDTooltip] PositionTooltipAtAnchor: anchor is null";
-                Debug.LogWarning(msg3);
-                FileLogger.Log(msg3, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[CrewHUDTooltip] PositionTooltipAtAnchor: anchor is null");
+                    FileLogger.Log("PositionTooltipAtAnchor: anchor is null", "CrewHUD");
+                }
                 return false;
             }
             
             if (!EnsureCanvasReferences())
             {
-                string msg4 = $"[CrewHUDTooltip] PositionTooltipAtAnchor: EnsureCanvasReferences failed - _canvas={_canvas != null}, _canvasRect={_canvasRect != null}";
-                Debug.LogWarning(msg4);
-                FileLogger.Log(msg4, "CrewHUD");
+                if (debugLog)
+                {
+                    Debug.LogWarning($"[CrewHUDTooltip] PositionTooltipAtAnchor: EnsureCanvasReferences failed - _canvas={_canvas != null}, _canvasRect={_canvasRect != null}");
+                    FileLogger.Log($"PositionTooltipAtAnchor: EnsureCanvasReferences failed - _canvas={_canvas != null}, _canvasRect={_canvasRect != null}", "CrewHUD");
+                }
                 return false;
             }
 
@@ -239,15 +261,18 @@ namespace Teramyyd.UI
                 return false;
             }
             
-            string parentInfo = $"[CrewHUDTooltip] Parent={tooltipParent.name}, anchoredPos={tooltipParent.anchoredPosition}, " +
-                               $"localPos={tooltipParent.localPosition}, pivot={tooltipParent.pivot}, anchorMin={tooltipParent.anchorMin}, anchorMax={tooltipParent.anchorMax}";
-            Debug.Log(parentInfo);
-            FileLogger.Log(parentInfo, "CrewHUD");
-            
-            string anchorInfo = $"[CrewHUDTooltip] Anchor={anchor.name}, anchoredPos={anchor.anchoredPosition}, " +
-                               $"pivot={anchor.pivot}, anchorMin={anchor.anchorMin}, anchorMax={anchor.anchorMax}";
-            Debug.Log(anchorInfo);
-            FileLogger.Log(anchorInfo, "CrewHUD");
+            if (debugLog)
+            {
+                string parentInfo = $"[CrewHUDTooltip] Parent={tooltipParent.name}, anchoredPos={tooltipParent.anchoredPosition}, " +
+                                   $"localPos={tooltipParent.localPosition}, pivot={tooltipParent.pivot}, anchorMin={tooltipParent.anchorMin}, anchorMax={tooltipParent.anchorMax}";
+                Debug.Log(parentInfo);
+                FileLogger.Log(parentInfo, "CrewHUD");
+                
+                string anchorInfo = $"[CrewHUDTooltip] Anchor={anchor.name}, anchoredPos={anchor.anchoredPosition}, " +
+                                   $"pivot={anchor.pivot}, anchorMin={anchor.anchorMin}, anchorMax={anchor.anchorMax}";
+                Debug.Log(anchorInfo);
+                FileLogger.Log(anchorInfo, "CrewHUD");
+            }
             
             // Get anchor's world position
             Vector3 anchorWorldPos = anchor.position;
@@ -263,40 +288,42 @@ namespace Teramyyd.UI
             Vector2 finalPos = anchor.anchoredPosition + anchorOffset;
             _rect.anchoredPosition = finalPos;
             
-            string msg5 = $"[CrewHUDTooltip] Matched anchor mode (min={anchor.anchorMin}, max={anchor.anchorMax}), pivot={anchor.pivot}, " +
-                         $"copied anchoredPos={anchor.anchoredPosition} + offset={anchorOffset} = final={finalPos}";
-            Debug.Log(msg5);
-            FileLogger.Log(msg5, "CrewHUD");
-            
-            string msg7 = $"[CrewHUDTooltip] PositionTooltipAtAnchor: SUCCESS - positioned at {finalPos}";
-            Debug.Log(msg7);
-            FileLogger.Log(msg7, "CrewHUD");
-            
-            // Additional diagnostics
-            string msg8 = $"[CrewHUDTooltip] Root active={root.activeSelf}, scale={root.transform.localScale}, " +
-                         $"canvasGroup={((_canvasGroup != null) ? $"alpha={_canvasGroup.alpha}, interactable={_canvasGroup.interactable}" : "null")}";
-            Debug.Log(msg8);
-            FileLogger.Log(msg8, "CrewHUD");
-            
-            string msg9 = $"[CrewHUDTooltip] Canvas size={_canvasRect.rect.size}, tooltip size={_rect.rect.size}, " +
-                         $"tooltip pivot={_rect.pivot}, sibling index={root.transform.GetSiblingIndex()}";
-            Debug.Log(msg9);
-            FileLogger.Log(msg9, "CrewHUD");
-            
-            // Check for background Image component
-            Image bgImage = root.GetComponent<Image>();
-            string msg10 = $"[CrewHUDTooltip] Root Image={bgImage != null}, " +
-                          (bgImage != null ? $"sprite={bgImage.sprite != null}, color={bgImage.color}, enabled={bgImage.enabled}" : "N/A");
-            Debug.Log(msg10);
-            FileLogger.Log(msg10, "CrewHUD");
-            
-            // Final check: world position and screen rect
-            Vector3[] worldCorners = new Vector3[4];
-            _rect.GetWorldCorners(worldCorners);
-            string msg11 = $"[CrewHUDTooltip] World corners: BL={worldCorners[0]}, TR={worldCorners[2]}, " +
-                          $"Root world pos={root.transform.position}, localScale={root.transform.localScale}";
-            Debug.Log(msg11);
-            FileLogger.Log(msg11, "CrewHUD");
+            if (debugLog)
+            {
+                Debug.Log($"[CrewHUDTooltip] Matched anchor mode (min={anchor.anchorMin}, max={anchor.anchorMax}), pivot={anchor.pivot}, " +
+                             $"copied anchoredPos={anchor.anchoredPosition} + offset={anchorOffset} = final={finalPos}");
+                FileLogger.Log($"Matched anchor mode (min={anchor.anchorMin}, max={anchor.anchorMax}), pivot={anchor.pivot}, " +
+                             $"copied anchoredPos={anchor.anchoredPosition} + offset={anchorOffset} = final={finalPos}", "CrewHUD");
+                
+                Debug.Log($"[CrewHUDTooltip] PositionTooltipAtAnchor: SUCCESS - positioned at {finalPos}");
+                FileLogger.Log($"PositionTooltipAtAnchor: SUCCESS - positioned at {finalPos}", "CrewHUD");
+                
+                // Additional diagnostics
+                Debug.Log($"[CrewHUDTooltip] Root active={root.activeSelf}, scale={root.transform.localScale}, " +
+                             $"canvasGroup={((_canvasGroup != null) ? $"alpha={_canvasGroup.alpha}, interactable={_canvasGroup.interactable}" : "null")}");
+                FileLogger.Log($"Root active={root.activeSelf}, scale={root.transform.localScale}, " +
+                             $"canvasGroup={((_canvasGroup != null) ? $"alpha={_canvasGroup.alpha}, interactable={_canvasGroup.interactable}" : "null")}", "CrewHUD");
+                
+                Debug.Log($"[CrewHUDTooltip] Canvas size={_canvasRect.rect.size}, tooltip size={_rect.rect.size}, " +
+                             $"tooltip pivot={_rect.pivot}, sibling index={root.transform.GetSiblingIndex()}");
+                FileLogger.Log($"Canvas size={_canvasRect.rect.size}, tooltip size={_rect.rect.size}, " +
+                             $"tooltip pivot={_rect.pivot}, sibling index={root.transform.GetSiblingIndex()}", "CrewHUD");
+                
+                // Check for background Image component
+                Image bgImage = root.GetComponent<Image>();
+                Debug.Log($"[CrewHUDTooltip] Root Image={bgImage != null}, " +
+                              (bgImage != null ? $"sprite={bgImage.sprite != null}, color={bgImage.color}, enabled={bgImage.enabled}" : "N/A"));
+                FileLogger.Log($"Root Image={bgImage != null}, " +
+                              (bgImage != null ? $"sprite={bgImage.sprite != null}, color={bgImage.color}, enabled={bgImage.enabled}" : "N/A"), "CrewHUD");
+                
+                // Final check: world position and screen rect
+                Vector3[] worldCorners = new Vector3[4];
+                _rect.GetWorldCorners(worldCorners);
+                Debug.Log($"[CrewHUDTooltip] World corners: BL={worldCorners[0]}, TR={worldCorners[2]}, " +
+                              $"Root world pos={root.transform.position}, localScale={root.transform.localScale}");
+                FileLogger.Log($"World corners: BL={worldCorners[0]}, TR={worldCorners[2]}, " +
+                              $"Root world pos={root.transform.position}, localScale={root.transform.localScale}", "CrewHUD");
+            }
             
             return true;
         }

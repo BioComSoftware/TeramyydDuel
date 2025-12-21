@@ -30,6 +30,10 @@ public class CrewManager : MonoBehaviour
     [Tooltip("When enabled, engines, lift devices, and weapon mounts will refuse to operate without the required crew assignments.")]
     public bool enforceCrewRequirements = false;
 
+    [Header("Debug")]
+    [Tooltip("Enables debug logging to console and Logs/game_debug.log.")]
+    public bool debugLog = false;
+
     const string CrewPortraitsPath = "UI/Crew";
 
     public IEnumerable<CrewMember> RegisteredCrew => _crewById.Values;
@@ -159,38 +163,48 @@ public class CrewManager : MonoBehaviour
             return false;
         }
 
-        string msg1 = $"[CrewManager] TryAssignCrewToStation: {crew.displayName} -> {station.stationId}";
-        Debug.Log(msg1);
-        FileLogger.Log(msg1, "CrewManager");
+        if (debugLog)
+        {
+            Debug.Log($"[CrewManager] TryAssignCrewToStation: {crew.displayName} -> {station.stationId}");
+            FileLogger.Log($"TryAssignCrewToStation: {crew.displayName} -> {station.stationId}", "CrewManager");
+        }
 
         if (!station.CanAssign(crew))
         {
-            string msg2 = $"[CrewManager] TryAssignCrewToStation: Station {station.stationId} cannot assign {crew.displayName}, queuing";
-            Debug.LogWarning(msg2);
-            FileLogger.Log(msg2, "CrewManager");
+            if (debugLog)
+            {
+                Debug.LogWarning($"[CrewManager] Station {station.stationId} cannot assign {crew.displayName}, queuing");
+                FileLogger.Log($"Station {station.stationId} cannot assign {crew.displayName}, queuing", "CrewManager");
+            }
             QueuePendingAssignment(crew, station.stationId);
             return false;
         }
 
-        string beforeStation = crew.AssignedStation?.stationId ?? "null";
-        string msg3 = $"[CrewManager] TryAssignCrewToStation: Before assignment - crew.AssignedStation = {beforeStation}";
-        Debug.Log(msg3);
-        FileLogger.Log(msg3, "CrewManager");
+        if (debugLog)
+        {
+            string beforeStation = crew.AssignedStation?.stationId ?? "null";
+            Debug.Log($"[CrewManager] Before assignment - crew.AssignedStation = {beforeStation}");
+            FileLogger.Log($"Before assignment - crew.AssignedStation = {beforeStation}", "CrewManager");
+        }
 
         RemoveFromCurrentStation(crew);
         station.AddCrewInternal(crew);
         _pendingCrewTargets.Remove(crew);
         
-        string afterStation = crew.AssignedStation?.stationId ?? "null";
-        string msg4 = $"[CrewManager] TryAssignCrewToStation: After AddCrewInternal - crew.AssignedStation = {afterStation}";
-        Debug.Log(msg4);
-        FileLogger.Log(msg4, "CrewManager");
+        if (debugLog)
+        {
+            string afterStation = crew.AssignedStation?.stationId ?? "null";
+            Debug.Log($"[CrewManager] After AddCrewInternal - crew.AssignedStation = {afterStation}");
+            FileLogger.Log($"After AddCrewInternal - crew.AssignedStation = {afterStation}", "CrewManager");
+        }
         
         CrewPersistenceManager.Instance.UpdateCrewAssignment(crew.crewId, station.stationId);
         
-        string msg5 = $"[CrewManager] TryAssignCrewToStation: SUCCESS - {crew.displayName} assigned to {station.stationId}";
-        Debug.Log(msg5);
-        FileLogger.Log(msg5, "CrewManager");
+        if (debugLog)
+        {
+            Debug.Log($"[CrewManager] SUCCESS - {crew.displayName} assigned to {station.stationId}");
+            FileLogger.Log($"SUCCESS - {crew.displayName} assigned to {station.stationId}", "CrewManager");
+        }
         return true;
     }
 
@@ -202,46 +216,58 @@ public class CrewManager : MonoBehaviour
             return false;
         }
 
-        string msg = $"[CrewManager] TryAssignCrewToStationId: {crew.displayName} -> {stationId}";
-        Debug.Log(msg);
-        FileLogger.Log(msg, "CrewManager");
+        if (debugLog)
+        {
+            Debug.Log($"[CrewManager] TryAssignCrewToStationId: {crew.displayName} -> {stationId}");
+            FileLogger.Log($"TryAssignCrewToStationId: {crew.displayName} -> {stationId}", "CrewManager");
+        }
 
         CrewStation station = null;
         if (_stationsById.TryGetValue(stationId, out station))
         {
             bool result = TryAssignCrewToStation(crew, station);
-            string resultMsg = $"[CrewManager] TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}";
-            Debug.Log(resultMsg);
-            FileLogger.Log(resultMsg, "CrewManager");
+            if (debugLog)
+            {
+                Debug.Log($"[CrewManager] TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}");
+                FileLogger.Log($"TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}", "CrewManager");
+            }
             return result;
         }
 
         // Station not registered, try to find it in the scene
-        string searchMsg = $"[CrewManager] Station {stationId} not registered, searching scene...";
-        Debug.LogWarning(searchMsg);
-        FileLogger.Log(searchMsg, "CrewManager");
+        if (debugLog)
+        {
+            Debug.LogWarning($"[CrewManager] Station {stationId} not registered, searching scene...");
+            FileLogger.Log($"Station {stationId} not registered, searching scene...", "CrewManager");
+        }
         
         var allStations = GetAllStationsIncludingInactive();
         foreach (var st in allStations)
         {
             if (st.stationId == stationId)
             {
-                string foundMsg = $"[CrewManager] Found station {stationId} in scene, registering it now";
-                Debug.Log(foundMsg);
-                FileLogger.Log(foundMsg, "CrewManager");
+                if (debugLog)
+                {
+                    Debug.Log($"[CrewManager] Found station {stationId} in scene, registering it now");
+                    FileLogger.Log($"Found station {stationId} in scene, registering it now", "CrewManager");
+                }
                 RegisterStation(st);
                 
                 bool result = TryAssignCrewToStation(crew, st);
-                string resultMsg = $"[CrewManager] TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}";
-                Debug.Log(resultMsg);
-                FileLogger.Log(resultMsg, "CrewManager");
+                if (debugLog)
+                {
+                    Debug.Log($"[CrewManager] TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}");
+                    FileLogger.Log($"TryAssignCrewToStationId: Result = {result}, crew.AssignedStation = {crew.AssignedStation?.stationId ?? "null"}", "CrewManager");
+                }
                 return result;
             }
         }
 
-        string queueMsg = $"[CrewManager] Station {stationId} not found anywhere, queuing pending assignment for {crew.displayName}";
-        Debug.LogWarning(queueMsg);
-        FileLogger.Log(queueMsg, "CrewManager");
+        if (debugLog)
+        {
+            Debug.LogWarning($"[CrewManager] Station {stationId} not found anywhere, queuing pending assignment for {crew.displayName}");
+            FileLogger.Log($"Station {stationId} not found anywhere, queuing pending assignment for {crew.displayName}", "CrewManager");
+        }
         QueuePendingAssignment(crew, stationId);
         return false;
     }
@@ -251,17 +277,21 @@ public class CrewManager : MonoBehaviour
         if (crew == null)
             return;
 
-        string beforeStation = crew.AssignedStation?.stationId ?? "null";
-        string msg = $"[CrewManager] UnassignCrew: {crew.displayName}, AssignedStation before = {beforeStation}";
-        Debug.Log(msg);
-        FileLogger.Log(msg, "CrewManager");
+        if (debugLog)
+        {
+            string beforeStation = crew.AssignedStation?.stationId ?? "null";
+            Debug.Log($"[CrewManager] UnassignCrew: {crew.displayName}, AssignedStation before = {beforeStation}");
+            FileLogger.Log($"UnassignCrew: {crew.displayName}, AssignedStation before = {beforeStation}", "CrewManager");
+        }
 
         RemoveFromCurrentStation(crew);
         
-        string afterStation = crew.AssignedStation?.stationId ?? "null";
-        string msg2 = $"[CrewManager] UnassignCrew: {crew.displayName}, AssignedStation after = {afterStation}";
-        Debug.Log(msg2);
-        FileLogger.Log(msg2, "CrewManager");
+        if (debugLog)
+        {
+            string afterStation = crew.AssignedStation?.stationId ?? "null";
+            Debug.Log($"[CrewManager] UnassignCrew: {crew.displayName}, AssignedStation after = {afterStation}");
+            FileLogger.Log($"UnassignCrew: {crew.displayName}, AssignedStation after = {afterStation}", "CrewManager");
+        }
         
         // Force immediate save to prevent race conditions with UI refresh
         CrewPersistenceManager.Instance.UpdateCrewAssignment(crew.crewId, string.Empty, forceSave: true);
@@ -354,9 +384,11 @@ public class CrewManager : MonoBehaviour
         // Load all sprites from the UI/Crew folder in Resources
         Sprite[] portraits = Resources.LoadAll<Sprite>(CrewPortraitsPath);
         
-        string msg = $"[CrewManager] Loaded {portraits.Length} crew portraits from Resources/{CrewPortraitsPath}";
-        Debug.Log(msg);
-        FileLogger.Log(msg, "CrewManager");
+        if (debugLog)
+        {
+            Debug.Log($"[CrewManager] Loaded {portraits.Length} crew portraits from Resources/{CrewPortraitsPath}");
+            FileLogger.Log($"Loaded {portraits.Length} crew portraits from Resources/{CrewPortraitsPath}", "CrewManager");
+        }
         
         foreach (Sprite sprite in portraits)
         {
@@ -366,9 +398,11 @@ public class CrewManager : MonoBehaviour
             // The sprite name should match the crewId (e.g., "crew_ryn_calder")
             _portraitLookup[sprite.name] = sprite;
             
-            string spriteMsg = $"[CrewManager] Registered portrait: {sprite.name}";
-            Debug.Log(spriteMsg);
-            FileLogger.Log(spriteMsg, "CrewManager");
+            if (debugLog)
+            {
+                Debug.Log($"[CrewManager] Registered portrait: {sprite.name}");
+                FileLogger.Log($"Registered portrait: {sprite.name}", "CrewManager");
+            }
         }
     }
 

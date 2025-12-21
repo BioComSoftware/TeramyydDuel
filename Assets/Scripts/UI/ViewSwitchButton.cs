@@ -18,6 +18,9 @@ public class ViewSwitchButton : MonoBehaviour
     [Header("View Configuration")]
     [Tooltip("Which view this button switches to")]
     public ViewType targetView = ViewType.Bridge;
+
+    [Tooltip("Enables debug logging to console.")]
+    public bool debugLog = false;
     
     private Button button;
     private CameraViewManager viewManager;
@@ -43,15 +46,24 @@ public class ViewSwitchButton : MonoBehaviour
         {
             case ViewType.Bridge:
                 viewManager.ApplyMode(CameraViewManager.ViewMode.Bridge);
-                Debug.Log("Switched to Bridge view");
+                if (debugLog)
+                {
+                    Debug.Log("Switched to Bridge view");
+                }
                 break;
             case ViewType.Follow:
                 viewManager.ApplyMode(CameraViewManager.ViewMode.Follow);
-                Debug.Log("Switched to Follow view");
+                if (debugLog)
+                {
+                    Debug.Log("Switched to Follow view");
+                }
                 break;
             case ViewType.Overhead:
                 viewManager.ApplyMode(CameraViewManager.ViewMode.Overhead);
-                Debug.Log("Switched to Overhead view");
+                if (debugLog)
+                {
+                    Debug.Log("Switched to Overhead view");
+                }
                 break;
         }
     }
