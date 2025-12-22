@@ -28,6 +28,9 @@ public class CameraOrbitMove : MonoBehaviour
     public float minFOV = 20f;
     public float maxFOV = 70f;
 
+    [Header("Debug")]
+    public bool enableDebugLogging = false;
+
     private Camera cam;
 
     void Awake()
@@ -41,12 +44,21 @@ public class CameraOrbitMove : MonoBehaviour
         distance = startDistance;
         yaw = startYaw;
         pitch = startPitch;
+        if (enableDebugLogging)
+        {
+            Debug.Log($"[CameraOrbitMove] SetTarget: distance={distance:F2}, minDist={minDistance:F2}, maxDist={maxDistance:F2}");
+        }
         Reposition();
     }
 
     void Update()
     {
         if (target == null) return;
+
+        if (enableDebugLogging)
+        {
+            Debug.Log($"[CameraOrbitMove] Update: useFOVZoom={useFOVZoom}, distance={distance:F2}, FOV={cam?.fieldOfView:F2}");
+        }
 
         KeyBindingConfig kb = KeyBindingConfig.Instance;
         bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
@@ -92,6 +104,10 @@ public class CameraOrbitMove : MonoBehaviour
             // Keyboard Ctrl+Arrow zoom
             zoomDelta = v;
             zoomInput = true;
+            if (enableDebugLogging)
+            {
+                Debug.Log($"[CameraOrbitMove] Ctrl+Arrow zoom: v={v:F2}, zoomDelta={zoomDelta:F2}, currentDistance={distance:F2}");
+            }
         }
         else if (kb != null)
         {
@@ -128,8 +144,14 @@ public class CameraOrbitMove : MonoBehaviour
             }
             else
             {
+                float oldDistance = distance;
                 distance += -zoomDelta * zoomSpeed * Time.deltaTime; // Positive delta -> closer
-                distance = Mathf.Clamp(distance, minDistance, maxDistance);
+                float clampedDistance = Mathf.Clamp(distance, minDistance, maxDistance);
+                if (enableDebugLogging)
+                {
+                    Debug.Log($"[CameraOrbitMove] Zoom: delta={zoomDelta:F2}, zoomSpeed={zoomSpeed:F1}, deltaTime={Time.deltaTime:F4}, oldDist={oldDistance:F2}, newDist={distance:F2}, clamped={clampedDistance:F2}, min={minDistance:F1}, max={maxDistance:F1}");
+                }
+                distance = clampedDistance;
             }
             // Defer actual reposition to LateUpdate so we always follow a moving target
             return;

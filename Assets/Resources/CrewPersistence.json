@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-22T11:07:09.3336256Z",
+    "lastSavedUtc": "2025-12-22T12:06:18.8677918Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -11,7 +11,7 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.1133694648742676,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 0.0,
             "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
         },
         {
@@ -23,7 +23,7 @@
             "powerEngineering": 8.4495267868042,
             "liftEngineering": 6.140933990478516,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 0.0,
             "assignedStationId": "Bow_weapon_mount_01_crew_slot"
         },
         {
@@ -48,7 +48,7 @@
             "liftEngineering": 1.4614014625549317,
             "maxHealth": 10.0,
             "currentHealth": 4.0,
-            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
+            "assignedStationId": "Starboard_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_jeruka_thudd",
@@ -80,7 +80,7 @@
             "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 3.4621708393096926,
+            "powerEngineering": 4.831523895263672,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
@@ -89,19 +89,19 @@
         {
             "crewId": "crew_philomena_crummings",
             "displayName": "Philomena Crummings",
-            "gunnery": 2.43999981880188,
+            "gunnery": 10.0,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 6.8880181312561039,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
-            "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
+            "currentHealth": 7.0,
+            "assignedStationId": "Aft_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_susie_anna_bammshee",
             "displayName": "Susie Anna Bammshee",
-            "gunnery": 1.4399995803833008,
+            "gunnery": 8.600007057189942,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
@@ -119,8 +119,8 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
-            "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
+            "currentHealth": 7.0,
+            "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
         }
     ]
 }

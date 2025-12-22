@@ -51,9 +51,6 @@ public class CameraViewManager : MonoBehaviour
     [Tooltip("Yaw to face when entering Overhead view")] 
     public float overheadDefaultYaw = 0f;
 
-    [Tooltip("If true, use FOV-based zoom in all modes to keep HUD stable")]
-    public bool forceFOVZoom = true;
-
     [Header("Zoom Memory")]
     [Tooltip("Store a separate zoom level for each camera view so switching modes restores the last-used zoom for that view.")]
     public bool rememberZoomPerView = true;
@@ -107,8 +104,6 @@ public class CameraViewManager : MonoBehaviour
         if (cameraMove == null && mainCamera != null) cameraMove = mainCamera.GetComponent<CameraMove>();
         if (cameraOrbit == null && mainCamera != null) cameraOrbit = mainCamera.GetComponent<CameraOrbitMove>();
     if (overheadController == null && mainCamera != null) overheadController = mainCamera.GetComponent<OverheadViewController>();
-
-        if (forceFOVZoom && cameraMove != null) cameraMove.useFOVZoom = true;
 
         // Initialize to whatever mode is selected in inspector
         ApplyMode(currentMode, true);
@@ -176,7 +171,6 @@ public class CameraViewManager : MonoBehaviour
         {
             cameraMove.enabled = true;
             cameraMove.ClearOrbitTarget();
-            cameraMove.useFOVZoom = forceFOVZoom || cameraMove.useFOVZoom;
             cameraMove.RebaselineFromCurrent(); // This resets position and zoom to baseline
         }
         if (cameraOrbit != null) cameraOrbit.enabled = false;
@@ -232,7 +226,6 @@ public class CameraViewManager : MonoBehaviour
         if (cameraOrbit != null)
         {
             cameraOrbit.enabled = true;
-            cameraOrbit.useFOVZoom = forceFOVZoom || cameraOrbit.useFOVZoom;
             cameraOrbit.SetTarget(followTarget, dist, yawAngle, pitchAngle); // This already resets position/angle
         }
         if (cameraMove != null) cameraMove.enabled = false;
