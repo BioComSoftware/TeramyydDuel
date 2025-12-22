@@ -90,7 +90,7 @@ public class CameraOrbitMove : MonoBehaviour
         if (ctrl && (v != 0f) && !mouseControlActive)
         {
             // Keyboard Ctrl+Arrow zoom
-            zoomDelta = -v;
+            zoomDelta = v;
             zoomInput = true;
         }
         else if (kb != null)

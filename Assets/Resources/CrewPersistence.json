@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-22T10:57:02.8790563Z",
+    "lastSavedUtc": "2025-12-22T11:07:09.3336256Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -80,7 +80,7 @@
             "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 3.329235792160034,
+            "powerEngineering": 3.4621708393096926,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
