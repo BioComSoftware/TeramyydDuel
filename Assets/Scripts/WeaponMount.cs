@@ -121,16 +121,18 @@ public class WeaponMount : MonoBehaviour
         if (!ignoreTargetLock && !IsTargetFullyAcquired)
             return false;
 
-        // Apply lead targeting adjustments just before firing
+        // Snap to firing position immediately before firing
+        // Apply lead targeting adjustments if enabled
         if (useLeadTargeting && targetingController != null && targetingController.CurrentTarget != null)
         {
             ApplyLeadTargetingAdjustment(targetingController.CurrentTarget.transform);
         }
         else
         {
-            // Snap to ballistic pitch immediately before firing (no lead adjustment)
+            // Snap to ballistic solution (yaw and pitch) immediately before firing
             if (_hasAimSolution)
             {
+                _yaw = _aimYawTarget;
                 _pitch = _aimPitchTarget;
                 ApplyRotations();
             }
@@ -319,12 +321,10 @@ public class WeaponMount : MonoBehaviour
         if (!_hasAimSolution)
             return;
 
-        // Only track yaw continuously - pitch remains at last firing angle
-        // Pitch will snap to firing solution immediately before firing
-        float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
-        _yaw = Mathf.MoveTowards(_yaw, _aimYawTarget, yawStep);
-        ApplyRotations();
-
+        // DO NOT move the cannon here - calculations only
+        // Cannon will snap to firing position in TryFire() immediately before firing
+        // Store the solution but don't apply rotations
+        
         if (currentLauncher != null)
         {
             currentLauncher.SetRuntimeLaunchSpeed(_aimLaunchSpeed);
@@ -417,6 +417,7 @@ public class WeaponMount : MonoBehaviour
 
         bool horizontalLock = HasHorizontalLock;
         bool ballisticLock = _hasBallisticInterceptSolution;
+        bool hasTarget = HasSelectedTarget;
 
         if (_hasLoggedAcquisitionState &&
             horizontalLock == _lastLoggedHorizontalLock &&
@@ -426,8 +427,55 @@ public class WeaponMount : MonoBehaviour
         }
 
         GetYawEdgeMetrics(out float halfYaw, out float buffer, out float effectiveLimit);
-        string status = $"{mountId}: acquisition horizontal={horizontalLock} ballistic={ballisticLock} yaw={_yaw:F1}deg limit={effectiveLimit:F1}deg (half={halfYaw:F1}deg buffer={buffer:F1}deg)";
-        LogDebug(status);
+        
+        // Enhanced diagnostics when target is not acquired
+        string status;
+        if (hasTarget && (!horizontalLock || !ballisticLock))
+        {
+            // Target selected but not fully acquired - log detailed reasons
+            status = $"{mountId}: TARGET NOT ACQUIRED - horizontal={horizontalLock} ballistic={ballisticLock}";
+            LogDebug(status);
+            
+            // Log specific failure reasons
+            if (!horizontalLock)
+            {
+                float yawToTarget = _aimYawTarget;
+                bool yawInLimits = Mathf.Abs(_yaw) <= effectiveLimit;
+                bool yawAligned = Mathf.Abs(Mathf.DeltaAngle(_yaw, _aimYawTarget)) < 2f;
+                
+                LogDebug($"  → Horizontal Lock FAILED: currentYaw={_yaw:F1}° targetYaw={yawToTarget:F1}° withinLimits={yawInLimits} aligned={yawAligned} (limit=±{effectiveLimit:F1}°)");
+            }
+            
+            if (!ballisticLock)
+            {
+                if (targetingController != null && targetingController.CurrentTarget != null)
+                {
+                    Transform target = targetingController.CurrentTarget.transform;
+                    Transform muzzle = (currentLauncher != null && currentLauncher.spawnPoint != null) ? currentLauncher.spawnPoint : pitchBarrel;
+                    
+                    if (muzzle != null)
+                    {
+                        Vector3 displacement = target.position - muzzle.position;
+                        float distance = displacement.magnitude;
+                        float horizontalDist = new Vector3(displacement.x, 0, displacement.z).magnitude;
+                        float verticalOffset = displacement.y;
+                        
+                        string speedInfo = currentLauncher != null ? $"speed={currentLauncher.launchSpeed:F1} min={currentLauncher.minimumLaunchSpeed:F1}" : "no launcher";
+                        LogDebug($"  → Ballistic Solution FAILED: distance={distance:F1}m (H:{horizontalDist:F1}m V:{verticalOffset:F1}m) {speedInfo} pitch=±{pitchUpDeg:F1}/{pitchDownDeg:F1}°");
+                    }
+                }
+                else
+                {
+                    LogDebug($"  → Ballistic Solution FAILED: No target available");
+                }
+            }
+        }
+        else
+        {
+            // Standard status logging
+            status = $"{mountId}: acquisition horizontal={horizontalLock} ballistic={ballisticLock} yaw={_yaw:F1}deg limit={effectiveLimit:F1}deg (half={halfYaw:F1}deg buffer={buffer:F1}deg)";
+            LogDebug(status);
+        }
 
         _hasLoggedAcquisitionState = true;
         _lastLoggedHorizontalLock = horizontalLock;
@@ -559,25 +607,27 @@ public class WeaponMount : MonoBehaviour
         {
             float testPitchDeg = -maxPitchUpDeg + (i * pitchStep); // Start negative (up), go to positive (down)
             
-            // CRITICAL: Negate the angle for physics calculations
-            // Unity: negative = up, positive = down
-            // Physics: positive = up, negative = down
+            // Convert to physics angle (Unity: negative=up, positive=down; Physics: positive=up, negative=down)
             float physicsAngleRad = -testPitchDeg * Mathf.Deg2Rad;
+            float sinTheta = Mathf.Sin(physicsAngleRad);
             float cosTheta = Mathf.Cos(physicsAngleRad);
-            float tanTheta = Mathf.Tan(physicsAngleRad);
             
-            // Calculate required launch speed at this pitch angle
-            // Using projectile motion: h = R*tan(θ) - (g*R²)/(2*v²*cos²(θ))
-            // Solving for v: v² = (g*R²)/(2*cos²(θ)*(R*tan(θ) - h))
+            // Ballistic trajectory formula:
+            // y = x*tan(θ) - (g*x²)/(2*v²*cos²(θ))
+            // Where: y = verticalOffset, x = horizontalDistance, θ = launch angle, v = launch speed, g = gravity
+            // Solving for v²: v² = (g*x²)/(2*cos²(θ)*(x*tan(θ) - y))
+            //
+            // But this formula fails when shooting downward at targets below. Use alternative:
+            // From kinematic equations: v² = (g*x²)/(2*(x*sinθ - y*cosθ)*cosθ)
+            // This works for all angles (up, down, level)
             
-            float verticalTerm = horizontalDistance * tanTheta - verticalOffset;
+            float denominator = 2f * (horizontalDistance * sinTheta - verticalOffset * cosTheta) * cosTheta;
             
-            // Skip if we can't reach the target altitude at this angle
-            if (verticalTerm <= 0f)
+            // Skip if denominator is too small or negative (no solution at this angle)
+            if (denominator <= 0.001f)
                 continue;
             
-            float cos2 = cosTheta * cosTheta;
-            float requiredSpeed2 = (gravityMag * horizontalDistance * horizontalDistance) / (2f * cos2 * verticalTerm);
+            float requiredSpeed2 = (gravityMag * horizontalDistance * horizontalDistance) / denominator;
             
             if (requiredSpeed2 <= 0f)
                 continue;
@@ -602,7 +652,33 @@ public class WeaponMount : MonoBehaviour
             // No valid firing solution found at any pitch angle
             if (enableDebugLogging)
             {
-                LogDebug($"CHECK 2 FAILED: No valid pitch angle found. Speed range=[{minSpeed:F1}, {maxSpeed:F1}] Pitch range=[{-maxPitchUpDeg:F1}, {maxPitchDownDeg:F1}]° H={horizontalDistance:F1}m V={verticalOffset:F1}m");
+                LogDebug($"CHECK 2 FAILED: No valid pitch angle found. Speed range=[{minSpeed:F1}, {maxSpeed:F1}] Pitch range=[{-maxPitchUpDeg:F1}, {maxPitchDownDeg:F1}]° H={horizontalDistance:F1}m V={verticalOffset:F1}m gravity={gravityMag:F2}");
+                // Log why each pitch angle failed
+                for (int i = 0; i <= numSegments; i++)
+                {
+                    float testPitchDeg = -maxPitchUpDeg + (i * pitchStep);
+                    float physicsAngleRad = -testPitchDeg * Mathf.Deg2Rad;
+                    float sinTheta = Mathf.Sin(physicsAngleRad);
+                    float cosTheta = Mathf.Cos(physicsAngleRad);
+                    float denominator = 2f * (horizontalDistance * sinTheta - verticalOffset * cosTheta) * cosTheta;
+                    
+                    if (denominator <= 0.001f)
+                    {
+                        LogDebug($"  Pitch {testPitchDeg:F1}°: denominator={denominator:F4} (TOO SMALL - no ballistic solution)");
+                        continue;
+                    }
+                    
+                    float requiredSpeed2 = (gravityMag * horizontalDistance * horizontalDistance) / denominator;
+                    
+                    if (requiredSpeed2 <= 0f)
+                    {
+                        LogDebug($"  Pitch {testPitchDeg:F1}°: requiredSpeed2={requiredSpeed2:F2} (NEGATIVE)");
+                        continue;
+                    }
+                    
+                    float requiredSpeed = Mathf.Sqrt(requiredSpeed2);
+                    LogDebug($"  Pitch {testPitchDeg:F1}°: needs {requiredSpeed:F1} m/s (range: {minSpeed:F1}-{maxSpeed:F1})");
+                }
             }
             yaw = solutionYaw;
             pitch = -maxPitchUpDeg; // Negative = pitch up (default to max)
