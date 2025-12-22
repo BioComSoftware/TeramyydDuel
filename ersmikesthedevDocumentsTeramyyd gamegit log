@@ -1,0 +1,1073 @@
+[33mcommit 498309e18300d5a5a1b25db5cd2497afb5e8c653[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mtargetAction[m[33m, [m[1;31morigin/targetAction[m[33m)[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Dec 22 10:48:02 2025 +0100
+
+    SAVEPOINT before revamping projectile targeting system.
+
+[33mcommit cdd88db33342fb5e6a3aa7806f2f531cab8de247[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 21:06:28 2025 +0100
+
+    Fixed crewmembers not taking damage
+
+[33mcommit d171e7251b1721da485c9a42fdf94a2b6b63d5a2[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 20:17:16 2025 +0100
+
+    Corrected colliders for the current engine and lift device
+
+[33mcommit bbc686578dcb1b9354409dd13874b66d47c942d7[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 18:56:13 2025 +0100
+
+    Fixed ship compnents not taking damage
+
+[33mcommit 1e24a77490de4761ab86cfec8083647dc4115271[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 17:00:45 2025 +0100
+
+    Added inspector settings for the cannonball shrapnel damage and lifetime.
+
+[33mcommit c7d7a8be0e479c95875aaf736aca491e33d18153[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 16:51:29 2025 +0100
+
+    Added movement tracking (firing lead) to Ships targeting
+
+[33mcommit 8809a1e7143d92dad31718363c3bc8fcabfb64cd[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 16:23:08 2025 +0100
+
+    Added movement tracking (firing lead) to Target's (only) firing solution
+
+[33mcommit dac27ad416ec5caf1b9373ee0d1a9c12fb4ea563[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 15:56:06 2025 +0100
+
+    Cannon and targeting solutin added to Target object.
+
+[33mcommit 4df3b1b793d3f90d2b555b15dd1ddd5ae4186536[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 13:19:42 2025 +0100
+
+    Fixed the cannon prefab
+
+[33mcommit a43ba945020f7b5ba8d5216f64ea7ea422f6bbec[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 13:12:36 2025 +0100
+
+    Removed a lot of extraneous uncntroller loggin. SAVEPOINT before allowing AI to modify the cannon prefab
+
+[33mcommit 332d6a578ed2273274ccd2d29bedd939372b9671[m[33m ([m[1;31morigin/SettingsHUD[m[33m, [m[1;32mSettingsHUD[m[33m)[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 21 12:20:15 2025 +0100
+
+    Added cannon to the Target object, and have the Target rotating to point the cannon at teh ship
+
+[33mcommit aa95184a40d7b6c8a210928095f91d271b0fbd14[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 20:59:21 2025 +0100
+
+    SAVEPOINT Cleanup before starting living target
+
+[33mcommit 3c13af02c4d8b2262acac793345accea2e8c5567[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 20:41:38 2025 +0100
+
+    Made CrewHUDCrewIcon into a prefab
+
+[33mcommit 273ac325b8113c35aa0840e6bbb2fd82593b2d0c[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 20:39:48 2025 +0100
+
+    Made CrewHUDCrewIcon into a prefab
+
+[33mcommit 16727421d568436b75d54aff42844ac84dfe402a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 20:18:21 2025 +0100
+
+    Added placeholders to Audi and Video Settings page
+
+[33mcommit 8a6866227f4b6095010a77173a43de5213043991[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 19:40:43 2025 +0100
+
+    Changed invert mouse settings for controls settings page
+
+[33mcommit 43c24f9747f82ac5ff1ee42e39bbcf4561335afa[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 19:23:40 2025 +0100
+
+    Adjusted mouse scroll whell drpdown settings
+
+[33mcommit dc2d94dff17272fb18f35b7f2686e193d649f79a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 19:02:13 2025 +0100
+
+    Added mouse controls to controls settings page
+
+[33mcommit 3b817fd73388c25aa762aed2164c728ff052d96e[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 14:44:00 2025 +0100
+
+    Completed the Conrtols settings page and tested. Does not include mouse settings yet.
+
+[33mcommit 0a304e548d64d031b083b929f8bef50e449c1356[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 20 12:09:21 2025 +0100
+
+    BACKUP SAVEPOINT before changing how the cntrols json stores the ctrl and shift (etc) modifier keys.
+
+[33mcommit 4c5b8d8b173932ca33d392d061d6ed0fb329d420[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Dec 15 16:04:20 2025 +0100
+
+    Chnaged all settings buttons from TextPro to images
+
+[33mcommit e93f5a6c104c601dd34fd3a804a2f0c7bdaad136[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Dec 15 15:25:11 2025 +0100
+
+    Chnaged TextPro buttons 'Settings' and 'Controls' to images
+
+[33mcommit 7e12714784003d714bf4fbea72aa62609fd01e7d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 14 16:21:43 2025 +0100
+
+    added basic settings panels. need configuration
+
+[33mcommit eefc6d7e03ad57fd1e5f242bb38cfbd1daef017b[m[33m ([m[1;31morigin/KeyboardControls[m[33m, [m[1;32mmaster[m[33m, [m[1;32mKeyboardControls[m[33m)[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 14 00:33:44 2025 +0100
+
+    Fixed CrewPersistance.json and multiple spawning of CrewMember_Defaul.prefab
+
+[33mcommit b2dfc7dbdb68073ee281a707778ea7e85adfaacd[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 14 00:09:35 2025 +0100
+
+    Fixed CrewPersistance.json and multiple spawning of CrewMember_Defaul.prefab
+
+[33mcommit 48f2b3755b385dae911c151f3b438ac75904e380[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 23:47:39 2025 +0100
+
+    Fixed and simplified the LPLS calculation again because I changed the cannon prefab and it fucked everything up. Now its calculating the best speed at various pitches. Can fir at range and very, very close.
+
+[33mcommit c6cc4f0debb5e2f6ecfae6aa116e5c7fb3578551[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 23:22:07 2025 +0100
+
+    Fixed and simplified the LPLS calculation again because I changed the cannon prefab and it fucked everything up. Currently it always launched at max pitch up and just calculated the launch speed"
+
+[33mcommit 47118bc391c6656370cdd7a4163c318d34395baa[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 21:58:19 2025 +0100
+
+    Chnaged crew potraits for both CrewHUDCrewIcon and the tooltip t find the image automagically by sprite name matching the CrewID
+
+[33mcommit 0c44f2dc730adf3baa76a161b093f895c55e13b5[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 20:45:28 2025 +0100
+
+    Added basic message and warning system
+
+[33mcommit dd23e61f417a56bf898078d51d9097f84b28ba08[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 19:23:19 2025 +0100
+
+    Fixed the single dual cannon readiness issue.
+
+[33mcommit 38396c954d112000b7bfc97ceb2ac209b59d45ea[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 19:11:06 2025 +0100
+
+    Fixed crewpersitance for station assignments.
+
+[33mcommit d61d4edb72642e99956fa4340cc129ced5baa9e0[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 18:51:22 2025 +0100
+
+    Set keys 'q', ctrl+q, shift+q, ctrl+shift+q, ctrl-e, shift-e, crtl+e, and shift+ctrl+e
+
+[33mcommit 2f82610dfa8e8a8cc98c9c3525c2f294b7b389ff[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 18:43:12 2025 +0100
+
+    Set keys 'a', ctrl+a, shift+a, ctrl+shift+a, ctrl-d, shift-d, crtl+d, and shift+ctrl+d to  to left and right ShipWheel
+
+[33mcommit d1b09df49db477219ab05af82e9080b1f7f2faa5[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 16:04:24 2025 +0100
+
+    Set keys 'a', ctrl+a, shift+a, 's', ctrl-s, and shift-s to control the engine chadburn (forward backward engine speed)
+
+[33mcommit e49a19f45d01a4104aee29f10baf1e061df79af4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 12:31:02 2025 +0100
+
+    Moved Unity editor keybinding defaults references for keybindings to DefaultKeybinding script
+
+[33mcommit 664694e4f26b78fdd1109897d8019117eb585a1d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 13 11:52:14 2025 +0100
+
+    Validtae the keyboard controls are correct and removed unused key code.
+
+[33mcommit 44fd22cd09b7c03d7d4400e89fe31c2f74b42547[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 12 22:32:02 2025 +0100
+
+    Fixed the order f the firing solutin calculation; Yaw, then LPLS, then direct on.
+
+[33mcommit 41b72eb3bf7d76f3f092e49aa9cfadb97edbbeaf[m[33m ([m[1;31morigin/FixingLiftandSpeed[m[33m, [m[1;32mFixingLiftandSpeed[m[33m)[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 12 17:00:28 2025 +0100
+
+    Added game world crew anchors for unassigned crew (I.e. sitting in the hull on standby.)
+
+[33mcommit 222711c6e4b96869546875357eb5c80f10b68c1a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 12 15:38:00 2025 +0100
+
+    Added crew assignment munts for the engine and lift. TEsted.
+
+[33mcommit b5cda46af9b302d2409ef9356a868b3629abd2a4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 12 12:59:33 2025 +0100
+
+    Adjusted the close range targeting correction so that the check with direct pointing at the target firing only happens after all lobbing arc calculations have been tried
+
+[33mcommit ced41553e02dd7fd345dcc2097c5ae33398a4f01[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 12 12:48:36 2025 +0100
+
+    Changed the CrewStatinRequirementProfile to handle different methods of acrruing crew experience
+
+[33mcommit ce19dee6c7abab30bc0126747596aef9227b4dee[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 22:09:50 2025 +0100
+
+    Rearranged the locatin of the prefabs
+
+[33mcommit fba5d9f32e0ea499c1cb328af801d522352f7e6e[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 21:30:03 2025 +0100
+
+    Moved the main HUD_Canvas directly under the 'Ship' so that the canvas goes with the ship prefab (when its created.)
+
+[33mcommit 2878337f227bd170e4382f399fb6320cfe3a9ac3[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 21:25:10 2025 +0100
+
+    Rearranged the unassigned crew canvas to a fixed position directly under the HUD_Root
+
+[33mcommit 2d3dcce41133dbba6b9cdcc2dfc1f7fe66a3ea45[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 20:33:49 2025 +0100
+
+    Refactored the code to move the Crew Requirements for a mount to the mount itself.
+
+[33mcommit 6c3e415887460a72e6b9f0c326b7c53baf7d93b8[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 19:11:00 2025 +0100
+
+    Refactored the crew min and max to the objects themselves, not Weapon Mount, but the CrewHUDCrewIcons got screwed up
+
+[33mcommit ed177e7aaba31f03335e0a534e1cf0778acf9773[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 16:40:11 2025 +0100
+
+     SAVEPOINT BEFORE SCREWING ARUND WITH THE CREW STATIN STUFF
+
+[33mcommit 2a5b1d2fb378a4b94a36703cdbf3c139371823d5[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 16:10:09 2025 +0100
+
+    Removed the 'TEsting (optional) section with fields autoPopulatePrefab and autoPopulateOnStart from the script Weapon Mount
+
+[33mcommit 442e6b4bb463db8497082f4e02c414875a5eccb7[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 15:47:36 2025 +0100
+
+    Removed Fields: debugKeypadControl, yawSpeedDegPerSec, and pitchSpeedDegPerSec from weaponMount script.
+
+[33mcommit 6ce5fd3b0178193b3ace00b448e571a9345c5137[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 15:27:11 2025 +0100
+
+    Fixed the Fire at Will not affecting all weapons.
+
+[33mcommit eac2a2526a3cf53b2bbcf1115044b43417cd6762[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 15:16:42 2025 +0100
+
+    Updated all weapon mounts for automatic crew anchor mounts and to autopopulated the CrewMember_Default.prefab"
+
+[33mcommit 266c6a881ce3d505ef247901eb5f44f32ebe202a[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;31morigin/AddingCrew[m[33m, [m[1;32mAddingCrew[m[33m)[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 11 11:32:01 2025 +0100
+
+    Fixed very close target TargetAcquisition
+
+[33mcommit e3b95b8882e524f8896079fa2543b5b3613c0db1[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Dec 10 18:18:17 2025 +0100
+
+    Fixed the number of crew mounts being generated. Made WeaponMount.Default Crew Required and WeaponMount.Default Crew Max the single, authoritative source. No fallbacks, no hidden defaults.
+
+[33mcommit 842fb5e51069caf5040359af3f484e22997efc72[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Dec 10 17:28:23 2025 +0100
+
+    Fixed the targetNotAcquired sending False (and the cannon firing) when the cannon is pointed exactly 180 degrees opposite to the target.
+
+[33mcommit e56e29d7898f6105a32f4b89d423d3f31bddf108[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Dec 10 17:09:51 2025 +0100
+
+    Fixed the targetNotAcquired bug. Targeting uses actual position of the wepaon yaw and the launch pitch/launch speed targeting as controls
+
+[33mcommit a258a54dc0a030f7a07ffed70c1f32120395f7fd[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Dec 10 16:52:58 2025 +0100
+
+    Fixed the targetNotAcquired bug. Targeting uses actual position of the wepaon yaw and the launch pitch/launch speed targeting as controls
+
+[33mcommit 0bd79981100e12055a3ba42b1bd69d4c3855cd90[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Dec 10 10:08:25 2025 +0100
+
+    SAVEPOINT: FREEZE BEFORE SWAPPING AGENTS TO FIX THE TARGETNOTAQUIRED ISSUE
+
+[33mcommit d0724b06b2d3a1d23b6841c12572763104bcfc24[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Dec 9 16:35:22 2025 +0100
+
+    Firing only when the targetNotAcquired is False is fixed.
+
+[33mcommit 84a27bb7fef59654ebfc5ed92edee1ec7a11dd12[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Dec 9 16:18:04 2025 +0100
+
+    Fixed the firing buttons. Fire at will, FIRE, and 'F' key now work again. However, they are ignoring the target lock.
+
+[33mcommit 19b9ac710e7b58437226767b125fbbd241b244b6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Dec 9 11:10:35 2025 +0100
+
+    Basic autogenerated crew mounts funcitoning
+
+[33mcommit 804cfcc504a7d1ae55b816ce7db8c1336997d85c[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Dec 8 15:23:52 2025 +0100
+
+    Added stat modifiers for weapon mounts based on crew stats and number of crew assigned
+
+[33mcommit 141dca8f72510beac6633fa94695f9a30ce7daff[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Dec 8 14:34:35 2025 +0100
+
+    Added handling of multiple crew anchors for the game world 3D CrewMember_Default.prefabs
+
+[33mcommit ce6a310f137d13cc2f35d3c168d938ffdb06ab2d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 7 21:12:19 2025 +0100
+
+    Added crew experience based on hours or weapons activity to increase crew skills scores
+
+[33mcommit b51b901fb93c312ccbba554cfd652936981e8247[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 7 20:48:29 2025 +0100
+
+    Added health color to the crew member 3D objects that populate the stations on the game world ship when a crewmember is assigned there. Green -> Yello -> Red as they suffer health loss
+
+[33mcommit faf825de52b765f8b35dfe69709bc42ea02ec1ec[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Dec 7 20:15:01 2025 +0100
+
+    Fixed the CrewHUDCrewIcon text labeling and healthbar
+
+[33mcommit 3b5e0e78e590fa3b433691a2450a53810500da80[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 6 22:41:02 2025 +0100
+
+    Fixed positioning of Crew HUD tooltip visuals (that appear on ouse over)
+
+[33mcommit c1171d71cf46df59a36e611bbf042cda63c6f516[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 6 01:16:53 2025 +0100
+
+    Fixed the icon moving in the HUD (between assigned and unassigned slots
+
+[33mcommit f282c259440aba1f828a0ce88a456023d782d7e7[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Dec 6 00:22:00 2025 +0100
+
+    Puch before swapping back to Sonnet 4.5 to try and solve the CrewHUD icon problems.
+
+[33mcommit 4112c62e7b2efac31aec8a7cdedae1c363dba45a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 5 21:33:03 2025 +0100
+
+    Fixed size and positioning of <station>_slots
+
+[33mcommit 2a3702e2c6be447f1c42c5e6a05cea882f0b7aab[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Dec 5 20:51:53 2025 +0100
+
+    Fixed iconanchor for assigning crew to positions in HUD
+
+[33mcommit e3a7635ae0f2fc7a6309f25ca44604832cea7591[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 4 22:10:56 2025 +0100
+
+    Got the Crew HUD tooltip positions. Still need to fix the lettering on the images the tooltip brings up."
+
+[33mcommit 638d9a17eb2828f7c8b2db2d8ec28a337dd32c09[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 4 21:12:42 2025 +0100
+
+    Got basic tooltip for crew HUD working
+
+[33mcommit e0adc7abec99f35c9e35557f3708b92bf1c6f484[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 4 14:56:46 2025 +0100
+
+    More crew stuff. Added individual images for crew members in the HUD only
+
+[33mcommit f9d871cdf48915c0000ed43f09adae0582fe9373[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Dec 4 13:47:43 2025 +0100
+
+    Got the baisc crew HUD wiring working
+
+[33mcommit d30030deadd0f341dd213270cd3596a09d02f6be[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Dec 3 23:18:09 2025 +0100
+
+    More crew stuff. Fixed missing components in the CREW HUD, added a 3D CrewMember_Default for the game play world.
+
+[33mcommit 8b3f14f86c1d952f08782028c743af44ae7e2493[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Dec 2 22:36:32 2025 +0100
+
+    Did the basic wiring for the crew management in the HUD and crew appearing on the ship in the game world.
+
+[33mcommit 4f875e6ad64e01c5b1d48d7e1028cb96ab8f961f[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 30 17:54:02 2025 +0100
+
+    Creating new branch for all the crew code that may not work
+
+[33mcommit 96d716e3bc376e15a605c9d7126cb2dccef3ec51[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 22:30:47 2025 +0100
+
+    Added the baisc framework for persistent crew and crew mounts.
+
+[33mcommit af2ede9f12ef525e07c6ece1e67c18f5e48ffa66[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 22:24:34 2025 +0100
+
+    Added the baisc framework for persistent crew and crew mounts.
+
+[33mcommit 7abc2017995e77156b0faa8794007cd787f85043[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 21:58:28 2025 +0100
+
+    Added game persistance, starting with weapons. Persistance is handled by GamePersistence.json
+
+[33mcommit 72ea29cf8165489370445784b481a20bac3af3f4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 20:32:42 2025 +0100
+
+    Corrected the cannon self-damage script so it only affects the cannons that fired.
+
+[33mcommit 90dd09707265ecfe8cdb5b50e8fa8104987029f6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 20:24:24 2025 +0100
+
+    Added memory for camera positin in the different views
+
+[33mcommit 4021c6653d4d56c8041ed66fdf531072994dae9b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 20:17:54 2025 +0100
+
+    Added memory for zoom positions in three views.
+
+[33mcommit 6cae1c8fb84ba563db7395c974012a129d7a41e3[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 16:14:15 2025 +0100
+
+    Added bridge dashboard background.
+
+[33mcommit c3f1ba8e64c69c2b98f79be305a808abca660d15[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 15:40:13 2025 +0100
+
+    Added targeting adjustment for pitch roll of ship. Added shipwheel auto-return to neutral and ctrl-shipwheel lock.
+
+[33mcommit 6398767e8699147f8604c5046a48a0585804919d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 15:26:28 2025 +0100
+
+    Fixed targeting for multiple weapon mounts
+
+[33mcommit 4cbf5e6819a41ccf9fa9c7219ad920467a1d9fe7[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 14:23:08 2025 +0100
+
+    Fixed targeting for multiple weapon mounts
+
+[33mcommit 5179c2259c7f5ac72c532c678d3a2fdcd7c29c82[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 10:49:16 2025 +0100
+
+    Added multiple cannons (6) to basic ship
+
+[33mcommit a4ac6516f20101c2d1abfcb9f62bfc18dc31a76d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 29 10:00:05 2025 +0100
+
+    Set Ship HUD Mount information to appear in 'Ship HUD Mount Display' directly on the 'ShipRepresenation|ShipOutline|<X>_weapon_mount' object instead of the Ship HUD Display. Had Ship HUD Mount Display UNITY references autopopulate for ease of duplication when building ships.Update docs.
+
+[33mcommit 972c9b91571c36cc55433aa6aeb69a2cc5980068[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 23:56:52 2025 +0100
+
+    Added dev documentation to add weapon mounts to the ship and update the dev_journal
+
+[33mcommit a716db3cf0c8ab36a75b9c7513755de01523df12[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 23:43:24 2025 +0100
+
+     Fire at will works with two cannons added.
+
+[33mcommit c1cf5e0d7c308c8fe219d2962be22ee28172f4e6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 23:06:56 2025 +0100
+
+    Added a second weapon mount for cannon at the aft. Fire at will is not working with it, but the 'F' key and HUD fire button is.
+
+[33mcommit 9ec40d06aad7fda7e5e25d7650a4df78b6bfa667[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 22:08:08 2025 +0100
+
+    Added functionality to the 'Fire at will' toggle button. It works, and the 'F' key and individual weapon mount fire button all work.
+
+[33mcommit 0c6a208511c14b07cb21e622de95dd4ad55f7781[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 21:59:46 2025 +0100
+
+    Added functionality to the 'Fire at will' toggle button. It works, and the 'F' key fire still works, but the 'Fire' button associated with an individual weapon mount is missing.
+
+[33mcommit 9f9afd0025a26d2483788355b539d6f6bc6fd507[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 21:30:21 2025 +0100
+
+    Added a 'Fire at will' button which toggles between two images when clicked. It does nto have functionality at this point.
+
+[33mcommit b15373ae2f5cd9d8bde946d90d8fc2dbcee8635b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 21:12:16 2025 +0100
+
+    Let AI refactor out the uneeded file EnemyAircraft.cs because it was causing problems. When I just removed it, it left a bunch of vestigial code. Will be doing more of this.
+
+[33mcommit 6aac4fd19b54a5a6d0c5867d5cb544fbc0da07d0[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 17:48:42 2025 +0100
+
+    Added a FIRE button to the individual weapon mount so it can be fired manually by the player (individual cannon only. The 'F' key still works to fire all cannons.)
+
+[33mcommit 59387df00c00412a396fae979bd432894adc8382[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 17:09:44 2025 +0100
+
+    Added the helathbar horizontally to the weapon mount.
+
+[33mcommit b56e14b47f226fa5cd18251f4cd789350447d7e8[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 16:53:18 2025 +0100
+
+    Disabled the ability to fire of any cannon that doesn't have a Target ACquired lock. I.e. if the cannon is out of range or isn't pointing at the target the cannon will not fire if told to do so. When the cannon gains a lock, it will fire when commanded to fire.
+
+[33mcommit 7a706d13b2c56b4d460543aac893414e3e8f0883[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 16:41:34 2025 +0100
+
+    Completed the 'TargetAcquired sprite' code. The TargetNotAcquired sprite will display if the cannon cannot rotate enough to face the painted target OR if the cannon is out of range of a firing solution. Next, disable cannon fire if it cannot validate a target acquisition.
+
+[33mcommit 29d89c27c04e8f0c10ef970c18c00f168168526b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 16:25:43 2025 +0100
+
+    Targeting collider panel on cannon prefab cylinder is working perfectly. I extended the panel to 2000 x 2000 so that the ship will never move out of range of being able to DETECT an object.
+
+[33mcommit 87723e411b2b6d6382ec0532219f9ef5d7260e3d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 16:01:28 2025 +0100
+
+    Added a collider panel to the cannon to detect an intersection with the selected target to display or not display the 'TargetNotAquired' sprite. It is working, but has too much leeway (shoing intersection slightly before it actually intersects with the target object.
+
+[33mcommit 34db4b1ed0d06bebdac6d2eedc6b4e810de8b83f[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 28 10:59:32 2025 +0100
+
+    Added a collider to represent the yaw of the cannon. DID NOT CREATE THE TargetNotAcquired CODE YET.
+
+[33mcommit 949a15a8f6b0b9a7f08b864b7b3d0fe3d2553be1[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 27 23:38:13 2025 +0100
+
+    Added the TargetNotAquired sprite to the assets and to the Scene. DID NOT CREATE THE TargetNotAcquired CODE YET.
+
+[33mcommit abc918782e810bb2985f6b396dbf9aa3dab96b7f[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 27 23:34:37 2025 +0100
+
+    Added ready/not-ready indicator to weapon mount...included chnages to Unity files.
+
+[33mcommit 89fd5857d76081d3ee87f632fe3034e7015972a4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 27 10:27:12 2025 +0100
+
+    Added ready/not-ready indicator to weapon mount.
+
+[33mcommit 402f27e3c1190ef1aefb78aa83ad952b37864cb4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 26 22:26:53 2025 +0100
+
+    Converted the ships representatin HUD to the same hierarchicahl layout as the rest of the HUD. Did basic re-write of script to auto-populate mountpoints.
+
+[33mcommit 542ea561dca7b9e85abae9f365b62aebad890519[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 26 19:57:28 2025 +0100
+
+    Projectile targeting updated for performance and 'lob' angle
+
+[33mcommit 938524b9d83fd5b85a872ee23c1d0a5f7091bed0[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 25 14:22:41 2025 +0100
+
+    Auto target refined to work with objects at the same or lower altitude. Next, higher altitude.
+
+[33mcommit 7f0e58caa62132b6c7a425351835fcb53f0d6c14[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 25 13:07:40 2025 +0100
+
+    Added targeting movement to the weapons mount script. Weapons (like a cannon) will try to point their noses directly at a selected target.
+
+[33mcommit f20a6dd83d82089acccf15163ac8e2c36cec04ec[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 25 12:44:16 2025 +0100
+
+    Added ability to target game objects with a left-click. Key+click commands not yet working
+
+[33mcommit c24d256000919f821c05a80287baae4cf7ee5a6d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 25 10:10:41 2025 +0100
+
+    Added a zoom to the instrument panel. Default key 'Z'
+
+[33mcommit 07821b3fc668a694cc7186d9b2f8faf69e7b246c[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 22:59:44 2025 +0100
+
+    Adjusted heat generation/dissipation for LiftDevice and Engine. Added second temperature wheel for engine and lift temps
+
+[33mcommit f2faff2c566cecd5280b7736abba4ec51aeb24cf[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 22:39:35 2025 +0100
+
+    Calibrated the heat generation per minute for both engine and lift device.
+
+[33mcommit 67d459f5f50422d892d163211e2c06b5912d0d1b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 22:13:38 2025 +0100
+
+    Adjusted order of settings in LiftDevice
+
+[33mcommit 91c2d11adbcfba339ee1a7b1c95b187058abbae3[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 21:46:04 2025 +0100
+
+    Converted liftdevice to a stanalone engine with heat management and power limits.
+
+[33mcommit 0d532412bea0da15564c9616fdf9bb81fd6de11b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 20:11:44 2025 +0100
+
+    Adjusted basic settings on liftdevice to convert it to 9.8 units of power per ton per meter per second.
+
+[33mcommit 6a72e6d97231178dc438583ad34190c6313e7d0a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 19:30:01 2025 +0100
+
+    Adjusted engine power output based on actual drag coefficient, frontal area, and engine power.
+
+[33mcommit 62c318f398478e7d929e70b670864d80eba3b4f4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 17:40:22 2025 +0100
+
+    Adjusted engine power output based on actual drag coefficient, frontal area, and engine power.
+
+[33mcommit b6896e9443079df79818e14d6cb1a75b4ae00e3c[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 11:28:36 2025 +0100
+
+    Added Drag Coeffeceint, frontal area, and real world drag and air density calcualtions to the code.
+
+[33mcommit d5639d278e500ba89e3b568a7693420fe126f8ce[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 24 11:28:17 2025 +0100
+
+    Added Drag Coeffeceint, frontal area, and real world drag and air density calcualtions to the code.
+
+[33mcommit 8efefccbbab8c07de2122eae824240b5fc0dafeb[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 22 21:25:03 2025 +0100
+
+    Correctly tied heat to energy output
+
+[33mcommit 3f3bebedd35272b4bab0a585527ec8947ddf51af[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 22 18:21:04 2025 +0100
+
+    Fixed the temperature gauge.
+
+[33mcommit 92640766d1a869b614150487722619818cbe5cbf[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 22 00:06:59 2025 +0100
+
+    More or less have the temperature guage working. I need to ifx the image.
+
+[33mcommit dcdd78dc50eed788bae29fb27c7bbe98b2564656[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 21 17:23:32 2025 +0100
+
+    Added basic horizontal compass
+
+[33mcommit 6087ac2a2a8f3660c76f8bea314bd1fd14dc7cf6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 22:36:39 2025 +0100
+
+    Before screwing with the instrument manger script."
+
+[33mcommit 6223d2576322bf197011e5ab554d90b7bc502606[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 22:36:27 2025 +0100
+
+    Archived Instrument manager and AttitudeIndicator scripts.
+
+[33mcommit 033fd9272899a05787e943059f958f33b300b7ec[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 22:34:08 2025 +0100
+
+    Wing indicator fixed. Ships roll directoin fixed.
+
+[33mcommit b8b3b88762c05ec9823e5f66686eaaa2fbd12850[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 21:44:25 2025 +0100
+
+    Before screwing with the instrument manger script."
+
+[33mcommit 58b7df89f051418e24ced13674a13bdd6b19c2e6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 18:59:51 2025 +0100
+
+    Evening push
+
+[33mcommit 6ac4697a4aa3f6c6f934a1f1a334bc4209ee618d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 18:59:43 2025 +0100
+
+    Evening push
+
+[33mcommit d1826badff9e51e729c6390cf51728a20ac9de7c[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 17:24:36 2025 +0100
+
+    Added roll lever and added roll capability to shipcharacteristics.cs"
+
+[33mcommit 22a91c1ef9a82e58184325d2b80ecf5048e870cb[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 13:32:23 2025 +0100
+
+    Added a lift controller (life chadburn.)
+
+[33mcommit d7c3b0e692f9f8e031deda6238c08694d92442c2[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 20 12:46:01 2025 +0100
+
+    Push before trying to fix my sonnet 4.5 access
+
+[33mcommit ed047b426ca06274316a16be764b7704e9851064[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 19 14:19:36 2025 +0100
+
+    Enabled yaw indicater in attitude indicator to show slips during turns.
+
+[33mcommit f1cb0e9145eb28cf98077e0628563048bff90f02[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 19 13:55:35 2025 +0100
+
+    Enabled yaw indicater in attitude indicator to show slips during turns.
+
+[33mcommit c1695488ec0338a0fdbb0fb129e8a6326e7d6dbf[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 19 11:13:32 2025 +0100
+
+    Add rudder wheel and turn controls.
+
+[33mcommit 92aa369ea96be072e65e448ee27e0a63dc5f684f[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 18 22:29:54 2025 +0100
+
+    Update chadwick handle movement
+
+[33mcommit 431ec3af9f282b08dcba42aee741e6c874feac2b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 18 22:02:43 2025 +0100
+
+    Added speed control chadburn (ships engine telegraph thing
+
+[33mcommit 810d9e2a0c5f1330c94cd558bd2a3d767da590ac[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 18 20:28:04 2025 +0100
+
+    VSI, airspeed, and altimeter all working! Engine has problems (burning out)
+
+[33mcommit 12db157445da223c4608b09600c566bad0ed010a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 17 14:26:48 2025 +0100
+
+    VSI, airspeed, and altimeter all working!
+
+[33mcommit 3fb78d0b6600ce0f6b0d85930f326073f8c0ccb8[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 17 10:48:18 2025 +0100
+
+    VSI is not working. USed ChatGPT5
+
+[33mcommit ada89301f9e20f2023c5c3cad5a43725adbb33e1[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 17 10:45:41 2025 +0100
+
+    VSI is not working. USed ChatGPT5
+
+[33mcommit 02b45b9c2f61891d691a41901b6b766d3713ed95[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 16 23:36:18 2025 +0100
+
+    VSI still not working. It is struggling to figure out the angles for ascent/descent. Also, something is happening with the change of the needle. It shimmers and cant get past about 20 degrees. I think perhaps the system is trying to make it rotate from 0 to the new degree setting everytime, which it doesnt have time to do in one second.
+
+[33mcommit 8f586faa33341bc9ec7a3875673e1c8958d0ecbb[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 16 23:21:42 2025 +0100
+
+    VSI still not working. It is struggling to figure out the angles for ascent/descent. Also, something is happening with the change of the needle. It shimmers and cant get past about 20 degrees. I think perhaps the system is trying to make it rotate from 0 to the new degree setting everytime, which it doesnt have time to do in one second.
+
+[33mcommit 7cf05d850b88f9468f8876c8c519c2a9391e1516[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 16 22:29:18 2025 +0100
+
+    FUlly working altimeter. Preiously working, but now broken airspeed indicator. Nonfunctional VSI"
+
+[33mcommit 4dff07074914d5d5b64f1d4c315354be03397fc1[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 16 14:05:29 2025 +0100
+
+    Cretaed PNGs for instrument panel
+
+[33mcommit 5bc0d1efcd6c5f6c2a3385bc4f0ae54365d5b3ee[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 15 23:57:30 2025 +0100
+
+    Created basic forward backward engine function in knots. INertia accounted for, but needs fine tuning. Engine heat, dissipation, and related probelms caused by heat need to be figured out and adjusted for gameplay.
+
+[33mcommit 4d9f03a3ebae03ed8ee15adf5d9ecf4a04860fde[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 15 22:26:56 2025 +0100
+
+    Created functional lift device and basic engine code. Todl AI of the basics of power management int he game.
+
+[33mcommit c609dc55fc8cb25f1acf8110f25121bd70ae0135[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 15 14:32:05 2025 +0100
+
+    Added shrapnel prefab. Changed code so shrapnel object sets damage and lifetime. Cannon script uses shrapnel prefab to inflict shrapnel damage after main explosion damage. Bad for sailors.
+
+[33mcommit d3b01e5b97fbf764147f9cc2761bfddbb586104d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 14 18:40:42 2025 +0100
+
+    Ship weapon mount symbol system in place.
+
+[33mcommit 55639fbdb04491401224c3213c44321a171d982d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 14 17:27:32 2025 +0100
+
+    Ship weapon healthbar working.
+
+[33mcommit 31056b52f533b97ede7abc6f9143c91f572fe264[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 14 16:27:09 2025 +0100
+
+    Ship weapon mount symbol system in place.
+
+[33mcommit 9b2506a024475b1db9bb47f8222b27df1dfee49b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 14 16:09:54 2025 +0100
+
+    Ship weapon mount symbol system in place.
+
+[33mcommit bf2b75f0924722f6f6e3e53ac77aacdfc901434a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Fri Nov 14 15:10:26 2025 +0100
+
+    Push before re-writing the ShipHUD marker system which is not working. Everything else works here, including the code-based weapon mounting to weapon mounts, and the cannon movement.
+
+[33mcommit d45e3166becb74bc8b29bbf26045b6a26f9900c4[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 22:51:49 2025 +0100
+
+    Got weapon mounts working with yaw and pitch limitations and controls
+
+[33mcommit f16533c1898f470598ff18a38ec84acabf97118b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 21:41:56 2025 +0100
+
+    Raw objects for Prefabs safely removed from scene
+
+[33mcommit ff1d0720bc677cb6fd49898645dff5521c1bb993[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 21:41:51 2025 +0100
+
+    Raw objects for Prefabs safely removed from scene
+
+[33mcommit 7b9ba1d947f921039d2b8a0ab7c3b10161edb254[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 21:30:12 2025 +0100
+
+    Cannon working again after git resotre to previous commit
+
+[33mcommit 827a1d7e997d521d77fb8e59153182806a16279f[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 19:47:14 2025 +0100
+
+    FInal push before deleting the screne construction objects and relying on the prefabs for cannon and projectileLauncher
+
+[33mcommit d33205d0973c63fffdac129a8a684d5ab68955f6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 17:00:17 2025 +0100
+
+    Push before migrating to only prefabs objects.
+
+[33mcommit 445534fe33ecd7de277808d25de4d86805d54e1c[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 16:24:27 2025 +0100
+
+    Added ship representation to HUD.
+
+[33mcommit 3381ddbacf8577fda83c344c3746e61b1dc36eb1[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Thu Nov 13 15:22:58 2025 +0100
+
+    Added an adjustable, triangular collider for precision.
+
+[33mcommit 571632cc78e8c377db43e5d851d2b0320bd558d9[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 12 23:26:50 2025 +0100
+
+    Added variability in ProjectileLauncher angle spread and speed jitter (5%). The amount of variability can be adjusted by code during gameplay (I.e. putting a more experienced cannoneer on the cannon.)
+
+[33mcommit 5d399938672017c35aa544dd54804e4aa4a3ac40[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Wed Nov 12 23:15:13 2025 +0100
+
+    Added an explosion and sound to the exploding cannonball
+
+[33mcommit 61dd6c18c9a7043ab533c924a50311f99496a52d[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 11 22:45:54 2025 +0100
+
+    Corrected some minor bugs. Updated the cannonball to use the cannonball script inherting from projectile
+
+[33mcommit 639931f2f2a840bbfb819988adc2dbabab84bd16[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 11 18:12:40 2025 +0100
+
+    Adding red hot smoke to the cannon (Still needs work)
+
+[33mcommit 6b78a1e2f69aaeeffb5af0b476572f5085261b0b[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Tue Nov 11 16:05:08 2025 +0100
+
+    Added sound to cannon fire (not sure if it works yet)
+
+[33mcommit 3af0bd70c826fd27d3ee6713545628d9d8c9b792[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 10 22:59:13 2025 +0100
+
+    Added the three view buttons to the top of the HUD
+
+[33mcommit 63e2242c19c5fb30eb8d23f2f6148dba86850511[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 10 21:16:20 2025 +0100
+
+    Adding smoke to the cannon
+
+[33mcommit 8f99eaaf40a7b1007a187e2be138586727076c40[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 10 14:14:32 2025 +0100
+
+    Added the three view buttons to the top of the HUD
+
+[33mcommit 5410708872018a7d39c1e9f53a667f5a5101abce[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 10 14:14:21 2025 +0100
+
+    Added the three view buttons to the top of the HUDt
+
+[33mcommit 59e397612c28b9a7cd34d181530bc8919d14a331[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Mon Nov 10 11:11:09 2025 +0100
+
+    First push to remote
+
+[33mcommit 19844ceb513bc05b50e24c92dd692699545f579e[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 9 22:09:05 2025 +0100
+
+    Set the overhead view correctly with zoom and pan
+
+[33mcommit 9502ab5e58066e14e5cee6f8b864f0044c2db651[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 9 20:36:14 2025 +0100
+
+    Corrected facing of ship and moved it to global center
+
+[33mcommit b2b0c20884cf905ab16d527b2a47101745df4736[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sun Nov 9 18:41:00 2025 +0100
+
+    Set the bridge and follow cameras up correctly
+
+[33mcommit 6242ff30593fd8e5b6bbfc3742d243aacab7b50a[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 8 22:19:58 2025 +0100
+
+    Moved the main camera to bridge
+
+[33mcommit a7c6ced6ce893d5588b2feded248c52f51ceade6[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 8 21:55:41 2025 +0100
+
+    Moved the main camera to bridge
+
+[33mcommit e28957705e7f2d95a3de66b55dcd5bc5f42b8a85[m
+Author: Mike Rightmire <rightmirem@gmail.com>
+Date:   Sat Nov 8 21:43:25 2025 +0100
+
+    Initial commit, Prior to creating subclasses

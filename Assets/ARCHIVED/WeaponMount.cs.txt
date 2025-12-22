@@ -73,12 +73,6 @@ public class WeaponMount : MonoBehaviour
     float _aimLaunchSpeed;
     bool _hasAimSolution;
     bool _hasBallisticInterceptSolution;
-    
-    // Lead targeting solution (calculated but not applied until firing)
-    float _leadYawTarget;
-    float _leadPitchTarget;
-    float _leadLaunchSpeed;
-    bool _hasLeadSolution;
     bool _wasAutoTargetingActive;
     bool _hasLoggedAcquisitionState;
     bool _lastLoggedHorizontalLock;
@@ -91,10 +85,8 @@ public class WeaponMount : MonoBehaviour
     public bool HasValidFiringSolution => _hasBallisticInterceptSolution;
     public bool HasTargetLock => HasSelectedTarget;
     public bool HasHorizontalLock => HasSelectedTarget && IsYawWithinEdgeMargin() && IsYawAlignedWithTarget();
-    // TargetNotAcquired sprite disappears when we have a valid ballistic solution (ignores horizontal lock and lead targeting)
-    public bool IsTargetFullyAcquired => _hasBallisticInterceptSolution;
-    // Firing requires both ballistic solution AND horizontal alignment
-    public bool CanFireAtCurrentTarget => HasHorizontalLock && _hasBallisticInterceptSolution;
+    public bool IsTargetFullyAcquired => HasHorizontalLock && _hasBallisticInterceptSolution;
+    public bool CanFireAtCurrentTarget => IsTargetFullyAcquired;
     public bool HasCrewReady => HasOperationalCrew();
     public Health MountedWeaponHealth => weaponHealth;
 
@@ -126,63 +118,18 @@ public class WeaponMount : MonoBehaviour
         if (!currentLauncher.IsReady)
             return false;
 
-        // Firing requires both ballistic solution AND horizontal alignment
-        if (!ignoreTargetLock && !CanFireAtCurrentTarget)
+        if (!ignoreTargetLock && !IsTargetFullyAcquired)
             return false;
 
-        // Snap to firing position immediately before firing (milliseconds before projectile launches)
-        if (useLeadTargeting && _hasLeadSolution)
+        // Snap to firing position immediately before firing
+        // Apply lead targeting adjustments if enabled
+        if (useLeadTargeting && targetingController != null && targetingController.CurrentTarget != null)
         {
-            // Apply lead-adjusted position
-            float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
-            
-            if (Mathf.Abs(_leadYawTarget) > halfYaw)
-            {
-                if (fireAtMaxYawIfLeadExceedsLimit)
-                {
-                    // Clamp to max yaw and fire anyway
-                    _yaw = Mathf.Clamp(_leadYawTarget, -halfYaw, halfYaw);
-                    _pitch = _leadPitchTarget;
-                    
-                    if (enableDebugLogging)
-                    {
-                        LogDebug($"Lead yaw {_leadYawTarget:F1}° exceeds limit ±{halfYaw:F1}°. Clamping to {_yaw:F1}° and firing.");
-                    }
-                }
-                else
-                {
-                    // Use standard ballistic solution
-                    _yaw = _aimYawTarget;
-                    _pitch = _aimPitchTarget;
-                    
-                    if (enableDebugLogging)
-                    {
-                        LogDebug($"Lead yaw {_leadYawTarget:F1}° exceeds limit. Using standard solution.");
-                    }
-                }
-            }
-            else
-            {
-                // Lead solution within limits - use it
-                _yaw = _leadYawTarget;
-                _pitch = _leadPitchTarget;
-                
-                if (enableDebugLogging)
-                {
-                    LogDebug($"Applying lead targeting: Yaw={_yaw:F1}° Pitch={_pitch:F1}°");
-                }
-            }
-            
-            if (currentLauncher != null)
-            {
-                currentLauncher.SetRuntimeLaunchSpeed(_leadLaunchSpeed);
-            }
-            
-            ApplyRotations();
+            ApplyLeadTargetingAdjustment(targetingController.CurrentTarget.transform);
         }
         else
         {
-            // No lead targeting - snap to standard ballistic solution
+            // Snap to ballistic solution (yaw and pitch) immediately before firing
             if (_hasAimSolution)
             {
                 _yaw = _aimYawTarget;
@@ -374,22 +321,9 @@ public class WeaponMount : MonoBehaviour
         if (!_hasAimSolution)
             return;
 
-        // Smoothly track yaw towards target - prevents wiggling by using MoveTowards
-        float yawStep = autoAimYawSpeedDegPerSec * Time.deltaTime;
-        float targetYaw = _aimYawTarget;
-        
-        // Only move if we're not very close (prevents micro-oscillations)
-        if (Mathf.Abs(Mathf.DeltaAngle(_yaw, targetYaw)) > 0.1f)
-        {
-            _yaw = Mathf.MoveTowards(_yaw, targetYaw, yawStep);
-            ApplyRotations();
-        }
-        
-        // Calculate lead targeting solution but DON'T apply it (just store for later)
-        if (useLeadTargeting)
-        {
-            CalculateLeadTargetingSolution(target.transform);
-        }
+        // DO NOT move the cannon here - calculations only
+        // Cannon will snap to firing position in TryFire() immediately before firing
+        // Store the solution but don't apply rotations
         
         if (currentLauncher != null)
         {
@@ -794,21 +728,31 @@ public class WeaponMount : MonoBehaviour
     }
 
     /// <summary>
-    /// Calculates lead targeting solution by computing intercept point based on velocities.
-    /// Stores the solution but does NOT move the cannon - movement happens only in TryFire().
+    /// Applies lead targeting adjustment by calculating intercept point based on velocities.
+    /// Adjusts yaw and pitch just before firing to account for target and ship movement.
+    /// This is separate from normal target acquisition and happens only at the moment of firing.
     /// </summary>
-    void CalculateLeadTargetingSolution(Transform targetTransform)
+    void ApplyLeadTargetingAdjustment(Transform targetTransform)
     {
-        _hasLeadSolution = false;
-        
         if (targetTransform == null || currentLauncher == null)
         {
+            // Fallback to standard ballistic pitch
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
             return;
         }
 
         Transform muzzle = currentLauncher.spawnPoint != null ? currentLauncher.spawnPoint : pitchBarrel;
         if (muzzle == null)
         {
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
             return;
         }
 
@@ -836,11 +780,11 @@ public class WeaponMount : MonoBehaviour
         // If relative velocity is negligible, use standard ballistic solution
         if (relativeVelocity.sqrMagnitude < 0.01f)
         {
-            // No lead needed - use standard solution
-            _leadYawTarget = _aimYawTarget;
-            _leadPitchTarget = _aimPitchTarget;
-            _leadLaunchSpeed = _aimLaunchSpeed;
-            _hasLeadSolution = _hasAimSolution;
+            if (_hasAimSolution)
+            {
+                _pitch = _aimPitchTarget;
+                ApplyRotations();
+            }
             return;
         }
 
@@ -908,17 +852,58 @@ public class WeaponMount : MonoBehaviour
             return;
         }
 
-        // Store the lead-adjusted solution (don't apply yet)
-        _leadYawTarget = leadYaw;
-        _leadPitchTarget = leadPitch;
-        _leadLaunchSpeed = leadSpeed;
-        _hasLeadSolution = true;
+        // Apply lead-adjusted angles
+        float halfYaw = Mathf.Max(0f, yawLimitDeg * 0.5f);
         
-        if (enableDebugLogging)
+        // Check if lead yaw exceeds limits
+        if (Mathf.Abs(leadYaw) > halfYaw)
         {
-            float leadDistance = Vector3.Distance(targetPos, interceptPoint);
-            LogDebug($"Lead solution calculated: Yaw={leadYaw:F1}° Pitch={leadPitch:F1}° Lead={leadDistance:F1}m Time={timeToTarget:F2}s RelVel={relativeVelocity.magnitude:F1}m/s");
+            if (fireAtMaxYawIfLeadExceedsLimit)
+            {
+                // Clamp to max yaw and fire anyway
+                _yaw = Mathf.Clamp(leadYaw, -halfYaw, halfYaw);
+                _pitch = leadPitch;
+                
+                if (enableDebugLogging)
+                {
+                    float leadDistance = Vector3.Distance(targetPos, interceptPoint);
+                    LogDebug($"Lead yaw {leadYaw:F1}° exceeds limit ±{halfYaw:F1}°. Clamping to {_yaw:F1}° and firing. Lead={leadDistance:F1}m Time={timeToTarget:F2}s");
+                }
+            }
+            else
+            {
+                // Use standard solution
+                if (_hasAimSolution)
+                {
+                    _pitch = _aimPitchTarget;
+                }
+                
+                if (enableDebugLogging)
+                {
+                    LogDebug($"Lead yaw {leadYaw:F1}° exceeds limit ±{halfYaw:F1}°. Using standard ballistic solution.");
+                }
+            }
         }
+        else
+        {
+            // Lead solution is within limits - apply it
+            _yaw = leadYaw;
+            _pitch = leadPitch;
+            
+            if (enableDebugLogging)
+            {
+                float leadDistance = Vector3.Distance(targetPos, interceptPoint);
+                LogDebug($"Lead targeting applied: Yaw={_yaw:F1}° Pitch={_pitch:F1}° Lead={leadDistance:F1}m Time={timeToTarget:F2}s RelVel={relativeVelocity.magnitude:F1}m/s");
+            }
+        }
+
+        // Update launch speed if needed
+        if (currentLauncher != null)
+        {
+            currentLauncher.SetRuntimeLaunchSpeed(leadSpeed);
+        }
+
+        ApplyRotations();
     }
 
     /// <summary>

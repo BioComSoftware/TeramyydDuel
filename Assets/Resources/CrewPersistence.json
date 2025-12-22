@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-22T09:47:32.6293205Z",
+    "lastSavedUtc": "2025-12-22T10:57:02.8790563Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -80,7 +80,7 @@
             "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 2.675799608230591,
+            "powerEngineering": 3.329235792160034,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
@@ -89,26 +89,26 @@
         {
             "crewId": "crew_philomena_crummings",
             "displayName": "Philomena Crummings",
-            "gunnery": 2.140000104904175,
+            "gunnery": 2.43999981880188,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 6.734381675720215,
+            "powerEngineering": 6.8880181312561039,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
-            "assignedStationId": "station_Ship_Model_Engine_SteamJetEngine_crew"
+            "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_susie_anna_bammshee",
             "displayName": "Susie Anna Bammshee",
-            "gunnery": 1.1599998474121094,
+            "gunnery": 1.4399995803833008,
             "navigation": 1.0,
             "repair": 1.0,
             "powerEngineering": 1.0,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
-            "assignedStationId": "station_Ship_Model_LiftDevice_AntiGravityDevice_crew"
+            "assignedStationId": "Starboard_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_ryn_calder",
