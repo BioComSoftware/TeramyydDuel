@@ -16,11 +16,17 @@ public class TargetCannonAim : MonoBehaviour
     public Transform cannon;
 
     [Header("Rotation Settings")]
-    [Tooltip("If true, rotation will be instant. If false, uses smooth rotation.")]
-    public bool instantRotation = true;
+    [Tooltip("If true, yaw rotation will be instant. If false, uses smooth rotation.")]
+    public bool instantYawRotation = true;
 
-    [Tooltip("Rotation speed in degrees per second when using smooth rotation.")]
-    public float rotationSpeed = 90f;
+    [Tooltip("Yaw rotation speed in degrees per second when using smooth rotation.")]
+    public float yawRotationSpeed = 90f;
+    
+    [Tooltip("If true, pitch rotation will be instant. If false, uses smooth rotation.")]
+    public bool instantPitchRotation = true;
+
+    [Tooltip("Pitch rotation speed in degrees per second when using smooth rotation.")]
+    public float pitchRotationSpeed = 180f;
 
     [Header("Ballistics")]
     [Tooltip("Gravity magnitude used for ballistic calculations. Should match Physics.gravity.magnitude.")]
@@ -54,6 +60,7 @@ public class TargetCannonAim : MonoBehaviour
     private bool _isTargeted = false;
     private float _nextAutoFireCheckTime = 0f;
     private TargetingController _targetingController;
+    private float _currentPitchAngle = 0f; // Holds the pitch from the last fire
 
     void Awake()
     {
@@ -230,12 +237,112 @@ public class TargetCannonAim : MonoBehaviour
 
     void Update()
     {
+        // Always update YAW to track the target continuously
+        UpdateYawTracking();
+
+        // Auto-fire if targeted and enabled
+        if (autoFireWhenTargeted && _isTargeted && !disableFiring)
+        {
+            AttemptAutoFire();
+        }
+    }
+
+    /// <summary>
+    /// Continuously updates YAW rotation to track the target, regardless of firing state.
+    /// PITCH is NOT updated here - it only changes immediately before firing.
+    /// </summary>
+    private void UpdateYawTracking()
+    {
+        if (ship == null)
+        {
+            return;
+        }
+
+        // Update launch speed in case it changed at runtime
+        if (_projectileLauncher != null)
+        {
+            _launchSpeed = _projectileLauncher.launchSpeed;
+        }
+
+        // Get velocities for lead targeting
+        Vector3 targetVelocity = Vector3.zero;
+        Vector3 firingVelocity = Vector3.zero;
+
+        if (useLeadTargeting)
+        {
+            // Get ship velocity
+            Rigidbody shipRb = ship.GetComponent<Rigidbody>();
+            if (shipRb != null)
+            {
+                targetVelocity = shipRb.linearVelocity;
+            }
+
+            // Get Target's own velocity
+            Rigidbody targetRb = GetComponent<Rigidbody>();
+            if (targetRb != null)
+            {
+                firingVelocity = targetRb.linearVelocity;
+            }
+        }
+
+        // Calculate the firing solution with lead targeting
+        bool hasValidSolution = CalculateFiringSolutionWithLead(
+            transform.position,
+            ship.position,
+            firingVelocity,
+            targetVelocity,
+            _launchSpeed,
+            gravity,
+            out float yawAngle,
+            out float pitchAngle,
+            out Vector3 interceptPoint
+        );
+
+        if (!hasValidSolution)
+        {
+            // Even without a valid solution, point yaw at the target
+            Vector3 directionToTarget = ship.position - transform.position;
+            directionToTarget.y = 0; // Flatten to horizontal plane
+            if (directionToTarget.sqrMagnitude > 0.001f)
+            {
+                yawAngle = Mathf.Atan2(directionToTarget.x, directionToTarget.z) * Mathf.Rad2Deg;
+            }
+            else
+            {
+                yawAngle = transform.eulerAngles.y; // Keep current yaw
+            }
+        }
+
+        // Apply YAW rotation, keeping current pitch
+        Quaternion targetRotation = Quaternion.Euler(-_currentPitchAngle, yawAngle, 0f);
+
+        // Apply yaw rotation (instant or smooth)
+        if (instantYawRotation)
+        {
+            transform.rotation = targetRotation;
+        }
+        else
+        {
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                targetRotation,
+                yawRotationSpeed * Time.deltaTime
+            );
+        }
+    }
+
+    /// <summary>
+    /// Performs the complete aiming calculation including PITCH adjustment.
+    /// This should only be called immediately before firing.
+    /// </summary>
+    private void PerformPitchAdjustment()
+    {
         if (ship == null || _projectileLauncher == null)
         {
             if (debugLog)
             {
-                Debug.LogError("[TargetCannonAim] Update() - Missing ship or ProjectileLauncher! Cannot aim!");
-                FileLogger.Log("Update() - Missing ship or ProjectileLauncher! Cannot aim!", "TargetCannonAim");
+                Debug.LogError("[TargetCannonAim] PerformPitchAdjustment() - Missing ship or ProjectileLauncher! Cannot aim!");
+                FileLogger.Log("PerformPitchAdjustment() - Missing ship or ProjectileLauncher! Cannot aim!", "TargetCannonAim");
             }
             return;
         }
@@ -287,20 +394,23 @@ public class TargetCannonAim : MonoBehaviour
             return;
         }
 
-        // Create target rotation from calculated angles
+        // Store the new pitch angle
+        _currentPitchAngle = pitchAngle;
+
+        // Create target rotation from calculated angles (both yaw and pitch updated)
         // NOTE: Negate pitch because this coordinate system uses NEGATIVE pitch to aim UP
         Quaternion targetRotation = Quaternion.Euler(-pitchAngle, yawAngle, 0f);
 
-        // Apply rotation (instant or smooth)
-        if (instantRotation)
+        // Apply rotation (instant or smooth for pitch)
+        if (instantPitchRotation)
         {
             transform.rotation = targetRotation;
             
             if (debugLog)
             {
                 float lead = Vector3.Distance(ship.position, interceptPoint);
-                Debug.Log($"[TargetCannonAim] Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°) Lead={lead:F1}m");
-                FileLogger.Log($"Instant rotation: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°) Lead={lead:F1}m", "TargetCannonAim");
+                Debug.Log($"[TargetCannonAim] Pitch adjusted: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°) Lead={lead:F1}m");
+                FileLogger.Log($"Pitch adjusted: Yaw={yawAngle:F1}° Pitch={pitchAngle:F1}° (applied as {-pitchAngle:F1}°) Lead={lead:F1}m", "TargetCannonAim");
             }
         }
         else
@@ -308,14 +418,8 @@ public class TargetCannonAim : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(
                 transform.rotation,
                 targetRotation,
-                rotationSpeed * Time.deltaTime
+                pitchRotationSpeed * Time.deltaTime
             );
-        }
-
-        // Auto-fire if targeted and enabled
-        if (autoFireWhenTargeted && _isTargeted && hasValidSolution && !disableFiring)
-        {
-            AttemptAutoFire();
         }
     }
 
@@ -335,6 +439,9 @@ public class TargetCannonAim : MonoBehaviour
         // Check if the cannon is ready to fire
         if (_projectileLauncher != null && _projectileLauncher.IsReadyToFire())
         {
+            // Adjust pitch immediately before firing (microseconds before)
+            PerformPitchAdjustment();
+
             // Fire the cannon using reflection to call the protected FireProjectile method
             var fireMethod = typeof(ProjectileLauncher).GetMethod("FireProjectile", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);

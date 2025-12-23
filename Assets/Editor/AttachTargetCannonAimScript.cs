@@ -45,7 +45,8 @@ public class AttachTargetCannonAimScript : MonoBehaviour
 
         // Enable debug logging by default for initial testing
         script.debugLog = true;
-        script.instantRotation = true;
+        script.instantYawRotation = true;
+        script.instantPitchRotation = true;
 
         // Mark scene as dirty to ensure changes are saved
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(targetObject.scene);

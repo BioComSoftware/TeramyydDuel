@@ -74,7 +74,8 @@ public class DiagnoseTarget : MonoBehaviour
         Debug.Log($"[DiagnoseTarget] TargetCannonAim script found!");
         Debug.Log($"[DiagnoseTarget] Script enabled: {script.enabled}");
         Debug.Log($"[DiagnoseTarget] Ship assigned: {(script.ship != null ? script.ship.name : "NULL")}");
-        Debug.Log($"[DiagnoseTarget] Instant rotation: {script.instantRotation}");
+        Debug.Log($"[DiagnoseTarget] Instant yaw rotation: {script.instantYawRotation}");
+        Debug.Log($"[DiagnoseTarget] Instant pitch rotation: {script.instantPitchRotation}");
         Debug.Log($"[DiagnoseTarget] Debug log: {script.debugLog}");
         
         GameObject shipObj = GameObject.Find("Ship");

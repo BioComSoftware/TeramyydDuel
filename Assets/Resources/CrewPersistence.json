@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-23T12:06:15.0952474Z",
+    "lastSavedUtc": "2025-12-23T13:18:25.4988942Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -11,7 +11,7 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.1133694648742676,
             "maxHealth": 10.0,
-            "currentHealth": 0.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Port_forward_hull_weapon_mount_01_crew_slot"
         },
         {
@@ -23,7 +23,7 @@
             "powerEngineering": 8.4495267868042,
             "liftEngineering": 6.140933990478516,
             "maxHealth": 10.0,
-            "currentHealth": 0.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Bow_weapon_mount_01_crew_slot"
         },
         {
@@ -35,7 +35,7 @@
             "powerEngineering": 1.0,
             "liftEngineering": 1.4914811849594117,
             "maxHealth": 10.0,
-            "currentHealth": 0.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
@@ -47,7 +47,7 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.4614014625549317,
             "maxHealth": 10.0,
-            "currentHealth": 1.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Bow_weapon_mount_01_crew_slot"
         },
         {
@@ -71,7 +71,7 @@
             "powerEngineering": 1.0602672100067139,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
-            "currentHealth": 7.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Aft_weapon_mount_01_crew_slot"
         },
         {
@@ -80,7 +80,7 @@
             "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 5.59142541885376,
+            "powerEngineering": 6.142119884490967,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
@@ -107,7 +107,7 @@
             "powerEngineering": 1.0,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
-            "currentHealth": 7.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Starboard_rear_hull_weapon_mount_01_crew_slot"
         },
         {
@@ -119,7 +119,7 @@
             "powerEngineering": 10.0,
             "liftEngineering": 1.0,
             "maxHealth": 10.0,
-            "currentHealth": 7.0,
+            "currentHealth": 10.0,
             "assignedStationId": "Starboard_forward_hull_weapon_mount_01_crew_slot"
         }
     ]
