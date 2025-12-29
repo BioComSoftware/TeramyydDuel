@@ -15,11 +15,17 @@ public class TargetHealthBar : MonoBehaviour
     [Tooltip("The Health component to monitor. Will auto-find on parent if not assigned.")]
     public Health targetHealth;
 
-    [Tooltip("The Image component for the health fill. Will auto-find if not assigned.")]
-    public Image healthFillImage;
+    [Tooltip("Container for the health bar (usually the canvas itself).")]
+    public RectTransform healthBarContainer;
 
     [Tooltip("Optional background image for the health bar.")]
     public Image backgroundImage;
+
+    [Tooltip("Green fill image (left-anchored).")]
+    public Image healthBarGreenFill;
+
+    [Tooltip("Red fill image (right-anchored).")]
+    public Image healthBarRedFill;
 
     [Header("Appearance")]
     [Tooltip("Color when at full health")]
@@ -48,14 +54,15 @@ public class TargetHealthBar : MonoBehaviour
     [Tooltip("Hide the health bar when at full health")]
     public bool hideWhenFullHealth = false;
 
-    [Tooltip("Hide the health bar when target is dead")]
-    public bool hideWhenDead = true;
+    [Header("Debug")]
+    [Tooltip("Enable debug logging to console and file")]
+    public bool debugLog = false;
 
     private Canvas _canvas;
     private RectTransform _rectTransform;
     private Camera _mainCamera;
-    private RectTransform _fillRectTransform;
     private float _targetWidth;
+    private float _cachedHealthPercent = -1f;
 
     void Awake()
     {
@@ -66,13 +73,29 @@ public class TargetHealthBar : MonoBehaviour
         // Configure canvas for world space
         _canvas.renderMode = RenderMode.WorldSpace;
 
-        // Auto-find health component on parent
+        // Auto-find health component on parent or siblings
         if (targetHealth == null)
         {
+            // First try parent (Target object)
             targetHealth = GetComponentInParent<Health>();
+            
+            // If not found, try siblings (Sphere child of Target)
+            if (targetHealth == null && transform.parent != null)
+            {
+                targetHealth = transform.parent.GetComponentInChildren<Health>();
+            }
+            
             if (targetHealth == null)
             {
-                Debug.LogError("[TargetHealthBar] No Health component found on parent!");
+                Debug.LogError("[TargetHealthBar] No Health component found on parent or siblings!");
+            }
+            else
+            {
+                if (debugLog)
+                {
+                    Debug.Log($"[TargetHealthBar] Found Health component on: {targetHealth.gameObject.name}");
+                    FileLogger.Log($"Found Health component on: {targetHealth.gameObject.name}", "TargetHealthBar");
+                }
             }
         }
         
@@ -83,12 +106,18 @@ public class TargetHealthBar : MonoBehaviour
             if (targetRenderer != null)
             {
                 _targetWidth = targetRenderer.bounds.size.x;
-                Debug.Log($"[TargetHealthBar] Auto-detected target width: {_targetWidth}");
+                if (debugLog)
+                {
+                    Debug.Log($"[TargetHealthBar] Auto-detected target width: {_targetWidth}");
+                }
             }
             else
             {
                 _targetWidth = 4f; // Default fallback
-                Debug.LogWarning("[TargetHealthBar] Could not detect target size, using default 4 units");
+                if (debugLog)
+                {
+                    Debug.LogWarning("[TargetHealthBar] Could not detect target size, using default 4 units");
+                }
             }
         }
         else
@@ -96,32 +125,111 @@ public class TargetHealthBar : MonoBehaviour
             _targetWidth = 4f; // Default
         }
 
-        // Auto-find fill image if not assigned
-        if (healthFillImage == null)
+        // Set container reference
+        if (healthBarContainer == null)
         {
-            healthFillImage = transform.Find("Fill")?.GetComponent<Image>();
-            if (healthFillImage == null)
-            {
-                Debug.LogWarning("[TargetHealthBar] No Fill Image assigned or found. Health bar will not display.");
-            }
+            healthBarContainer = _rectTransform;
         }
 
-        if (healthFillImage != null)
-        {
-            _fillRectTransform = healthFillImage.GetComponent<RectTransform>();
-        }
+        // Ensure health bar images are created
+        EnsureHealthBarImages();
 
         // Set initial size based on target width
         float worldBarWidth = _targetWidth * barWidthMultiplier;
         float worldBarHeight = worldBarWidth * barHeightRatio;
         _rectTransform.sizeDelta = new Vector2(worldBarWidth, worldBarHeight);
         _rectTransform.localScale = Vector3.one; // Use world units directly
+
+        // Subscribe to health change events
+        if (targetHealth != null)
+        {
+            targetHealth.onHealthChanged.AddListener(OnHealthChanged);
+            if (debugLog)
+            {
+                Debug.Log($"[TargetHealthBar] Subscribed to health events for {targetHealth.gameObject.name}");
+                FileLogger.Log($"Subscribed to health events for {targetHealth.gameObject.name}, current health: {targetHealth.currentHealth}/{targetHealth.maxHealth}", "TargetHealthBar");
+            }
+            // Update display immediately with current health
+            UpdateHealthDisplay();
+        }
+    }
+
+    void EnsureHealthBarImages()
+    {
+        // Create background if needed
+        if (backgroundImage == null && healthBarContainer != null)
+        {
+            backgroundImage = healthBarContainer.GetComponent<Image>();
+            if (backgroundImage == null)
+            {
+                backgroundImage = healthBarContainer.gameObject.AddComponent<Image>();
+            }
+            backgroundImage.type = Image.Type.Simple;
+            backgroundImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f); // Dark background
+        }
+
+        // Create green fill (left-anchored)
+        if (healthBarGreenFill == null && healthBarContainer != null)
+        {
+            healthBarGreenFill = CreateHealthFillImage(healthBarContainer, "HealthFill_Green", fullHealthColor, leftAnchored: true);
+        }
+
+        // Create red fill (right-anchored)
+        if (healthBarRedFill == null && healthBarContainer != null)
+        {
+            healthBarRedFill = CreateHealthFillImage(healthBarContainer, "HealthFill_Red", emptyHealthColor, leftAnchored: false);
+        }
+    }
+
+    Image CreateHealthFillImage(RectTransform parent, string name, Color tint, bool leftAnchored)
+    {
+        GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(parent, false);
+        Image img = go.GetComponent<Image>();
+        img.type = Image.Type.Simple;
+        img.color = tint;
+
+        RectTransform rect = img.rectTransform;
+        rect.anchorMin = leftAnchored ? new Vector2(0f, 0f) : new Vector2(1f, 0f);
+        rect.anchorMax = leftAnchored ? new Vector2(0f, 1f) : new Vector2(1f, 1f);
+        rect.pivot = leftAnchored ? new Vector2(0f, 0.5f) : new Vector2(1f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.localScale = Vector3.one;
+        rect.sizeDelta = new Vector2(0f, 0f); // Let anchors control the height
+
+        return img;
+    }
+
+    void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (targetHealth != null)
+        {
+            targetHealth.onHealthChanged.RemoveListener(OnHealthChanged);
+        }
+    }
+
+    void OnHealthChanged(float newHealth)
+    {
+        if (debugLog)
+        {
+            Debug.Log($"[TargetHealthBar] OnHealthChanged called: newHealth={newHealth}, maxHealth={targetHealth.maxHealth}, percentage={newHealth / targetHealth.maxHealth}");
+            FileLogger.Log($"OnHealthChanged: newHealth={newHealth}, maxHealth={targetHealth.maxHealth}, percentage={newHealth / targetHealth.maxHealth}", "TargetHealthBar");
+        }
+        // Update display when health changes
+        UpdateHealthDisplay();
     }
 
     void LateUpdate()
     {
-        if (targetHealth == null || _mainCamera == null)
+        // Check if target still exists (not destroyed)
+        if (targetHealth == null || targetHealth.gameObject == null || _mainCamera == null)
         {
+            // Target was destroyed, hide and clean up
+            if (_canvas != null)
+            {
+                _canvas.enabled = false;
+            }
             return;
         }
 
@@ -148,14 +256,11 @@ public class TargetHealthBar : MonoBehaviour
             scale = Mathf.Clamp(scale, 0.5f, 2f);
             transform.localScale = Vector3.one * scale;
         }
-
-        // Update health fill
-        UpdateHealthDisplay();
     }
 
     void UpdateHealthDisplay()
     {
-        if (targetHealth == null || healthFillImage == null)
+        if (targetHealth == null || healthBarContainer == null)
         {
             return;
         }
@@ -163,22 +268,57 @@ public class TargetHealthBar : MonoBehaviour
         // Calculate health percentage
         float healthPercentage = Mathf.Clamp01(targetHealth.currentHealth / targetHealth.maxHealth);
 
-        // Update fill amount (using filled image type)
-        if (healthFillImage.type == Image.Type.Filled)
+        // Skip update if percentage hasn't changed
+        if (Mathf.Approximately(healthPercentage, _cachedHealthPercent))
         {
-            healthFillImage.fillAmount = healthPercentage;
-        }
-        else
-        {
-            // If not using filled type, adjust the width of the fill rect
-            if (_fillRectTransform != null)
-            {
-                _fillRectTransform.anchorMax = new Vector2(healthPercentage, 1f);
-            }
+            return;
         }
 
-        // Interpolate color from red to green based on health
-        healthFillImage.color = Color.Lerp(emptyHealthColor, fullHealthColor, healthPercentage);
+        _cachedHealthPercent = healthPercentage;
+
+        if (debugLog)
+        {
+            Debug.Log($"[TargetHealthBar] UpdateHealthDisplay: currentHealth={targetHealth.currentHealth}, maxHealth={targetHealth.maxHealth}, percentage={healthPercentage}");
+            FileLogger.Log($"UpdateHealthDisplay: currentHealth={targetHealth.currentHealth}, maxHealth={targetHealth.maxHealth}, percentage={healthPercentage}", "TargetHealthBar");
+        }
+
+        // Apply health bar widths (same as cannon health bars)
+        ApplyHealthBarWidths(healthPercentage);
+    }
+
+    void ApplyHealthBarWidths(float percent)
+    {
+        if (healthBarContainer == null || healthBarGreenFill == null || healthBarRedFill == null)
+        {
+            return;
+        }
+
+        float totalWidth = healthBarContainer.rect.width;
+        if (totalWidth <= 0f)
+        {
+            totalWidth = healthBarContainer.sizeDelta.x;
+        }
+        totalWidth = Mathf.Max(totalWidth, 1f);
+
+        float greenWidth = totalWidth * percent;
+        float redWidth = totalWidth - greenWidth;
+
+        SetRectWidth(healthBarGreenFill.rectTransform, greenWidth);
+        SetRectWidth(healthBarRedFill.rectTransform, redWidth);
+
+        healthBarGreenFill.enabled = greenWidth > 0.01f;
+        healthBarRedFill.enabled = redWidth > 0.01f;
+
+        if (debugLog)
+        {
+            Debug.Log($"[TargetHealthBar] Set widths: green={greenWidth}, red={redWidth} (total={totalWidth})");
+            FileLogger.Log($"Set widths: green={greenWidth}, red={redWidth}, total={totalWidth}", "TargetHealthBar");
+        }
+    }
+
+    void SetRectWidth(RectTransform rect, float width)
+    {
+        rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Max(0f, width));
     }
 
     bool ShouldShowHealthBar()
@@ -188,52 +328,19 @@ public class TargetHealthBar : MonoBehaviour
             return false;
         }
 
-        // Hide when dead
-        if (hideWhenDead && targetHealth.currentHealth <= 0)
+        // Always hide when dead (hardcoded)
+        if (targetHealth.currentHealth <= 0)
         {
             return false;
         }
 
-        // Hide when full health
+        // Hide when full health (optional)
         if (hideWhenFullHealth && targetHealth.currentHealth >= targetHealth.maxHealth)
         {
             return false;
         }
 
         return true;
-    }
-
-    /// <summary>
-    /// Creates a simple health bar UI hierarchy under this canvas
-    /// </summary>
-    public void CreateDefaultHealthBarUI()
-    {
-        // Create background
-        GameObject bgObject = new GameObject("Background");
-        bgObject.transform.SetParent(transform, false);
-        backgroundImage = bgObject.AddComponent<Image>();
-        backgroundImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
-        
-        RectTransform bgRect = bgObject.GetComponent<RectTransform>();
-        bgRect.anchorMin = Vector2.zero;
-        bgRect.anchorMax = Vector2.one;
-        bgRect.sizeDelta = Vector2.zero;
-
-        // Create fill
-        GameObject fillObject = new GameObject("Fill");
-        fillObject.transform.SetParent(transform, false);
-        healthFillImage = fillObject.AddComponent<Image>();
-        healthFillImage.color = fullHealthColor;
-        healthFillImage.type = Image.Type.Filled;
-        healthFillImage.fillMethod = Image.FillMethod.Horizontal;
-        healthFillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
-        
-        _fillRectTransform = fillObject.GetComponent<RectTransform>();
-        _fillRectTransform.anchorMin = Vector2.zero;
-        _fillRectTransform.anchorMax = Vector2.one;
-        _fillRectTransform.sizeDelta = Vector2.zero;
-
-        Debug.Log("[TargetHealthBar] Created default health bar UI");
     }
 
 #if UNITY_EDITOR

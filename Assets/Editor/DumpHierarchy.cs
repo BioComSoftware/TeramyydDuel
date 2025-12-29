@@ -3,8 +3,23 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.IO;
 
+[InitializeOnLoad]
 public static class DumpHierarchy
 {
+    static DumpHierarchy()
+    {
+        // Subscribe to play mode state changes
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    static void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        // Run dump when exiting play mode
+        if (state == PlayModeStateChange.EnteredEditMode)
+        {
+            Dump();
+        }
+    }
     [MenuItem("Tools/Component Audit/Dump Hierarchy to Text")]
     public static void Dump()
     {

@@ -60,35 +60,10 @@ public class TargetHealthBarSetup
         // Add TargetHealthBar script
         TargetHealthBar healthBar = canvasObj.AddComponent<TargetHealthBar>();
         healthBar.targetHealth = health;
+        healthBar.healthBarContainer = canvasRect;
 
-        // Create background
-        GameObject bgObject = new GameObject("Background");
-        bgObject.transform.SetParent(canvasObj.transform, false);
-        Image bgImage = bgObject.AddComponent<Image>();
-        bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
-        
-        RectTransform bgRect = bgObject.GetComponent<RectTransform>();
-        bgRect.anchorMin = Vector2.zero;
-        bgRect.anchorMax = Vector2.one;
-        bgRect.sizeDelta = Vector2.zero;
-
-        // Create fill
-        GameObject fillObject = new GameObject("Fill");
-        fillObject.transform.SetParent(canvasObj.transform, false);
-        Image fillImage = fillObject.AddComponent<Image>();
-        fillImage.color = Color.green;
-        fillImage.type = Image.Type.Filled;
-        fillImage.fillMethod = Image.FillMethod.Horizontal;
-        fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
-        
-        RectTransform fillRect = fillObject.GetComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero;
-        fillRect.anchorMax = Vector2.one;
-        fillRect.sizeDelta = Vector2.zero;
-
-        // Assign to health bar script
-        healthBar.healthFillImage = fillImage;
-        healthBar.backgroundImage = bgImage;
+        // The script will auto-create the green and red fill images in EnsureHealthBarImages()
+        // No need to manually create them here - just let the script handle it
 
         // Select the created canvas
         Selection.activeGameObject = canvasObj;

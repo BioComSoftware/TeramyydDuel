@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-23T13:18:25.4988942Z",
+    "lastSavedUtc": "2025-12-29T10:57:25.6827840Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -48,7 +48,7 @@
             "liftEngineering": 1.4614014625549317,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
-            "assignedStationId": "Bow_weapon_mount_01_crew_slot"
+            "assignedStationId": ""
         },
         {
             "crewId": "crew_jeruka_thudd",
@@ -80,7 +80,7 @@
             "gunnery": 9.180020332336426,
             "navigation": 1.0,
             "repair": 1.0,
-            "powerEngineering": 6.142119884490967,
+            "powerEngineering": 6.786565780639648,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
@@ -108,7 +108,7 @@
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
             "currentHealth": 10.0,
-            "assignedStationId": "Starboard_rear_hull_weapon_mount_01_crew_slot"
+            "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
             "crewId": "crew_ryn_calder",

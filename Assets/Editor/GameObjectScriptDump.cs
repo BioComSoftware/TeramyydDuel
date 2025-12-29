@@ -6,9 +6,25 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+[InitializeOnLoad]
 public static class GameObjectScriptDump
 {
     const string OutputPath = "Assets/Logs/GameobjectScriptDump.txt";
+
+    static GameObjectScriptDump()
+    {
+        // Subscribe to play mode state changes
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    static void OnPlayModeStateChanged(PlayModeStateChange state)
+    {
+        // Run dump when exiting play mode
+        if (state == PlayModeStateChange.EnteredEditMode)
+        {
+            DumpActiveSceneScripts();
+        }
+    }
 
     [MenuItem("Tools/Component Audit/Dump GameObject Script Map", priority = 201)]
     public static void DumpActiveSceneScripts()

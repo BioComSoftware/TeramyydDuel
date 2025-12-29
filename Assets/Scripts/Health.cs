@@ -78,7 +78,22 @@ public class Health : MonoBehaviour
         }
         else
         {
-            // No launcher parent, just destroy this GameObject
+            // Check if this is a child of a larger object (like Target)
+            // If parent exists and has specific components, destroy the parent instead
+            Transform parent = transform.parent;
+            if (parent != null)
+            {
+                // If parent has TargetCannonAim, this is the Target enemy - destroy the whole Target
+                if (parent.GetComponent<TargetCannonAim>() != null)
+                {
+                    if (debugLog)
+                        FileLogger.Log($"Found Target parent {parent.name}, destroying entire Target including all children", "Health");
+                    Destroy(parent.gameObject);
+                    return;
+                }
+            }
+            
+            // No special parent, just destroy this GameObject
             Destroy(gameObject);
         }
     }
