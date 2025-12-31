@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    "lastSavedUtc": "2025-12-31T12:00:39.1401382Z",
+    "lastSavedUtc": "2025-12-31T12:11:59.1652139Z",
     "crewMembers": [
         {
             "crewId": "crew_serena_brasswolf",
@@ -35,7 +35,7 @@
             "powerEngineering": 1.0,
             "liftEngineering": 1.4914811849594117,
             "maxHealth": 10.0,
-            "currentHealth": 10.0,
+            "currentHealth": 4.0,
             "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
@@ -107,7 +107,7 @@
             "powerEngineering": 1.0,
             "liftEngineering": 10.0,
             "maxHealth": 10.0,
-            "currentHealth": 1.0,
+            "currentHealth": 0.0,
             "assignedStationId": "Port_rear_hull_weapon_mount_01_crew_slot"
         },
         {
