@@ -43,18 +43,29 @@ public class CannonBall : Projectile
             FileLogger.Log($"CANNONBALL COLLISION: {gameObject.name} hit {other.name} | Path: {GetGameObjectPath(other)}", "CannonBallDebug");
         }
 
-        // 1) Apply direct-hit damage if the target has Health (ONLY the hit object)
+        // 1) Apply direct-hit damage if the target has Health (check both object and parent)
         Health targetHealth = other.GetComponent<Health>();
+        
+        // If not found on the hit object, check parent (for cases where mesh collider is on child)
+        if (targetHealth == null && other.transform.parent != null)
+        {
+            targetHealth = other.transform.parent.GetComponent<Health>();
+            if (debugCollisions && targetHealth != null)
+            {
+                Debug.Log($"[CANNONBALL DEBUG] Health component found on PARENT {other.transform.parent.name} instead of {other.name}");
+            }
+        }
         
         if (debugCollisions)
         {
             if (targetHealth != null)
             {
-                Debug.Log($"[CANNONBALL DEBUG] Health component FOUND on {other.name} | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
+                string location = targetHealth.gameObject == other ? "on hit object" : "on parent";
+                Debug.Log($"[CANNONBALL DEBUG] Health component FOUND {location} ({targetHealth.gameObject.name}) | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
             }
             else
             {
-                Debug.LogWarning($"[CANNONBALL DEBUG] NO Health component found on {other.name}!");
+                Debug.LogWarning($"[CANNONBALL DEBUG] NO Health component found on {other.name} or its parent!");
             }
         }
         

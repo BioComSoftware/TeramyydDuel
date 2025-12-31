@@ -40,18 +40,29 @@ public class Projectile : MonoBehaviour
             FileLogger.Log($"COLLISION DEBUG: {gameObject.name} hit {other.name} | Path: {GetGameObjectPath(other)}", "ProjectileDebug");
         }
 
-        // 1️⃣ Attempt to find the Health component on what we hit (ONLY the hit object, not parent/children)
+        // 1️⃣ Attempt to find the Health component on what we hit (check both object and parent)
         Health targetHealth = other.GetComponent<Health>();
+        
+        // If not found on the hit object, check parent (for cases where mesh collider is on child)
+        if (targetHealth == null && other.transform.parent != null)
+        {
+            targetHealth = other.transform.parent.GetComponent<Health>();
+            if (debugCollisions && targetHealth != null)
+            {
+                Debug.Log($"[PROJECTILE DEBUG] Health component found on PARENT {other.transform.parent.name} instead of {other.name}");
+            }
+        }
         
         if (debugCollisions)
         {
             if (targetHealth != null)
             {
-                Debug.Log($"[PROJECTILE DEBUG] Health component FOUND on {other.name} | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
+                string location = targetHealth.gameObject == other ? "on hit object" : "on parent";
+                Debug.Log($"[PROJECTILE DEBUG] Health component FOUND {location} ({targetHealth.gameObject.name}) | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
             }
             else
             {
-                Debug.LogWarning($"[PROJECTILE DEBUG] NO Health component found on {other.name}!");
+                Debug.LogWarning($"[PROJECTILE DEBUG] NO Health component found on {other.name} or its parent!");
             }
         }
         

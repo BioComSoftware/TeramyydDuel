@@ -44,18 +44,29 @@ public class SimpleShrapnel : MonoBehaviour
             FileLogger.Log($"SHRAPNEL COLLISION: {gameObject.name} hit {other.name} | Path: {GetGameObjectPath(other)}", "ShrapnelDebug");
         }
 
-        // Apply damage if target has Health component (ONLY the hit object)
+        // Apply damage if target has Health component (check both object and parent)
         Health targetHealth = other.GetComponent<Health>();
+        
+        // If not found on the hit object, check parent (for cases where mesh collider is on child)
+        if (targetHealth == null && other.transform.parent != null)
+        {
+            targetHealth = other.transform.parent.GetComponent<Health>();
+            if (debugCollisions && targetHealth != null)
+            {
+                Debug.Log($"[SHRAPNEL DEBUG] Health component found on PARENT {other.transform.parent.name} instead of {other.name}");
+            }
+        }
         
         if (debugCollisions)
         {
             if (targetHealth != null)
             {
-                Debug.Log($"[SHRAPNEL DEBUG] Health component FOUND on {other.name} | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
+                string location = targetHealth.gameObject == other ? "on hit object" : "on parent";
+                Debug.Log($"[SHRAPNEL DEBUG] Health component FOUND {location} ({targetHealth.gameObject.name}) | Current: {targetHealth.currentHealth:F2}/{targetHealth.maxHealth:F2}");
             }
             else
             {
-                Debug.LogWarning($"[SHRAPNEL DEBUG] NO Health component found on {other.name}!");
+                Debug.LogWarning($"[SHRAPNEL DEBUG] NO Health component found on {other.name} or its parent!");
             }
         }
         
