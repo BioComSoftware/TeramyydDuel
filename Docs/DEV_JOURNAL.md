@@ -1,3 +1,116 @@
+## 2025-12-31 — Deck Object Damage System Implementation
+
+### Problem: Imported Deck OBJ Files Not Taking Damage
+
+**Issue:** Deck child objects (imported from OBJ files) were colliding with projectiles but not receiving damage.
+
+**Root Cause Analysis:**
+
+1. **Structure Mismatch Between Working and Non-Working Parts:**
+   - **Working (Hull sections):** Health + Collider on child object with MeshFilter/MeshRenderer
+   - **Working (Bottom):** Health + BoxCollider on parent, MeshFilter/MeshRenderer on child
+   - **Not Working (Deck):** Health on parent, MeshCollider on child "default" object with mesh
+
+2. **Collision Detection Issue:**
+   - Deck structure had MeshCollider on child "default" object
+   - Health component was on parent (DeckPortForward, DeckStarboardForward, etc.)
+   - Projectiles collided with "default" child but looked for Health only on that exact object
+   - Health component was one level up on parent → damage not applied
+
+**Solution Implemented:**
+
+**Phase 1: Update Projectile Scripts to Check Parent for Health**
+
+Modified three collision scripts to check parent GameObject if Health not found on collided object:
+
+1. **Projectile.cs** (Lines 43-65):
+```csharp
+// Check both object and parent for Health component
+Health targetHealth = other.GetComponent<Health>();
+
+if (targetHealth == null && other.transform.parent != null)
+{
+    targetHealth = other.transform.parent.GetComponent<Health>();
+    if (debugCollisions && targetHealth != null)
+    {
+        Debug.Log($"[PROJECTILE DEBUG] Health component found on PARENT {other.transform.parent.name}");
+    }
+}
+```
+
+2. **CannonBall.cs** (Lines 46-68):
+```csharp
+// Check both object and parent for Health component
+Health targetHealth = other.GetComponent<Health>();
+
+if (targetHealth == null && other.transform.parent != null)
+{
+    targetHealth = other.transform.parent.GetComponent<Health>();
+    if (debugCollisions && targetHealth != null)
+    {
+        Debug.Log($"[CANNONBALL DEBUG] Health component found on PARENT {other.transform.parent.name}");
+    }
+}
+```
+
+3. **SimpleShrapnel.cs** (Lines 48-60):
+```csharp
+// Check both object and parent for Health component
+Health targetHealth = other.GetComponent<Health>();
+
+if (targetHealth == null && other.transform.parent != null)
+{
+    targetHealth = other.transform.parent.GetComponent<Health>();
+    if (debugCollisions && targetHealth != null)
+    {
+        Debug.Log($"[SHRAPNEL DEBUG] Health component found on PARENT {other.transform.parent.name}");
+    }
+}
+```
+
+**Result:** Deck objects now successfully take damage when hit by projectiles.
+
+**Phase 2: Visual Damage Feedback Missing**
+
+**Issue:** Deck parts took damage but didn't turn red like other ship parts.
+
+**Root Cause:** Deck objects had Health component but were missing **ShipComponent** script.
+
+**How ShipComponent Works:**
+- Subscribes to Health.onHealthChanged event
+- Finds all child Renderers using GetComponentsInChildren<Renderer>()
+- Updates material color: `Color.Lerp(Color.red, Color.white, healthPercentage)`
+- Turns materials black on death
+
+**Solution:** Add ShipComponent to each Deck child object:
+1. Select each Deck child (DeckPortForward, DeckStarboardForward, DeckPortForwardCenter, etc.)
+2. Add Component → ShipComponent
+3. ShipComponent auto-finds Health on same GameObject
+4. Auto-subscribes to health changes and updates child renderer colors
+
+**Final Deck Structure:**
+```
+- Deck (parent - empty container)
+  - DeckPortForward (has Health + ShipComponent + MeshCollider)
+    - default (has MeshFilter + MeshRenderer + MeshCollider)
+  - DeckStarboardForward (has Health + ShipComponent + MeshCollider)
+    - default (has MeshFilter + MeshRenderer + MeshCollider)
+  ... (8 deck parts total)
+```
+
+**Key Learnings:**
+
+1. **Collision GameObject vs Health GameObject:** Projectiles may collide with child objects that don't have Health - always check parent hierarchy
+2. **Component Requirements for Ship Parts:**
+   - **Health:** Manages HP, damage, death events
+   - **ShipComponent:** Provides visual damage feedback (color changes)
+   - **Collider:** Required on object with mesh (or parent with mesh reference)
+3. **Imported OBJ Files:** Often have nested "default" child with actual mesh, collider should be on same level as mesh or on parent with proper mesh reference
+4. **MeshCollider Requirements:** Needs MeshFilter on same GameObject or manual mesh asset reference
+5. **BoxCollider Alternative:** Auto-fits geometry, works without mesh reference, often better for simple shapes
+
+---
+
 ## 2025-12-21 — Target Cannon Aim Implementation and Debug Logging Cleanup
 
 ### TargetCannonAim Script - Rotating Target to Aim at Ship
